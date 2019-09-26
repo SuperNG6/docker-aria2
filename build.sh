@@ -1,6 +1,6 @@
 #!/bin/bash
 
 docker build \
-  --tag aria2-local \
+  --tag superng6/aria2:latest \
   --force-rm \
     .
