@@ -8,7 +8,7 @@ RUN set -xe \
     && apk add --no-cache aria2 \
     && chmod +x /init.sh
 
-VOLUME /config /downloads
+VOLUME /config /config/ssl /downloads
 
 EXPOSE 6800  6881  6881/udp
 

@@ -11,8 +11,6 @@ echo
 
 echo "Setting conf"
 
-chmod a+w /config
-mkdir -p /config/ssl
 mkdir -p /aria2_sh
 cp /aria2_delete.sh /aria2_sh
 cp /autoremove.sh /aria2_sh
