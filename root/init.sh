@@ -12,7 +12,6 @@ echo
 echo "Setting conf"
 
 mkdir /config/ssl
-mkdir /aria2_sh
 cp /root/aria2_delete.sh /aria2_sh
 cp /root/autoremove.sh /aria2_sh
 
