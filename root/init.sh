@@ -43,6 +43,10 @@ chown -R $UID:$GID /aria2_sh
 find /aria2_sh -type d -exec chmod 777 {} +
 find /aria2_sh -type f -exec chmod 777 {} +
 
+#设置时区
+ln -sf /usr/share/zoneinfo/$TZ   /etc/localtime 
+echo $TZ > /etc/timezone
+
 echo "[DONE]"
 
 echo "Starting aria2c"

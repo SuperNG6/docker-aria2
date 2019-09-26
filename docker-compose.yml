@@ -2,7 +2,7 @@ version: '2'
 services:
   aria2-local:
     user: '1026:100'
-    container_name: aria2-test
+    container_name: aria2
     image: aria2-local
     ports:
       - 6801:6800
