@@ -1,11 +1,16 @@
-version: '2'
+version: "2"
 services:
-  aria2-local:
-    user: '1026:100'
+  aria2:
+    image: superng6/aria2
     container_name: aria2
-    image: aria2-local
-    ports:
-      - 6801:6800
+    environment:
+      - u=1026:100
+      - TZ=Asia/Shanghai
     volumes:
-      - /tmp/aria2-local/config:/config
-      - /tmp/aria2-local/downloads:/downloads
+      - /path/to/appdata/config:/config
+      - /path/to/downloads:/downloads
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+      - 6800:6800
+    restart: unless-stopped
