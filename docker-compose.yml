@@ -1,0 +1,11 @@
+version: '2'
+services:
+  aria2-local:
+    user: '1026:100'
+    container_name: aria2-test
+    image: aria2-local
+    ports:
+      - 6801:6800
+    volumes:
+      - /tmp/aria2-local/config:/config
+      - /tmp/aria2-local/downloads:/downloads
