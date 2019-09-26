@@ -6,7 +6,8 @@ COPY root/ /
 
 RUN set -xe \
     && apk add --no-cache aria2 \
-    && chmod +x /init.sh
+    && chmod +x /init.sh \
+    && chmod a+w /config
 
 VOLUME /config /downloads
 
