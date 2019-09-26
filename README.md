@@ -3,7 +3,7 @@ docker_aria2的最佳实践
 ````
 docker create \
   --name=aria2 \
-  -u 1026:100
+  -u=1026:100
   -e TZ=Asia/Shanghai \
   -p 6881:6881 \
   -p 6881:6881/udp \
