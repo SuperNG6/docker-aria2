@@ -11,9 +11,10 @@ echo
 
 echo "Setting conf"
 
-mkdir /config/ssl
-cp /root/aria2_delete.sh /aria2_sh
-cp /root/autoremove.sh /aria2_sh
+mkdir -p /config/ssl
+mkdir -p /aria2_sh
+cp /aria2_delete.sh /aria2_sh
+cp /autoremove.sh /aria2_sh
 
 if [[ ! -e /config/aria2.conf ]]
 then
