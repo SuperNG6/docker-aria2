@@ -14,18 +14,18 @@ rpc-listen-all=true
 # RPC监听端口, 端口被占用时可以修改, 默认:6800
 rpc-listen-port=6800
 # 设置的RPC授权令牌, v1.18.4新增功能, 取代 --rpc-user 和 --rpc-passwd 选项
-rpc-secret=uuid
+rpc-secret=uuidddddddddddddddddddd
 # 设置的RPC访问用户名（1.15.2以上，1.18.6以下版本）, 此选项新版已废弃, 建议改用 --rpc-secret 选项
 #rpc-user=<USER>
 # 设置的RPC访问密码（1.15.2以上，1.18.6以下版本）, 此选项新版已废弃, 建议改用 --rpc-secret 选项
 #rpc-passwd=<PASSWD>
 # 是否启用 RPC 服务的 SSL/TLS 加密,
 # 启用加密后 RPC 服务需要使用 https 或者 wss 协议连接
-rpc-secure=true
+# rpc-secure=true
 # 在 RPC 服务中启用 SSL/TLS 加密时的证书文件(.pem/.crt)
-rpc-certificate=/config/ssl/full_chain.pem
+# rpc-certificate=/config/ssl/full_chain.pem
 # 在 RPC 服务中启用 SSL/TLS 加密时的私钥文件(.key)
-rpc-private-key=/config/ssl/private.key
+# rpc-private-key=/config/ssl/private.key
 
 ## 文件保存相关 ##
 
