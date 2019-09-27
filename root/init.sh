@@ -11,7 +11,6 @@ echo
 
 echo "Setting conf"
 
-mkdir -p /aria2_sh
 cp /aria2_delete.sh /aria2_sh
 cp /autoremove.sh /aria2_sh
 
