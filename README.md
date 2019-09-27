@@ -29,7 +29,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 # Document
 ## 在线webui
-我在gitee上构建了机遇ariang主线稳定版的在线webui：
+我在gitee上构建了基于ariang主线稳定版的在线webui：
 https://sleele.gitee.io/#!/downloading
 ## 挂载路径
 ``/config`` ``/downloads``
