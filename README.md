@@ -30,7 +30,17 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 Docker Hub地址：https://hub.docker.com/r/superng6/aria2 
 
 # Document
+## 挂载路径
+``/config`` ``/downloads``
+## 关于群晖
+群晖用户请用你当前用户SSH进系统，输入 ``id`` 获取到你的UID和GID并输入进去
 
+![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-17-57.png)
+![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-19-02.png)
+![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-20-03.png)
+
+## Linux
+输入 ``id`` 获取到你的UID和GID，替换命令中的PUID、PGID
 __执行命令__
 ````
 docker create \
