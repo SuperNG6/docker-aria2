@@ -1,5 +1,4 @@
-# 施工中
-## docker_aria2的最佳实践
+# docker_aria2的最佳实践
 
 在茫茫多的docker aria2镜像中，一直找不到符合我需求的镜像
 # 我之所以构建这个镜像的原因
@@ -56,3 +55,23 @@ docker create \
   --restart unless-stopped \
   superng6/aria2
   ````
+docker-compose  
+  ````
+  version: "2"
+services:
+  aria2:
+    image: superng6/aria2
+    container_name: aria2
+    environment:
+      - PUID=1026
+      - PGID=100
+      - TZ=Asia/Shanghai
+    volumes:
+      - /path/to/appdata/config:/config
+      - /path/to/downloads:/downloads
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+      - 6800:6800
+    restart: unless-stopped   
+````
