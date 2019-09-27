@@ -4,7 +4,8 @@ services:
     image: superng6/aria2
     container_name: aria2
     environment:
-      - u=1026:100
+      - PUID=1026
+      - PGID=100
       - TZ=Asia/Shanghai
     volumes:
       - /path/to/appdata/config:/config

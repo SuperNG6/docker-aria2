@@ -1,0 +1,40 @@
+#!/usr/bin/with-contenv bash
+
+# make folders
+mkdir -p \
+	/config/ssl \
+	/aria2_sh
+
+# copy
+if [[ ! -e /config/aria2.conf ]]
+then
+  cp /aria2/aria2.conf.default /config/aria2.conf
+fi
+
+if [[ ! -e /config/aria2.session ]]
+then
+  touch /config/aria2.session
+fi
+
+if [[ ! -e /config/dht.dat ]]
+then
+  touch /config/dht.dat
+fi
+
+cp -rf /aria2 /aria2_sh
+
+# permissions
+chown -R abc:abc \
+	/config \
+	/aria2_sh
+chmod a+x /config
+chmod a+x /aria2_sh
+
+echo "Starting aria2c"
+
+exec aria2c \
+    --conf-path=/config/aria2.conf \
+  > /dev/stdout \
+  2 > /dev/stderr
+
+echo 'Exiting aria2'

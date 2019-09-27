@@ -1,15 +1,19 @@
-FROM alpine:latest
-MAINTAINER AUTHOR=NG6<ng6@aria2.com>
+FROM lsiobase/alpine:3.9
+
+# set version label
+ARG BUILD_DATE
+ARG VERSION
+LABEL build_version="sleele.com version:- ${VERSION} Build-date:- ${BUILD_DATE}"
+LABEL maintainer="NG6"
 ENV TZ=Asia/Shanghai
 
-COPY root/ /
-
-RUN set -xe \
+RUN \
     && apk add --no-cache aria2 \
     && chmod +x /init.sh
 
-VOLUME /config /config/ssl /downloads /aria2_sh
+# copy local files
+COPY root/ /
+
+VOLUME /config /downloads
 
 EXPOSE 6800  6881  6881/udp
-
-ENTRYPOINT ["/init.sh"]
