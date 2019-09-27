@@ -29,6 +29,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 包含了下载完成后自动删除.aria2文件脚本
 - 包含了执行删除文件操作时自动执行删除.aria2文件的脚本
 - 内置最优的aria2配置文件（来自P3TERX/aria2_perfect_config，感谢）
+- 默认上海时区 Asia/Shanghai
 
 
 # Document
