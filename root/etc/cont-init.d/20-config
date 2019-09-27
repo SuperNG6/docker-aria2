@@ -2,8 +2,7 @@
 
 # make folders
 mkdir -p \
-	/config/ssl \
-	/aria2_sh
+	/config/ssl
 
 # copy
 if [[ ! -e /config/aria2.conf ]]
@@ -21,11 +20,9 @@ then
   touch /config/dht.dat
 fi
 
-cp -rf /aria2 /aria2_sh
-
 # permissions
 chown -R abc:abc \
 	/config \
-	/aria2_sh
+	/aria2
 chmod a+x /config
 chmod a+x /aria2_sh
