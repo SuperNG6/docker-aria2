@@ -24,5 +24,8 @@ fi
 chown -R abc:abc \
 	/config \
 	/aria2
-chmod r+w /config
+
+find /config -type d -exec chmod 755 {} +
+find /config -type f -exec chmod 644 {} +
+
 chmod a+x /aria2_sh
