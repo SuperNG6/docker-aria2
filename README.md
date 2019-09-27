@@ -1,4 +1,4 @@
-# docker_aria2的最佳实践
+# Docker Aria2的最佳实践
 Docker Hub地址：https://hub.docker.com/r/superng6/aria2 
 
 在茫茫多的docker aria2镜像中，一直找不到符合我需求的镜像
