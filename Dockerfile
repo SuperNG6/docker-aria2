@@ -8,8 +8,7 @@ LABEL maintainer="NG6"
 ENV TZ=Asia/Shanghai
 
 RUN \
-    && apk add --no-cache aria2 \
-    && chmod +x /init.sh
+    && apk add --no-cache aria2
 
 # copy local files
 COPY root/ /
