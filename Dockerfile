@@ -1,4 +1,4 @@
-FROM lsiobase/alpine:3.9
+FROM lsiobase/alpine:3.8
 
 # set version label
 LABEL maintainer="NG6"
