@@ -6,11 +6,11 @@ Docker Hub地址：https://hub.docker.com/r/superng6/aria2
 PS：docker hub的用户是无法看到GitHub中的图片都，会显示为框框，具体图文请进入GitHub观看
 
 GitHub：https://www.github.com/SuperNG6/docker_aria2_daemon
-# 我之所以构建这个镜像的原因
+# 之所以构建这个镜像的原因
 __当前的镜像或多或少都有以下几点不符合的我的需求__
    
 - 没有配置UID和GID
-  > 这关系到你下载的文件都权限问题，默认是root权限，很难管理
+  > 这关系到你下载的文件的权限问题，默认是root权限，很难管理
 - 掺杂了不必要的东西
    > 大量aria2 images都包含了webui，我觉得根本没有必要
    > 随便找一个在线的aria2控制台即可
@@ -22,7 +22,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
    > aria2建立下载任务后会自动生成.aria2文件，aria2自身提供了api可以触发执行脚本
    
 # 本镜像的一些优点
-- 做了usermaping，使用你自己的账户权限来运行，这点对于群辉来说尤其重要
+- 做了usermapping，使用你自己的账户权限来运行，这点对于群辉来说尤其重要
 - 纯aria2，没有包含多于的服务
 - 开放了BT下载DTH监听端口、BT下载监听端口（TCP/UDP 6881），加快下载速度
 - 默认开启DHT并且创建了DHT文件，加速下载
@@ -48,7 +48,7 @@ https://sleele.gitee.io/#!/downloading
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-40-40.png)
 
 ## 关于群晖
-群晖用户请用你当前用户SSH进系统，输入 ``id`` 获取到你的UID和GID并输入进去
+群晖用户请使用你当前的用户SSH进系统，输入 ``id`` 获取到你的UID和GID并输入进去
 
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-17-57.png)
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-19-02.png)
