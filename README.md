@@ -1,4 +1,5 @@
 # docker_aria2的最佳实践
+Docker Hub地址：https://hub.docker.com/r/superng6/aria2 
 
 在茫茫多的docker aria2镜像中，一直找不到符合我需求的镜像
 # 我之所以构建这个镜像的原因
@@ -25,8 +26,6 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 包含了执行删除文件操作时自动执行删除.aria2文件的脚本
 - 内置最优的aria2配置文件
 
-
-Docker Hub地址：https://hub.docker.com/r/superng6/aria2 
 
 # Document
 ## 挂载路径
