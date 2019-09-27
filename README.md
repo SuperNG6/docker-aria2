@@ -34,7 +34,12 @@ Docker Hub地址：https://hub.docker.com/r/superng6/aria2
 ## 默认关闭SSL，如需需要请手动开启
 之所以默认关闭SSL(建议开启)，是因为如果开启，又没有配置证书，会导致arai2启动失败，所以如果需要开启请手动编辑aria2.conf
 证书请放在``/config/ssl``目录下
+删掉24,26,28行的``#``号
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-35-32.png)
+## 修改RPC token
+填写你自己的token,越长越好，建议使用生成的UUID
+![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-40-40.png)
+
 ## 关于群晖
 群晖用户请用你当前用户SSH进系统，输入 ``id`` 获取到你的UID和GID并输入进去
 
