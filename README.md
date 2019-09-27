@@ -2,6 +2,10 @@
 Docker Hub地址：https://hub.docker.com/r/superng6/aria2 
 
 在茫茫多的docker aria2镜像中，一直找不到符合我需求的镜像
+
+PS：docker hub的用户是无法看到GitHub中的图片都，会显示为框框，具体图文请进入GitHub观看
+
+GitHub：https://www.github.com/SuperNG6/docker_aria2_daemon
 # 我之所以构建这个镜像的原因
 __当前的镜像或多或少都有以下几点不符合的我的需求__
    
