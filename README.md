@@ -1,3 +1,4 @@
+![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_20-19-31.png)
 # docker_aria2的最佳实践
 Docker Hub地址：https://hub.docker.com/r/superng6/aria2 
 
