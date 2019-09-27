@@ -29,12 +29,3 @@ chown -R abc:abc \
 	/aria2_sh
 chmod a+x /config
 chmod a+x /aria2_sh
-
-echo "Starting aria2c"
-
-exec aria2c \
-    --conf-path=/config/aria2.conf \
-  > /dev/stdout \
-  2 > /dev/stderr
-
-echo 'Exiting aria2'
