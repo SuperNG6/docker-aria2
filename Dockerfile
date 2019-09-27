@@ -1,6 +1,6 @@
 FROM lsiobase/alpine:3.8
 
-# set version label
+# set label
 LABEL maintainer="NG6"
 ENV TZ=Asia/Shanghai
 
