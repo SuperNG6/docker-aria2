@@ -22,7 +22,6 @@ fi
 
 # permissions
 chown -R abc:abc \
-	/config \
-  /downloads
+	/config
 
 chmod a+x /aria2_sh

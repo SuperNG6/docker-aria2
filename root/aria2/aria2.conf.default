@@ -14,7 +14,7 @@ rpc-listen-all=true
 # RPC监听端口, 端口被占用时可以修改, 默认:6800
 rpc-listen-port=6800
 # 设置的RPC授权令牌, v1.18.4新增功能, 取代 --rpc-user 和 --rpc-passwd 选项
-
+rpc-secret=uuidddddddddddddddddddd
 # 设置的RPC访问用户名（1.15.2以上，1.18.6以下版本）, 此选项新版已废弃, 建议改用 --rpc-secret 选项
 #rpc-user=<USER>
 # 设置的RPC访问密码（1.15.2以上，1.18.6以下版本）, 此选项新版已废弃, 建议改用 --rpc-secret 选项
