@@ -1,5 +1,5 @@
 # Docker Aria2的最佳实践
-Docker Hub地址：https://hub.docker.com/r/superng6/aria2
+Docker Hub：https://hub.docker.com/r/superng6/aria2
 
 GitHub：https://www.github.com/SuperNG6/docker_aria2_daemon
 
@@ -37,7 +37,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 # Document
 ## 在线webui
-我在gitee上构建了基于ariang主线稳定版的在线webui：
+我在Gitee上构建了基于ariang主线稳定版的在线webui：
 https://sleele.gitee.io/#!/downloading
 ## 挂载路径
 ``/config`` ``/downloads``
