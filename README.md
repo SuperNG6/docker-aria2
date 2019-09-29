@@ -49,6 +49,15 @@ https://sleele.gitee.io/#!/downloading
 ## 修改RPC token
 填写你自己的token,越长越好，建议使用生成的UUID
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-40-40.png)
+PS:为什么不在ENV里加入直接修改token?
+
+因为我发现直接运行命令``aria2c --rpc-secret=$SECRET``报[WARN] aria2c had to connect to the other side using an unknown T…
+
+> 原因在于``aria2c 1.3.4``b不支持TLS1.3，在你的证书是TLS1.3的情况，下会报错，好消息是10.6号会发布``1.3.5``解决这个问题，国庆结束后我会更新``aria2c 1.3.5``解决这个问题
+
+https://github.com/aria2/aria2/issues/1464
+
+https://github.com/aria2/aria2/issues/1468
 
 ## 关于群晖
 群晖用户请使用你当前的用户SSH进系统，输入 ``id`` 获取到你的UID和GID并输入进去
@@ -57,6 +66,10 @@ https://sleele.gitee.io/#!/downloading
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-19-02.png)
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-20-03.png)
 
+## 关于自动更新trackers
+我个人是不喜欢这个功能的，Aria2的一些机制，导致Aria2重启带来的问题会很多，比如，已移除的文件他会再下一次等等，所以没事还是不要重启Aria2，而且trackerlist大部分tracker是不会变动的，只有极少数会变动，频繁的自动更新tracker带来的收益极其有限，甚至是负收益
+
+今后可能会添加这个功能作为可选项，但是默认一定会是关闭
 ## Linux
 输入 ``id`` 获取到你的UID和GID，替换命令中的PUID、PGID
 __执行命令__
