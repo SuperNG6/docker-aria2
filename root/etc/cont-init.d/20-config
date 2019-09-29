@@ -23,9 +23,6 @@ fi
 # permissions
 chown -R abc:abc \
 	/config \
-	/aria2
-
-find /config -type d -exec chmod 755 {} +
-find /config -type f -exec chmod 644 {} +
+  /downloads
 
 chmod a+x /aria2_sh

@@ -2,7 +2,7 @@ FROM lsiobase/alpine:3.8
 
 # set label
 LABEL maintainer="NG6"
-ENV TZ=Asia/Shanghai
+ENV TZ=Asia/Shanghai SECRET=yourtoken
 
 RUN apk add --no-cache aria2
 
