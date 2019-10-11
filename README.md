@@ -57,22 +57,20 @@ https://sleele.gitee.io/#!/downloading
 
 因为我发现直接运行命令``aria2c --rpc-secret=$SECRET``会报很多（在conf文件里写也会报，但是少很多）[WARN] aria2c had to connect to the other side using an unknown T…
 
-<<<<<<< HEAD
 > 原因在于``aria2c 1.3.4``不支持TLS1.3，在你的证书是TLS1.3的情况，下会报错，好消息是10.6号会发布``1.3.5``解决这个问题，国庆结束后我会更新``aria2c 1.3.5``解决这个问题
-=======
-> 原因在于``aria2c 1.3.4``b不支持TLS1.3，在你的证书是TLS1.3的情况下会报错，好消息是10.6号会发布``1.3.5``解决这个问题，国庆结束后我会更新``aria2c 1.3.5``解决这个问题
->>>>>>> Dev
+
 
 https://github.com/aria2/aria2/issues/1464
 
 https://github.com/aria2/aria2/issues/1468
 
+### 使用2019.10.11日前版本的用户，更新时请删除conf文件的第十七行
+token现在不用写在配置文件里了，使用2019.10.11日前版本的用户，请删除第十七行，否则会报错，无法启动
+![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-10-11_21-44-59.png)
+
 ## 关于群晖
-<<<<<<< HEAD
-群晖用户请使用你当前的用户SSH进系统，输入 ``id 你的账号名`` 获取到你的UID和GID并输入进去
-=======
+
 群晖用户请使用你当前的用户SSH进系统，输入 ``id 你的用户id`` 获取到你的UID和GID并输入进去
->>>>>>> Dev
 
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-17-57.png)
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-19-02.png)
@@ -82,12 +80,11 @@ https://github.com/aria2/aria2/issues/1468
 我个人是不喜欢这个功能的，Aria2的一些机制，导致Aria2重启带来的问题会很多，比如，已移除的文件他会再下一次等等，所以没事还是不要重启Aria2，而且trackerlist大部分tracker是不会变动的，只有极少数会变动，频繁的自动更新tracker带来的收益极其有限，甚至是负收益
 
 今后可能会添加这个功能作为可选项，但是默认一定会是关闭
+
 ## Linux
-<<<<<<< HEAD
-输入 ``id 你的账号名`` 获取到你的UID和GID，替换命令中的PUID、PGID
-=======
+
 输入 ``id 你的用户id`` 获取到你的UID和GID，替换命令中的PUID、PGID
->>>>>>> Dev
+
 __执行命令__
 ````
 docker create \
