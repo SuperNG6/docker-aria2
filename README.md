@@ -79,9 +79,10 @@ __执行命令__
 ````
 docker create \
   --name=aria2 \
-  -PUID=1026 \
-  -PGID=100 \
+  -e PUID=1026 \
+  -e PGID=100 \
   -e TZ=Asia/Shanghai \
+  -e SECRET=yourtoken \
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
@@ -101,6 +102,7 @@ services:
       - PUID=1026
       - PGID=100
       - TZ=Asia/Shanghai
+      - SECRET=yourtoken
     volumes:
       - /path/to/appdata/config:/config
       - /path/to/downloads:/downloads
