@@ -34,6 +34,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 内置最优的aria2配置文件（来自P3TERX/aria2_perfect_config，感谢）
 - 默认上海时区 Asia/Shanghai
 - 直接设置token，不需要在配置文件里修改
+- 最新静态编译版的aria2c1.3.5
 
 
 # Document
