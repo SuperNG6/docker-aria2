@@ -33,6 +33,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 包含了执行删除文件操作时自动执行删除.aria2文件的脚本
 - 内置最优的aria2配置文件（来自P3TERX/aria2_perfect_config，感谢）
 - 默认上海时区 Asia/Shanghai
+- 直接设置token，不需要在配置文件里修改
 
 
 # Document
@@ -50,20 +51,28 @@ https://sleele.gitee.io/#!/downloading
 填写你自己的token,越长越好，建议使用生成的UUID
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-10-11_19-45-50.png)
 
-~~PS:为什么不在ENV里加入直接修改token?~~
-
 ### 2019.10.11日更新静态编译aria2c1.3.5解决报错[WARN] aria2c had to connect to the other side using an unknown T…
+
+~~PS:为什么不在ENV里加入直接修改token?~~
 
 因为我发现直接运行命令``aria2c --rpc-secret=$SECRET``会报很多（在conf文件里写也会报，但是少很多）[WARN] aria2c had to connect to the other side using an unknown T…
 
+<<<<<<< HEAD
 > 原因在于``aria2c 1.3.4``不支持TLS1.3，在你的证书是TLS1.3的情况，下会报错，好消息是10.6号会发布``1.3.5``解决这个问题，国庆结束后我会更新``aria2c 1.3.5``解决这个问题
+=======
+> 原因在于``aria2c 1.3.4``b不支持TLS1.3，在你的证书是TLS1.3的情况下会报错，好消息是10.6号会发布``1.3.5``解决这个问题，国庆结束后我会更新``aria2c 1.3.5``解决这个问题
+>>>>>>> Dev
 
 https://github.com/aria2/aria2/issues/1464
 
 https://github.com/aria2/aria2/issues/1468
 
 ## 关于群晖
+<<<<<<< HEAD
 群晖用户请使用你当前的用户SSH进系统，输入 ``id 你的账号名`` 获取到你的UID和GID并输入进去
+=======
+群晖用户请使用你当前的用户SSH进系统，输入 ``id 你的用户id`` 获取到你的UID和GID并输入进去
+>>>>>>> Dev
 
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-17-57.png)
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-19-02.png)
@@ -74,7 +83,11 @@ https://github.com/aria2/aria2/issues/1468
 
 今后可能会添加这个功能作为可选项，但是默认一定会是关闭
 ## Linux
+<<<<<<< HEAD
 输入 ``id 你的账号名`` 获取到你的UID和GID，替换命令中的PUID、PGID
+=======
+输入 ``id 你的用户id`` 获取到你的UID和GID，替换命令中的PUID、PGID
+>>>>>>> Dev
 __执行命令__
 ````
 docker create \
