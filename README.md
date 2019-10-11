@@ -57,7 +57,7 @@ https://sleele.gitee.io/#!/downloading
 
 因为我发现直接运行命令``aria2c --rpc-secret=$SECRET``会报很多（在conf文件里写也会报，但是少很多）[WARN] aria2c had to connect to the other side using an unknown T…
 
-> 原因在于``aria2c 1.3.4``b不支持TLS1.3，在你的证书是TLS1.3的情况，下会报错，好消息是10.6号会发布``1.3.5``解决这个问题，国庆结束后我会更新``aria2c 1.3.5``解决这个问题
+> 原因在于``aria2c 1.3.4``b不支持TLS1.3，在你的证书是TLS1.3的情况下会报错，好消息是10.6号会发布``1.3.5``解决这个问题，国庆结束后我会更新``aria2c 1.3.5``解决这个问题
 
 https://github.com/aria2/aria2/issues/1464
 
