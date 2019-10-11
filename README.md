@@ -48,10 +48,13 @@ https://sleele.gitee.io/#!/downloading
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-35-32.png)
 ## 修改RPC token
 填写你自己的token,越长越好，建议使用生成的UUID
-![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-40-40.png)
-PS:为什么不在ENV里加入直接修改token?
+![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-10-11_19-45-50.png)
 
-因为我发现直接运行命令``aria2c --rpc-secret=$SECRET``报[WARN] aria2c had to connect to the other side using an unknown T…
+~~PS:为什么不在ENV里加入直接修改token?~~
+
+### 2019.10.11日更新静态编译aria2c1.3.5解决报错[WARN] aria2c had to connect to the other side using an unknown T…
+
+因为我发现直接运行命令``aria2c --rpc-secret=$SECRET``会报很多（在conf文件里写也会报，但是少很多）[WARN] aria2c had to connect to the other side using an unknown T…
 
 > 原因在于``aria2c 1.3.4``b不支持TLS1.3，在你的证书是TLS1.3的情况，下会报错，好消息是10.6号会发布``1.3.5``解决这个问题，国庆结束后我会更新``aria2c 1.3.5``解决这个问题
 
