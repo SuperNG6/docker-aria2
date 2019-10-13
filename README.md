@@ -44,7 +44,7 @@ https://sleele.gitee.io/#!/downloading
 ## 挂载路径
 ``/config`` ``/downloads``
 ## 默认关闭SSL，如需需要请手动开启
-之所以默认关闭SSL(建议开启)，是因为如果开启，又没有配置证书，会导致arai2启动失败，所以如果需要开启请手动编辑aria2.conf
+之所以默认关闭SSL(建议开启)，是因为如果开启，又没有配置证书，会导致aria2启动失败，所以如果需要开启请手动编辑aria2.conf
 证书请放在``/config/ssl``目录下
 删掉24,26,28行的``#``号
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-35-32.png)
