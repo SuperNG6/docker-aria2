@@ -72,7 +72,7 @@ max-overall-upload-limit=2M
 # 单个任务上传速度限制, 默认:0
 max-upload-limit=512K
 # 禁用IPv6, 默认:false
-disable-ipv6=false
+disable-ipv6=true
 # 支持GZip，默认:false
 http-accept-gzip=true
 # URI复用，默认: true
