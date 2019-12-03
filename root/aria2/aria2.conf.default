@@ -105,9 +105,9 @@ enable-peer-exchange=true
 bt-request-peer-speed-limit=10M
 # 客户端伪装, PT需要保持user-agent和peer-agent两个参数一致
 user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3602.2 Safari/537.36
-#user-agent=qBittorrent v4.1.9
-peer-agent=qBittorrent v4.1.9
-peer-id-prefix=-qB4190-
+#user-agent=qBittorrent v4.1.3
+peer-agent=qBittorrent v4.1.3
+peer-id-prefix=-qB4130-
 #peer-agent=uTorrentMac/1870(43796)
 #peer-id-prefix=-UM1870-
 #peer-agent=Deluge 1.3.15
@@ -123,7 +123,7 @@ seed-time=0
 # 继续之前的BT任务时, 无需再次校验, 默认:false
 #bt-seed-unverified=true
 # 保存磁力链接元数据为种子文件(.torrent文件), 默认:false
-bt-save-metadata=false
+bt-save-metadata=true
 # 加载已保存的元数据文件，默认:false
 bt-load-saved-metadata=true
 # 删除未选择文件，默认:false
