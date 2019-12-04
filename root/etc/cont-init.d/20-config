@@ -7,7 +7,7 @@ mkdir -p \
 # copy
 if [[ ! -e /config/aria2.conf ]]
 then
-  cp /aria2/conf/aria2.conf.default /config/aria2.conf
+  cp /aria2/aria2.conf.default /config/aria2.conf
 fi
 
 if [[ ! -e /config/aria2.session ]]
@@ -23,7 +23,6 @@ fi
 # permissions
 chown -R abc:abc \
 	/config \
-  /downloads \
-  /aria2
+  /downloads
 
-chmod a+x /aria2/script
+chmod a+x /aria2

@@ -150,9 +150,9 @@ bt-remove-unselected-file=true
 
 # 下载停止后执行的命令（下载停止包含下载错误和下载完成这两个状态，如果没有单独设置，则执行此项命令。）
 # 删除文件及.aria2后缀名文件
-on-download-stop=/aria2/script/delete.sh
+on-download-stop=/aria2/delete.sh
 # 删除.aria2后缀名文件
-on-download-complete=/aria2/script/delete.aria2.sh
+on-download-complete=/aria2/delete.aria2.sh
 # 下载错误后执行的命令（下载停止包含下载错误这个状态，如果没被设置或被注释，则执行下载停止后执行的命令。）
 #on-download-error=
 # 下载完成后执行的命令（下载停止包含下载完成这个状态，如果没被设置或被注释，则执行下载停止后执行的命令。）
