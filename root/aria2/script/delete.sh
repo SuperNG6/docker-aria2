@@ -1,13 +1,6 @@
 #!/bin/bash
-#=================================================
-# Description: Delete files after Aria2 download error
-# Lisence: MIT
-# Version: 1.8
-# Author: P3TERX
-# Blog: https://p3terx.com
-#=================================================
 
-downloadpath='/downloads' #Aria2下载目录
+downloadpath='/downloads'
 
 filepath=$3
 rdp=${filepath#${downloadpath}/}

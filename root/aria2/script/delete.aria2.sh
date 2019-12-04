@@ -1,13 +1,6 @@
 #!/bin/bash
-#=================================================
-# Description: Delete .aria2 file after Aria2 download is complete
-# Lisence: MIT
-# Version: 1.8
-# Author: P3TERX
-# Blog: https://p3terx.com
-#=================================================
 
-downloadpath='/downloads' #Aria2下载目录
+downloadpath='/downloads'
 
 filepath=$3
 rdp=${filepath#${downloadpath}/}
