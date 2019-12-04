@@ -1,0 +1,18 @@
+version: "2"
+services:
+  aria2:
+    image: superng6/aria2
+    container_name: aria2
+    environment:
+      - PUID=1026
+      - PGID=100
+      - TZ=Asia/Shanghai
+      - SECRET=yourtoken
+    volumes:
+      - /path/to/appdata/config:/config
+      - /path/to/downloads:/downloads
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+      - 6800:6800
+    restart: unless-stopped
