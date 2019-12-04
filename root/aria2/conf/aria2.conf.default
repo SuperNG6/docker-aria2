@@ -14,7 +14,7 @@ rpc-listen-all=true
 # RPC监听端口, 端口被占用时可以修改, 默认:6800
 rpc-listen-port=6800
 # 设置的RPC授权令牌, v1.18.4新增功能, 取代 --rpc-user 和 --rpc-passwd 选项
-
+#rpc-secret=yourtoken
 # 设置的RPC访问用户名（1.15.2以上，1.18.6以下版本）, 此选项新版已废弃, 建议改用 --rpc-secret 选项
 #rpc-user=<USER>
 # 设置的RPC访问密码（1.15.2以上，1.18.6以下版本）, 此选项新版已废弃, 建议改用 --rpc-secret 选项
@@ -45,13 +45,22 @@ remote-time=true
 
 ## 下载连接相关 ##
 
+# 文件未找到重试次数，默认:0
+# 重试时同时会记录重试次数，所以也需要设置 --max-tries 这个选项
+max-file-not-found=5
+# 最大尝试次数，0表示无限，默认:5
+max-tries=0
+# 重试等待时间（秒）, 默认:0
+retry-wait=10
+# 使用 UTF-8 处理 Content-Disposition ，默认:false
+content-disposition-default-utf8=true
 # 最大同时下载任务数, 运行时可修改, 默认:5，路由建议值: 3
 max-concurrent-downloads=50
 # 同一服务器连接数, 添加时可指定, 默认:1
-max-connection-per-server=5
+max-connection-per-server=16
 # 最小文件分片大小, 添加时可指定, 取值范围1M -1024M, 默认:20M
 # 假定size=10M, 文件为20MiB 则使用两个来源下载; 文件为15MiB 则使用一个来源下载
-#min-split-size=20M
+min-split-size=4M
 # 单个任务最大线程数, 添加时可指定, 默认:5，路由建议值: 5
 split=16
 # 整体下载速度限制, 运行时可修改, 默认:0
@@ -61,11 +70,15 @@ split=16
 # 整体上传速度限制, 运行时可修改, 默认:0
 max-overall-upload-limit=2M
 # 单个任务上传速度限制, 默认:0
-max-upload-limit=500K
+max-upload-limit=512K
 # 禁用IPv6, 默认:false
 disable-ipv6=true
 # 支持GZip，默认:false
 http-accept-gzip=true
+# URI复用，默认: true
+reuse-uri=false
+# 禁用 netrc 支持，默认:flase
+no-netrc=true
 
 ## 进度保存相关 ##
 
@@ -74,7 +87,9 @@ input-file=/config/aria2.session
 # 在Aria2退出时保存`错误/未完成`的下载任务到会话文件
 save-session=/config/aria2.session
 # 定时保存会话, 0为退出时才保存, 需1.16.1以上版本, 默认:0
-save-session-interval=60
+save-session-interval=1
+# 自动保存任务进度，0为退出时才保存，默认：60
+auto-save-interval=1
 # 强制保存会话, 即使任务已经完成, 默认:false
 # 较新的版本开启后会在任务完成后依然保留.aria2文件
 force-save=true
@@ -135,9 +150,9 @@ bt-remove-unselected-file=true
 
 # 下载停止后执行的命令（下载停止包含下载错误和下载完成这两个状态，如果没有单独设置，则执行此项命令。）
 # 删除文件及.aria2后缀名文件
-on-download-stop=/aria2/aria2_delete.sh
+on-download-stop=/aria2/scrpit/delete.sh
 # 删除.aria2后缀名文件
-on-download-complete=/aria2/autoremove.sh
+on-download-complete=/aria2/scrpit/delete.aria2.sh
 # 下载错误后执行的命令（下载停止包含下载错误这个状态，如果没被设置或被注释，则执行下载停止后执行的命令。）
 #on-download-error=
 # 下载完成后执行的命令（下载停止包含下载完成这个状态，如果没被设置或被注释，则执行下载停止后执行的命令。）
