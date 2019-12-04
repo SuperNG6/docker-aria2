@@ -25,4 +25,5 @@ chown -R abc:abc \
 	/config \
   /downloads
 
-chmod a+x /aria2
+chmod a+x /aria2/script/delete.sh
+chmod a+x /aria2/script/delete.aria2.sh
