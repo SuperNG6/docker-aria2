@@ -30,12 +30,21 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 开放了BT下载DTH监听端口、BT下载监听端口（TCP/UDP 6881），加快下载速度
 - 默认开启DHT并且创建了DHT文件，加速下载
 - 包含了下载完成后自动删除.aria2文件脚本
-- 包含了执行删除文件操作时自动执行删除.aria2文件的脚本
+- 包含了执行删除正在下载任务事时自动执行删除文件（删除已完成的任务不会删除文件，请放心）和aria2文件的脚本
 - 内置最优的aria2配置文件（来自P3TERX/aria2_perfect_config，感谢）
 - 默认上海时区 Asia/Shanghai
 - 直接设置token，不需要在配置文件里修改
 - 最新静态编译版的aria2c1.3.5
 
+
+# Changelogs
+## 2019/12/04
+
+      1、更新了P3TERX/aria2_perfect_config的conf及触发脚本
+      2、更新trackers(XIU2 / TrackersListCollection )
+      3、梳理、优化了文件结构
+      4、使用 2019/12/04更新的镜像请手抖删除你的Aria2配置文件（可以直接删除配置目录），config更新了内容
+      5、改善 delete.sh、delete.aria2.sh 路径判断逻辑，增加删除空目录功能。
 
 # Document
 ## 在线webui
