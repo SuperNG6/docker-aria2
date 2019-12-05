@@ -44,7 +44,8 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
       2、更新trackers(XIU2 / TrackersListCollection )
       3、梳理、优化了文件结构
       4、本次更新请手动删除你的Aria2配置文件（可以直接删除配置目录）
-      5、改善 delete.sh、delete.aria2.sh 路径判断逻辑，增加删除空目录功能。
+      5、改善 delete.sh、delete.aria2.sh 路径判断逻辑，增加删除空目录功能
+      6、重启Aria2后不会重复下载已完成的任务
 
 # Document
 ## 在线webui
