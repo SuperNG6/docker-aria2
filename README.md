@@ -40,10 +40,10 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 # Changelogs
 ## 2019/12/04
 
-      1、更新了P3TERX/aria2_perfect_config的conf及触发脚本
+      1、更新了P3TERX/aria2_perfect_config的config及触发脚本
       2、更新trackers(XIU2 / TrackersListCollection )
       3、梳理、优化了文件结构
-      4、使用 2019/12/04更新的镜像请手抖删除你的Aria2配置文件（可以直接删除配置目录），config更新了内容
+      4、本次更新请手动删除你的Aria2配置文件（可以直接删除配置目录）
       5、改善 delete.sh、delete.aria2.sh 路径判断逻辑，增加删除空目录功能。
 
 # Document
