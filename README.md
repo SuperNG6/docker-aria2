@@ -64,6 +64,7 @@ https://sleele.gitee.io/#!/downloading
 
 <details>
    <summary>2019.10.11更新日志及用户须知</summary>
+   
 ### 2019.10.11日更新静态编译aria2c1.3.5解决报错[WARN] aria2c had to connect to the other side using an unknown T…
 
 ~~PS:为什么不在ENV里加入直接修改token?~~
