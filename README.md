@@ -62,6 +62,8 @@ https://sleele.gitee.io/#!/downloading
 填写你自己的token,越长越好，建议使用生成的UUID
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-10-11_19-45-50.png)
 
+<details>
+   <summary>2019.10.11更新日志及用户须知</summary>
 ### 2019.10.11日更新静态编译aria2c1.3.5解决报错[WARN] aria2c had to connect to the other side using an unknown T…
 
 ~~PS:为什么不在ENV里加入直接修改token?~~
@@ -78,6 +80,9 @@ https://github.com/aria2/aria2/issues/1468
 ### 使用2019.10.11日前版本的用户，更新时请删除conf文件的第十七行
 token现在不用写在配置文件里了，使用2019.10.11日前版本的用户，请删除第十七行，否则会报错，无法启动
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-10-11_21-44-59.png)
+
+</details>
+
 
 ## 关于群晖
 
