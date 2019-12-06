@@ -83,7 +83,7 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 
 群晖用户请使用你当前的用户SSH进系统，输入 ``id 你的用户id`` 获取到你的UID和GID并输入进去
 
-![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-17-57.png)
+![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-12-06_21-12-22.png)
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-19-02.png)
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-20-03.png)
 
