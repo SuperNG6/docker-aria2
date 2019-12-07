@@ -93,6 +93,10 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-19-02.png)
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-20-03.png)
 
+### 权限管理设置
+对你的``docker配置文件夹的根目录``和``你的下载文件夹的根目录``进行如图操作
+![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-12-07_10-35-24.png)
+
 ## 关于自动更新trackers
 我个人是不喜欢这个功能的，Aria2的一些机制，导致Aria2重启带来的问题会很多，比如，已移除的文件他会再下一次等等，所以没事还是不要重启Aria2，而且trackerlist大部分tracker是不会变动的，只有极少数会变动，频繁的自动更新tracker带来的收益极其有限，甚至是负收益
 
