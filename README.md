@@ -31,16 +31,20 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 默认开启DHT并且创建了DHT文件，加速下载
 - 包含了下载完成后自动删除.aria2文件脚本
 - 包含了执行删除正在下载任务事时自动执行删除文件（删除已完成的任务不会删除文件，请放心）和aria2文件的脚本
-- 内置最优的aria2配置文件（来自P3TERX/aria2_perfect_config，感谢）
+- 内置最优的aria2配置文件（来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
 - 默认上海时区 Asia/Shanghai
 - 直接设置token，不需要在配置文件里修改
 - 最新静态编译版的aria2c1.3.5
 
 
 # Changelogs
+## 2019/12/19
+
+      1、回退脚本，新版脚本会在删除已完成任务时会删除下载任务指定的二级目录
+      
 ## 2019/12/04
 
-      1、更新了P3TERX/aria2_perfect_config的config及触发脚本
+      1、更新了P3TERX/P3TERX/aria2.conf及触发脚本
       2、更新trackers(XIU2 / TrackersListCollection )
       3、梳理、优化了文件结构
       4、本次更新请手动删除你的Aria2配置文件（可以直接删除配置目录）
