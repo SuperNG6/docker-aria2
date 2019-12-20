@@ -1,4 +1,4 @@
-FROM lsiobase/alpine:arm64v8-3.8
+FROM lsiobase/alpine:3.8
 
 # set label
 LABEL maintainer="NG6"
