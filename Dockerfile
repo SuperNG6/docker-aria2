@@ -5,16 +5,16 @@ LABEL maintainer="NG6"
 ENV TZ=Asia/Shanghai SECRET=yourtoken
 
 # arg
-ARG aria2-static-builds_VER=1.35.0
+ARG aria2c_v=1.35.0
 
 # copy local files
 COPY root/ /
 
 # install aria2-static
-RUN wget --no-check-certificate https://github.com/q3aql/aria2-static-builds/releases/download/${aria2-static-builds_VER}/aria2-${aria2-static-builds_VER}-linux-gnu-64bit-build1.tar.bz2 \
-&&  tar -jxvf aria2-${aria2-static-builds_VER}-linux-gnu-64bit-build1.tar.bz2 \
-&&  mv aria2-${aria2-static-builds_VER}-linux-gnu-64bit-build1/aria2c /usr/bin/aria2c \
-&&  rm -rf aria2-${aria2-static-builds_VER}-linux-gnu-64bit-build1  \
+RUN wget --no-check-certificate https://github.com/q3aql/aria2-static-builds/releases/download/${aria2c_v}/aria2-${aria2c_v}-linux-gnu-64bit-build1.tar.bz2 \
+&&  tar -jxvf aria2-${aria2c_v}-linux-gnu-64bit-build1.tar.bz2 \
+&&  mv aria2-${aria2c_v}-linux-gnu-64bit-build1/aria2c /usr/bin/aria2c \
+&&  rm -rf aria2-${aria2c_v}-linux-gnu-64bit-build1  \
 &&  chmod a+x /usr/bin/aria2c
 
 # permissions
