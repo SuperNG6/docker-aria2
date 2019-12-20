@@ -11,10 +11,10 @@ ARG aria2-static-builds_VER=1.35.0
 COPY root/ /
 
 # install aria2-static
-RUN wget --no-check-certificate https://github.com/q3aql/aria2-static-builds/releases/download/${aria2-static-builds_VER}/aria2-${BaiduPbuilds_VERCSGo_VER}-linux-gnu-64bit-build1.tar.bz2 \
-&&  tar -jxvf aria2-${BaiduPbuilds_VERCSGo_VER}-linux-gnu-64bit-build1.tar.bz2 \
-&&  mv aria2-${BaiduPbuilds_VERCSGo_VER}-linux-gnu-64bit-build1/aria2c /usr/bin/aria2c \
-&&  rm -rf aria2-${BaiduPbuilds_VERCSGo_VER}-linux-gnu-64bit-build1  \
+RUN wget --no-check-certificate https://github.com/q3aql/aria2-static-builds/releases/download/${aria2-static-builds_VER}/aria2-${aria2-static-builds_VER}-linux-gnu-64bit-build1.tar.bz2 \
+&&  tar -jxvf aria2-${aria2-static-builds_VER}-linux-gnu-64bit-build1.tar.bz2 \
+&&  mv aria2-${aria2-static-builds_VER}-linux-gnu-64bit-build1/aria2c /usr/bin/aria2c \
+&&  rm -rf aria2-${aria2-static-builds_VER}-linux-gnu-64bit-build1  \
 &&  chmod a+x /usr/bin/aria2c
 
 # permissions
