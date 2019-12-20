@@ -13,12 +13,9 @@ COPY root/ /
 # install aria2-static
 RUN wget --no-check-certificate https://github.com/q3aql/aria2-static-builds/releases/download/v${aria2c_v}/aria2-${aria2c_v}-linux-gnu-64bit-build1.tar.bz2 \
 &&  tar -jxvf aria2-${aria2c_v}-linux-gnu-64bit-build1.tar.bz2 \
-&&  mv aria2-${aria2c_v}-linux-gnu-64bit-build1/aria2c /usr/bin/aria2c \
+&&  cp aria2-${aria2c_v}-linux-gnu-64bit-build1/aria2c /usr/bin/aria2c \
 &&  rm -rf aria2-${aria2c_v}-linux-gnu-64bit-build1  \
 &&  chmod a+x /usr/bin/aria2c
-
-# permissions
-RUN chmod 755 /usr/bin/aria2c
 
 VOLUME /config /downloads
 
