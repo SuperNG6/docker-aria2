@@ -25,7 +25,10 @@ chown -R abc:abc \
 	/config \
   /downloads
 
-chmod a+x /aria2/script/delete.sh delete.aria2.sh tracker.sh
+chmod a+x \
+  /aria2/script/delete.sh \
+  /aria2/script/delete.aria2.sh \
+  /aria2/script/tracker.sh
 
 # auto updatetracker
 if [ $UpdateTracker -eq true ]
