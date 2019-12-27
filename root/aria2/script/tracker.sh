@@ -9,7 +9,7 @@
 INFO="[\033[32mINFO\033[0m]"
 ERROR="[\033[31mERROR\033[0m]"
 echo && echo -e "$INFO Get trackers ..."
-aria2_conf=${/config/aria2.conf}
+aria2_conf="/config/aria2.conf"
 # https://github.com/ngosang/trackerslist
 #tracker=$(wget -qO- https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all.txt | awk NF | sed ":a;N;s/\n/,/g;ta")
 # https://github.com/XIU2/TrackersListCollection
