@@ -1,0 +1,168 @@
+## '#'开头为注释内容, 选项都有相应的注释说明, 根据需要修改 ##
+## 被注释的选项使用的是默认值, 建议在需要使用时再取消注释  ##
+
+## RPC相关设置 ##
+
+# 启用RPC, 默认:false
+enable-rpc=true
+# 允许所有来源, 默认:false
+rpc-allow-origin-all=true
+# 允许非外部访问, 默认:false
+rpc-listen-all=true
+# 事件轮询方式, 取值:[epoll, kqueue, port, poll, select], 不同系统默认值不同
+#event-poll=select
+# RPC监听端口, 端口被占用时可以修改, 默认:6800
+rpc-listen-port=6800
+# 设置的RPC授权令牌, v1.18.4新增功能, 取代 --rpc-user 和 --rpc-passwd 选项
+#rpc-secret=yourtoken
+# 设置的RPC访问用户名（1.15.2以上，1.18.6以下版本）, 此选项新版已废弃, 建议改用 --rpc-secret 选项
+#rpc-user=<USER>
+# 设置的RPC访问密码（1.15.2以上，1.18.6以下版本）, 此选项新版已废弃, 建议改用 --rpc-secret 选项
+#rpc-passwd=<PASSWD>
+# 是否启用 RPC 服务的 SSL/TLS 加密,
+# 启用加密后 RPC 服务需要使用 https 或者 wss 协议连接
+# rpc-secure=true
+# 在 RPC 服务中启用 SSL/TLS 加密时的证书文件(.pem/.crt)
+# rpc-certificate=/config/ssl/full_chain.pem
+# 在 RPC 服务中启用 SSL/TLS 加密时的私钥文件(.key)
+# rpc-private-key=/config/ssl/private.key
+
+## 文件保存相关 ##
+
+# 文件的保存路径(可使用绝对路径或相对路径), 默认: 当前启动位置
+dir=/downloads
+# 启用磁盘缓存, 0为禁用缓存, 需1.16以上版本, 默认:16M
+disk-cache=512M
+# 文件预分配方式, 能有效降低磁盘碎片, 默认:prealloc
+# 预分配所需时间: none < falloc ? trunc < prealloc
+# falloc和trunc则需要文件系统和内核支持
+# NTFS、EXT4 建议使用 falloc, EXT3 建议 trunc, MAC 下需要注释此项
+file-allocation=falloc
+# 断点续传
+continue=true
+# 获取服务器文件时间，默认:false
+remote-time=true
+
+## 下载连接相关 ##
+
+# 文件未找到重试次数，默认:0
+# 重试时同时会记录重试次数，所以也需要设置 --max-tries 这个选项
+max-file-not-found=5
+# 最大尝试次数，0表示无限，默认:5
+max-tries=0
+# 重试等待时间（秒）, 默认:0
+retry-wait=10
+# 使用 UTF-8 处理 Content-Disposition ，默认:false
+content-disposition-default-utf8=true
+# 最大同时下载任务数, 运行时可修改, 默认:5，路由建议值: 3
+max-concurrent-downloads=50
+# 同一服务器连接数, 添加时可指定, 默认:1
+max-connection-per-server=16
+# 最小文件分片大小, 添加时可指定, 取值范围1M -1024M, 默认:20M
+# 假定size=10M, 文件为20MiB 则使用两个来源下载; 文件为15MiB 则使用一个来源下载
+min-split-size=4M
+# 单个任务最大线程数, 添加时可指定, 默认:5，路由建议值: 5
+split=16
+# 整体下载速度限制, 运行时可修改, 默认:0
+#max-overall-download-limit=0
+# 单个任务下载速度限制, 默认:0
+#max-download-limit=0
+# 整体上传速度限制, 运行时可修改, 默认:0
+max-overall-upload-limit=2M
+# 单个任务上传速度限制, 默认:0
+max-upload-limit=512K
+# 禁用IPv6, 默认:false
+disable-ipv6=true
+# 支持GZip，默认:false
+http-accept-gzip=true
+# URI复用，默认: true
+reuse-uri=false
+# 禁用 netrc 支持，默认:flase
+no-netrc=true
+
+## 进度保存相关 ##
+
+# 从会话文件中读取下载任务
+input-file=/config/aria2.session
+# 在Aria2退出时保存`错误/未完成`的下载任务到会话文件
+save-session=/config/aria2.session
+# 定时保存会话, 0为退出时才保存, 需1.16.1以上版本, 默认:0
+save-session-interval=1
+# 自动保存任务进度，0为退出时才保存，默认：60
+auto-save-interval=1
+# 强制保存会话, 即使任务已经完成, 默认:false
+# 较新的版本开启后会在任务完成后依然保留.aria2文件
+force-save=true
+
+## BT/PT下载相关 ##
+
+# 当下载的是一个种子(以.torrent结尾)时, 自动开始BT任务, 默认:true，可选：false|mem
+#follow-torrent=true
+# BT监听端口, 当端口被屏蔽时使用, 默认:6881-6999
+listen-port=6881
+# 单个种子最大连接数，0为不限制，默认:55
+bt-max-peers=100
+# DHT（IPv4）文件
+dht-file-path=/config/dht.dat
+# DHT（IPv6）文件
+# dht-file-path6=/root/.aria2/dht6.dat
+# 打开DHT功能, PT需要禁用, 默认:true
+enable-dht=true
+# 打开IPv6 DHT功能, PT需要禁用
+enable-dht6=false
+# DHT网络监听端口, 默认:6881-6999
+dht-listen-port=6881
+# 本地节点查找, PT需要禁用, 默认:false
+bt-enable-lpd=true
+# 种子交换, PT需要禁用, 默认:true
+enable-peer-exchange=true
+# 期望下载速度，Aria2会临时提高连接数以提高下载速度，单位K或M。默认:50K
+bt-request-peer-speed-limit=10M
+# 客户端伪装, PT需要保持user-agent和peer-agent两个参数一致
+user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3602.2 Safari/537.36
+#user-agent=qBittorrent v4.1.9
+peer-agent=qBittorrent v4.1.9
+peer-id-prefix=-qB4190-
+#peer-agent=uTorrentMac/1870(43796)
+#peer-id-prefix=-UM1870-
+#peer-agent=Deluge 1.3.15
+#peer-id-prefix=-DE13F0-
+#peer-agent=Transmission/2.92
+#peer-id-prefix=-TR2920-
+# 当种子的分享率达到这个数时, 自动停止做种, 0为一直做种, 默认:1.0
+seed-ratio=1.0
+# 最小做种时间。此选项设置为0时，将在BT任务下载完成后不进行做种。
+seed-time=0
+# BT校验相关, 默认:true
+#bt-hash-check-seed=true
+# 继续之前的BT任务时, 无需再次校验, 默认:false
+#bt-seed-unverified=true
+# 保存磁力链接元数据为种子文件(.torrent文件), 默认:false
+bt-save-metadata=false
+# 加载已保存的元数据文件，默认:false
+bt-load-saved-metadata=true
+# 删除未选择文件，默认:false
+bt-remove-unselected-file=true
+# 保存上传的种子，默认:true
+#rpc-save-upload-metadata=false
+
+## 执行额外命令 ##
+
+# 下载停止后执行的命令（下载停止包含下载错误和下载完成这两个状态，如果没有单独设置，则执行此项命令。）
+# 删除文件及.aria2后缀名文件
+on-download-stop=/aria2/script/delete.sh
+# 删除.aria2后缀名文件
+on-download-complete=/aria2/script/delete.aria2.sh
+# 下载错误后执行的命令（下载停止包含下载错误这个状态，如果没被设置或被注释，则执行下载停止后执行的命令。）
+#on-download-error=
+# 下载完成后执行的命令（下载停止包含下载完成这个状态，如果没被设置或被注释，则执行下载停止后执行的命令。）
+# 调用 rclone 上传(move)到网盘
+#on-download-complete=/root/.aria2/autoupload.sh
+# 下载暂停后执行的命令
+# 显示下载任务信息
+#on-download-pause=/root/.aria2/info.sh
+# 下载开始后执行的命令
+#on-download-start=
+
+## BT服务器 ##
+bt-tracker=http://0d.kebhana.mx:443/announce,http://104.238.198.186:8000/announce,http://104.28.1.30:8080/announce,http://104.28.16.69/announce,http://107.150.14.110:6969/announce,http://109.121.134.121:1337/announce,http://114.55.113.60:6969/announce,http://125.227.35.196:6969/announce,http://128.199.70.66:5944/announce,http://157.7.202.64:8080/announce,http://158.69.146.212:7777/announce,http://173.254.204.71:1096/announce,http://178.175.143.27/announce,http://178.33.73.26:2710/announce,http://182.176.139.129:6969/announce,http://185.5.97.139:8089/announce,http://185.83.215.123:6969/announce,http://188.165.253.109:1337/announce,http://194.106.216.222/announce,http://195.123.209.37:1337/announce,http://198.177.123.164/announce,http://210.244.71.25:6969/announce,http://210.244.71.26:6969/announce,http://213.159.215.198:6970/announce,http://213.163.67.56:1337/announce,http://37.19.5.139:6969/announce,http://37.19.5.155:6881/announce,http://46.4.109.148:6969/announce,http://5.2.79.22:6969/announce,http://5.79.249.77:6969/announce,http://5.79.83.193:2710/announce,http://51.254.244.161:6969/announce,http://52.28.76.37:6969/announce,http://52.29.11.73:6969/announce,http://52.58.128.163:6969/announce,http://59.36.96.77:6969/announce,http://62.210.202.61/announce,http://74.82.52.209:6969/announce,http://78.30.254.12:2710/announce,http://80.246.243.18:6969/announce,http://81.200.2.231/announce,http://85.17.19.180/announce,http://87.110.238.140:6969/announce,http://87.248.186.252:8080/announce,http://87.253.152.137/announce,http://91.216.110.47/announce,http://91.217.91.21:3218/announce,http://91.218.230.81:6969/announce,http://93.92.64.5/announce,http://95.211.168.204:2710/announce,http://[2001:19f0:6c01:1b7d:5400:1ff:fefc:3c2a]:6969/announce,http://[2001:1af8:4700:a032:1234::]:6969/announce,http://[2001:1b10:1000:8101:0:242:ac11:2]:6969/announce,http://[2001:41d0:305:2100::16a3]:6969/announce,http://[2001:470:1:189:0:1:2:3]:6969/announce,http://[2a02:c205:2026:1682::1]:443/announce,http://[2a04:ac00:1:3dd8::1:2710]:2710/announce,http://acg.rip:6699/announce,http://agusiq-torrents.pl:6969/announce,http://asnet.pw:2710/announce,http://bigfoot1942.sektori.org:6969/announce,http://bt-tracker.gamexp.ru:2710/announce,http://bt.henbt.com:2710/announce,http://bt.pusacg.org:8080/announce,http://bt.xxx-tracker.com:2710/announce,http://bt2.careland.com.cn:6969/announce,http://carapax.net:6969/announce,http://denis.stalker.upeer.me:6969/announce,http://explodie.org:6969/announce,http://fxtt.ru:80/announce,http://grifon.info:80/announce,http://h4.trakx.nibba.trade:80/announce,http://mail2.zelenaya.net:80/announce,http://mgtracker.org:2710/announce,http://mgtracker.org:6969/announce,http://newtoncity.org:6969/announce,http://ns349743.ip-91-121-106.eu:80/announce,http://open.acgnxtracker.com:80/announce,http://open.acgtracker.com:1096/announce,http://open.lolicon.eu:7777/announce,http://open.touki.ru/announce.php,http://open.trackerlist.xyz:80/announce,http://opentracker.acgnx.se:80/announce,http://opentracker.xyz:80/announce,http://p4p.arenabg.ch:1337/announce,http://p4p.arenabg.com:1337/announce,http://pow7.com:80/announce,http://pt.lax.mx:80/announce,http://retracker.bashtel.ru:80/announce,http://retracker.hotplug.ru:2710/announce,http://retracker.krs-ix.ru:80/announce,http://retracker.mgts.by:80/announce,http://retracker.sevstar.net:2710/announce,http://retracker.spark-rostov.ru:80/announce,http://retracker.telecom.by:80/announce,http://share.camoe.cn:8080/announce,http://sukebei.tracker.wf:8888/announce,http://t.acg.rip:6699/announce,http://t.nyaatracker.com:80/announce,http://thetracker.org:80/announce,http://torrentclub.tech:6969/announce,http://torrentsmd.com:8080/announce,http://torrentsmd.eu:8080/announce,http://torrentsmd.me:8080/announce,http://tr.cili001.com:8070/announce,http://tr.kxmp.cf:80/announce,http://tracker.aletorrenty.pl:2710/announce,http://tracker.baravik.org:6970/announce,http://tracker.beeimg.com:6969/announce,http://tracker.birkenwald.de:6969/announce,http://tracker.bittor.pw:1337/announce,http://tracker.bt4g.com:2095/announce,http://tracker.bz:80/announce,http://tracker.calculate.ru:6969/announce,http://tracker.city9x.com:2710/announce,http://tracker.corpscorp.online:80/announce,http://tracker.devil-torrents.pl:80/announce,http://tracker.dler.org:6969/announce,http://tracker.dutchtracking.com:80/announce,http://tracker.dutchtracking.nl:80/announce,http://tracker.edoardocolombo.eu:6969/announce,http://tracker.electro-torrent.pl:80/announce,http://tracker.ex.ua:80/announce,http://tracker.filemail.com:6969/announce,http://tracker.filepit.to:6969/announce,http://tracker.files.fm:6969/announce,http://tracker.filetracker.pl:8089/announce,http://tracker.flashtorrents.org:6969/announce,http://tracker.frozen-layer.net:6969/announce,http://tracker.gbitt.info:80/announce,http://tracker.grepler.com:6969/announce,http://tracker.internetwarriors.net:1337/announce,http://tracker.kicks-ass.net:80/announce,http://tracker.kuroy.me:5944/announce,http://tracker.lelux.fi:80/announce,http://tracker.mg64.net:6881/announce,http://tracker.moeking.me:6969/announce,http://tracker.novg.net:6969/announce,http://tracker.nyaa.uk:6969/announce,http://tracker.nyap2p.com:8080/announce,http://tracker.opentrackr.org:1337/announce,http://tracker.port443.xyz:6969/announce,http://tracker.skyts.net:6969/announce,http://tracker.tfile.co:80/announce,http://tracker.tfile.me:80/announce,http://tracker.tiny-vps.com:6969/announce,http://tracker.torrentyorg.pl:80/announce,http://tracker.trackerfix.com:80/announce,http://tracker.tvunderground.org.ru:3218/announce,http://tracker.uw0.xyz:6969/announce,http://tracker.ygsub.com:6969/announce,http://tracker.yoshi210.com:6969/announce,http://tracker01.loveapp.com:6789/announce,http://tracker1.itzmx.com:8080/announce,http://tracker1.wasabii.com.tw:6969/announce,http://tracker2.itzmx.com:6961/announce,http://tracker2.wasabii.com.tw:6969/announce,http://tracker3.itzmx.com:6961/announce,http://tracker4.emce.org:12345/announce,http://tracker4.itzmx.com:2710/announce,http://vps02.net.orel.ru:80/announce,http://www.loushao.net:8080/announce,http://www.proxmox.com:6969/announce,http://www.wareztorrent.com:80/announce,https://104.28.17.69/announce,https://1337.abcvg.info:443/announce,https://open.kickasstracker.com:443/announce,https://opentracker.acgnx.se:443/announce,https://opentracker.co:443/announce,https://opentracker.xyz:443/announce,https://tracker.bt-hash.com:443/announce,https://tracker.fastdownload.xyz:443/announce,https://tracker.gbitt.info:443/announce,https://tracker.hama3.net:443/announce,https://tracker.lelux.fi:443/announce,https://tracker.nanoha.org:443/announce,https://tracker.opentracker.se:443/announce,https://tracker.vectahosting.eu:2053/announce,udp://104.238.198.186:8000/announce,udp://107.150.14.110:6969/announce,udp://109.121.134.121:1337/announce,udp://114.55.113.60:6969/announce,udp://128.199.70.66:5944/announce,udp://151.80.120.114:2710/announce,udp://168.235.67.63:6969/announce,udp://178.33.73.26:2710/announce,udp://182.176.139.129:6969/announce,udp://185.225.17.100:1337/announce,udp://185.5.97.139:8089/announce,udp://185.83.215.123:6969/announce,udp://185.86.149.205:1337/announce,udp://188.165.253.109:1337/announce,udp://191.101.229.236:1337/announce,udp://194.106.216.222:80/announce,udp://195.123.209.37:1337/announce,udp://195.123.209.40:80/announce,udp://208.67.16.113:8000/announce,udp://212.1.226.176:2710/announce,udp://212.47.227.58:6969/announce,udp://213.163.67.56:1337/announce,udp://37.19.5.155:2710/announce,udp://45.56.74.11:6969/announce,udp://46.4.109.148:6969/announce,udp://5.2.79.22:6969/announce,udp://5.79.249.77:6969/announce,udp://5.79.83.193:6969/announce,udp://51.254.244.161:6969/announce,udp://52.28.76.37:6969/announce,udp://52.29.11.73:6969/announce,udp://52.58.128.163:6969/announce,udp://62.138.0.158:6969/announce,udp://62.212.85.66:2710/announce,udp://74.82.52.209:6969/announce,udp://78.30.254.12:2710/announce,udp://85.17.19.180:80/announce,udp://89.234.156.205:80/announce,udp://9.rarbg.com:2710/announce,udp://9.rarbg.me:2710/announce,udp://9.rarbg.me:2780/announce,udp://9.rarbg.to:2710/announce,udp://9.rarbg.to:2730/announce,udp://91.216.110.52:451/announce,udp://91.218.230.81:6969/announce,udp://94.23.183.33:6969/announce,udp://95.211.168.204:2710/announce,udp://[2001:19f0:6c01:1b7d:5400:1ff:fefc:3c2a]:6969/announce,udp://[2001:1b10:1000:8101:0:242:ac11:2]:6969/announce,udp://[2001:41d0:305:2100::16a3]:6969/announce,udp://[2001:470:1:189:0:1:2:3]:6969/announce,udp://[2a03:2c40:10:2163::1]:6969/announce,udp://[2a03:7220:8083:cd00::1]:451/announce,udp://[2a04:ac00:1:3dd8::1:2710]:2710/announce,udp://[2a04:c44:e00:32e0:4cf:6aff:fe00:aa1]:6969/announce,udp://bigfoot1942.sektori.org:6969/announce,udp://bt.aoeex.com:8000/announce,udp://bt.okmp3.ru:2710/announce,udp://bt.xxx-tracker.com:2710/announce,udp://bt1.archive.org:6969/announce,udp://bt2.archive.org:6969/announce,udp://carapax.net:6969/announce,udp://chihaya.toss.li:9696/announce,udp://contrata.putasysexo.com:53/announce,udp://denis.stalker.upeer.me:6969/announce,udp://eddie4.nl:6969/announce,udp://exodus.desync.com:6969/announce,udp://explodie.org:6969,udp://explodie.org:6969/announce,udp://home.penza.com.ru:6969/announce,udp://inferno.demonoid.pw:3418/announce,udp://ipv4.tracker.harry.lu:80/announce,udp://ipv6.tracker.harry.lu:80/announce,udp://mgtracker.org:2710/announce,udp://newtoncity.org:6969/announce,udp://open.demonii.com:1337,udp://open.demonii.si:1337/announce,udp://open.nyap2p.com:6969/announce,udp://open.stealth.si:80/announce,udp://opentor.org:2710/announce,udp://p4p.arenabg.com:1337,udp://p4p.arenabg.com:1337/announce,udp://peerfect.org:6969/announce,udp://public.popcorn-tracker.org:6969/announce,udp://pubt.in:2710/announce,udp://qg.lorzl.gq:2710/announce,udp://retracker.akado-ural.ru:80/announce,udp://retracker.baikal-telecom.net:2710/announce,udp://retracker.hotplug.ru:2710/announce,udp://retracker.lanta-net.ru:2710/announce,udp://retracker.netbynet.ru:2710/announce,udp://retracker.nts.su:2710/announce,udp://retracker.sevstar.net:2710/announce,udp://santost12.xyz:6969/announce,udp://shadowshq.eddie4.nl:6969/announce,udp://shadowshq.yi.org:6969/announce,udp://tc.animereactor.ru:8082/announce,udp://thetracker.org:80/announce,udp://torrent.gresille.org:80/announce,udp://torrentclub.tech:6969/announce,udp://tr.bangumi.moe:6969/announce,udp://tr.cili001.com:8070/announce,udp://tracker-udp.gbitt.info:80/announce,udp://tracker.0o.is:6969/announce,udp://tracker.aletorrenty.pl:2710/announce,udp://tracker.beeimg.com:6969/announce,udp://tracker.birkenwald.de:6969/announce,udp://tracker.bittor.pw:1337/announce,udp://tracker.coppersurfer.tk:6969/announce,udp://tracker.cyberia.is:6969/announce,udp://tracker.cypherpunks.ru:6969/announce,udp://tracker.dler.org:6969/announce,udp://tracker.doko.moe:6969/announce,udp://tracker.ds.is:6969/announce,udp://tracker.dutchtracking.com:6969/announce,udp://tracker.dyn.im:6969/announce,udp://tracker.eddie4.nl:6969/announce,udp://tracker.ex.ua:80/announce,udp://tracker.filemail.com:6969/announce,udp://tracker.filepit.to:6969/announce,udp://tracker.filetracker.pl:8089/announce,udp://tracker.flashtorrents.org:6969/announce,udp://tracker.grepler.com:6969/announce,udp://tracker.halfchub.club:6969/announce,udp://tracker.iamhansen.xyz:2000/announce,udp://tracker.ilibr.org:80/announce,udp://tracker.internetwarriors.net:1337/announce,udp://tracker.justseed.it:1337/announce,udp://tracker.kicks-ass.net:80/announce,udp://tracker.kuroy.me:5944/announce,udp://tracker.leechers-paradise.org:6969/announce,udp://tracker.lelux.fi:6969/announce,udp://tracker.mg64.net:2710/announce,udp://tracker.mg64.net:6969/announce,udp://tracker.moeking.me:6969/announce,udp://tracker.msm8916.com:6969/announce,udp://tracker.nextrp.ru:6969/announce,udp://tracker.novg.net:6969/announce,udp://tracker.nyaa.uk:6969/announce,udp://tracker.open-internet.nl:6969/announce,udp://tracker.openbittorrent.com:80/announce,udp://tracker.opentrackr.org:1337/announce,udp://tracker.piratepublic.com:1337/announce,udp://tracker.port443.xyz:6969/announce,udp://tracker.sbsub.com:2710/announce,udp://tracker.sktorrent.net:6969,udp://tracker.sktorrent.net:6969/announce,udp://tracker.skyts.net:6969/announce,udp://tracker.supertracker.net:1337/announce,udp://tracker.swateam.org.uk:2710/announce,udp://tracker.tiny-vps.com:6969/announce,udp://tracker.torrent.eu.org:451/announce,udp://tracker.trackton.ga:7070/announce,udp://tracker.tvunderground.org.ru:3218/announce,udp://tracker.uw0.xyz:6969/announce,udp://tracker.vanitycore.co:6969/announce,udp://tracker.yoshi210.com:6969/announce,udp://tracker.zum.bi:6969/announce,udp://tracker01.loveapp.com:6789/announce,udp://tracker1.itzmx.com:8080/announce,udp://tracker2.christianbro.pw:6969/announce,udp://tracker2.indowebster.com:6969/announce,udp://tracker2.itzmx.com:6961/announce,udp://tracker3.itzmx.com:6961/announce,udp://tracker4.itzmx.com:2710/announce,udp://tracker4.piratux.com:6969/announce,udp://valakas.rollo.dnsabr.com:2710/announce,udp://wambo.club:1337/announce,udp://xxxtor.com:2710/announce,udp://zephir.monocul.us:6969/announce,udp://zer0day.ch:1337/announce,udp://zer0day.to:1337/announce,wss://tracker.btorrent.xyz,wss://tracker.fastcast.nz,wss://tracker.openwebtorrent.com
