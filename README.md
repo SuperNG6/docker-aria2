@@ -119,6 +119,7 @@ docker create \
   -e PGID=100 \
   -e TZ=Asia/Shanghai \
   -e SECRET=yourtoken \
+  -e UpdateTracker=true \
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
@@ -139,6 +140,7 @@ services:
       - PGID=100
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
+      - UpdateTracker=true
     volumes:
       - /path/to/appdata/config:/config
       - /path/to/downloads:/downloads
@@ -151,3 +153,4 @@ services:
 
 # Preview
 ![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_20-23-40.png)
+![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-12-27_20-47-27.png)
