@@ -25,5 +25,13 @@ chown -R abc:abc \
 	/config \
   /downloads
 
-chmod a+x /aria2/script/delete.sh
-chmod a+x /aria2/script/delete.aria2.sh
+chmod a+x \
+  /aria2/script/delete.sh \
+  /aria2/script/delete.aria2.sh \
+  /aria2/script/tracker.sh
+
+# auto updatetracker
+if [ "$UpdateTracker" == "true" ]
+then
+  exec s6-setuidgid abc /aria2/script/tracker.sh
+fi
