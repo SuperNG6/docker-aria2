@@ -2,7 +2,7 @@ FROM lsiobase/alpine:3.8
 
 # set label
 LABEL maintainer="NG6"
-ENV TZ=Asia/Shanghai UpdateTracker=false SECRET=yourtoken
+ENV TZ=Asia/Shanghai UpdateTracker=true SECRET=yourtoken
 
 # arg
 ARG aria2c_v=1.35.0
