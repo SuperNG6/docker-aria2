@@ -1,11 +1,5 @@
 #!/bin/bash
-#=================================================
-# Description: Get trackers and add to aria2.conf
-# Lisence: MIT
-# Version: 1.1
-# Author: P3TERX
-# Blog: https://p3terx.com
-#=================================================
+
 INFO="[\033[32mINFO\033[0m]"
 ERROR="[\033[31mERROR\033[0m]"
 echo && echo -e "$INFO Get trackers ..."
