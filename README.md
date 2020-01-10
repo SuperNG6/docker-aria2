@@ -25,6 +25,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
    > aria2建立下载任务后会自动生成.aria2文件，aria2自身提供了api可以触发执行脚本
    
 # 本镜像的一些优点
+- 全平台架构`x86-64`、`arm64`、`armhf`
 - 做了usermapping，使用你自己的账户权限来运行，这点对于群辉来说尤其重要
 - 纯aria2，没有包含多于的服务
 - 开放了BT下载DTH监听端口、BT下载监听端口（TCP/UDP 6881），加快下载速度
@@ -37,9 +38,24 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 直接设置token，不需要在配置文件里修改
 - 最新静态编译版的aria2c1.3.5
 - 支持自动更新tracker，每次启动容器时会自动更新tracker
+- 手动设置磁盘缓存，默认参数`x86-64:512M`、`arm64:256M`、`armhf:128M`
+
+# Architecture
+
+| Architecture | Tag            |
+| ------------ | -------------- |
+| x86-64       | amd64-latest   |
+| arm64        | arm64v8-latest |
+| armhf        | arm32v7-latest |
+
 
 
 # Changelogs
+## 2020/01/10
+
+      1、增加arm64v8、arm32v7平台镜像
+      2、针对arm平台设备ram小的情况，增加配置下载缓存大小设置
+      
 ## 2019/12/27
 
       1、新增自动更新tracker，默认开启，每次启动容器时会自动检查并更新tracker列表
@@ -125,6 +141,7 @@ docker create \
   -e PGID=100 \
   -e TZ=Asia/Shanghai \
   -e SECRET=yourtoken \
+  -e Cache=512M \
   -e UpdateTracker=true \
   -p 6881:6881 \
   -p 6881:6881/udp \
@@ -146,6 +163,7 @@ services:
       - PGID=100
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
+      - Cache=512M
       - UpdateTracker=true
     volumes:
       - /path/to/appdata/config:/config
