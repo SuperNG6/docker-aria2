@@ -1,4 +1,4 @@
-name: Build linux/amd64 Image
+name: Build amd64 Image
 on:
   release:
     types: [published]
