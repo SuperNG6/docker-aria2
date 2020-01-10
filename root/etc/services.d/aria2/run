@@ -4,7 +4,7 @@ exec \
 	s6-setuidgid abc aria2c \
     --conf-path=/config/aria2.conf \
     --rpc-secret=$SECRET \
-    --disk-cache=$Cache
+    --disk-cache=$CACHE
   > /dev/stdout \
   2 > /dev/stderr
 

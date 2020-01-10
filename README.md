@@ -141,7 +141,7 @@ docker create \
   -e PGID=100 \
   -e TZ=Asia/Shanghai \
   -e SECRET=yourtoken \
-  -e Cache=512M \
+  -e CACHE=512M \
   -e UpdateTracker=true \
   -p 6881:6881 \
   -p 6881:6881/udp \
@@ -163,7 +163,7 @@ services:
       - PGID=100
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
-      - Cache=512M
+      - CACHE=512M
       - UpdateTracker=true
     volumes:
       - /path/to/appdata/config:/config
