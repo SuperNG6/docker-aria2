@@ -1,4 +1,4 @@
-name: build arm64v8 image
+name: Build Arm32v7 Image
 on:
   release:
     types: [published]
@@ -14,7 +14,7 @@ jobs:
             with:
               publish: true
               imageName: superng6/aria2
-              platform: linux/arm64
-              tag: arm64v8-latest
+              platform: linux/arm/v7
+              tag: arm32v7-latest
               dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
               dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}

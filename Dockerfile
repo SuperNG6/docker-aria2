@@ -8,7 +8,7 @@ ENV TZ=Asia/Shanghai UpdateTracker=true SECRET=yourtoken
 ARG aria2c_v=1.35.0
 
 # install static aria2c
-COPY aria2c /usr/bin/aria2c
+COPY aria2c_arm32 /usr/bin/aria2c
 
 # copy local files
 COPY root/ /
