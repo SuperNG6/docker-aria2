@@ -1,17 +1,20 @@
-name: Publish Docker
+name: build arm64v8 image
 on:
   release:
     types: [published]
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@master
-    - name: Publish to Registry
-      uses: elgohr/Publish-Docker-Github-Action@master
-      with:
-        name: superng6/aria2
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        tag_names: true
-        cache: true
+      runs-on: ubuntu-latest
+      name: Build image job
+      steps:
+          - name: Checkout master
+            uses: actions/checkout@master
+          - name: Build and publish image
+            uses: ilteoood/docker_buildx@master
+            with:
+              publish: true
+              imageName: superng6/aria2
+              platform: linux/arm64
+              tag: arm64v8-latest
+              dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
+              dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
