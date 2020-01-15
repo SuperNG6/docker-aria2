@@ -89,10 +89,10 @@ http  http://sleele.gitee.io/ariang/#!/downloading
 之所以默认关闭SSL(建议开启)，是因为如果开启，又没有配置证书，会导致aria2启动失败，所以如果需要开启请手动编辑aria2.conf
 证书请放在``/config/ssl``目录下
 删掉24,26,28行的``#``号
-![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-35-32.png)
+![IknUvK](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/IknUvK.jpg)
 ## 修改RPC token
 填写你自己的token,越长越好，建议使用生成的UUID
-![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-10-11_19-45-50.png)
+![ByRMgP](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/ByRMgP.jpg)
 
 <details>
    <summary>2019.10.11更新日志及用户须知</summary>
@@ -121,13 +121,13 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 
 群晖用户请使用你当前的用户SSH进系统，输入 ``id 你的用户id`` 获取到你的UID和GID并输入进去
 
-![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-12-06_21-12-22.png)
-![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-19-02.png)
-![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_19-20-03.png)
+![nwmkxT](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/nwmkxT.jpg)
+![1d5oD8](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/1d5oD8.jpg)
+![JiGtJA](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/JiGtJA.jpg)
 
 ### 权限管理设置
 对你的``docker配置文件夹的根目录``进行如图操作，``你的下载文件夹的根目录``进行相似操作，去掉``管理``这个权限，只给``写入``,``读取``权限
-![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-12-07_10-35-24.png)
+![r4dsfV](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/r4dsfV.jpg)
 
 ## 关于自动更新trackers
 我个人是不喜欢这个功能的，Aria2的一些机制，导致Aria2重启带来的问题会很多，比如，已移除的文件他会再下一次等等，所以没事还是不要重启Aria2，而且trackerlist大部分tracker是不会变动的，只有极少数会变动，频繁的自动更新tracker带来的收益极其有限，甚至是负收益
@@ -181,5 +181,5 @@ services:
 ````
 
 # Preview
-![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-09-27_20-23-40.png)
-![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-12-27_20-47-27.png)
+![N94s7q](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/N94s7q.jpg)
+![Hq0pXW](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/Hq0pXW.jpg)
