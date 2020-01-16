@@ -52,6 +52,10 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 
 # Changelogs
+## 2020/01/15
+
+      1、update delete.sh & delete.aria2.sh
+      
 ## 2020/01/10
 
       1、增加arm64v8、arm32v7平台镜像
