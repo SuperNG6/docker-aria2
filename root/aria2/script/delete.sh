@@ -21,6 +21,5 @@ elif [ "$path" != "$filepath" ] && [ $2 -gt 1 ]
 elif [ "$path" != "$filepath" ] && [ $2 -eq 1 ]
     then
         [ -e "$filepath".aria2 ] && rm -vf "$filepath".aria2 "$filepath"
-        find "${downloadpath}" ! -path "${downloadpath}" -depth -type d -empty -exec rm -vrf {} \;
         exit 0
 fi
