@@ -52,6 +52,13 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 
 # Changelogs
+## 2020/02/11
+
+      1、update delete.sh & delete.aria2.sh 现在可以删除自定义目录的`.aria2`文件和文件夹了
+         至此，`.aria2`删除和`文件/目录`删除功能已完善
+      2、增加了`downloads1`、`downloads2`、`downloads3`、`downloads4`、`downloads5`目录
+         方便多磁盘用户的多磁盘下载，权限修复
+      
 ## 2020/01/15
 
       1、update delete.sh & delete.aria2.sh
