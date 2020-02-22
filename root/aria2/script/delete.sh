@@ -5,6 +5,7 @@ downloadpath='/downloads'
 filepath=$3
 rdp=${filepath#${downloadpath}/}
 path=${downloadpath}/${rdp%%/*}
+dirpath=${filepath%/*}
 
 if [ $2 -eq 0 ]
     then
@@ -15,7 +16,7 @@ elif [ "$path" = "$filepath" ] && [ $2 -eq 1 ]
         exit 0
 elif [ "$path" != "$filepath" ] && [ $2 -gt 1 ]
     then
-        [ -e "$path".aria2 ] && rm -vrf "$path".aria2 "$path"
+        [ -e "$dirpath".aria2 ] && rm -vrf "$dirpath".aria2 "$dirpath"
         exit 0
 elif [ "$path" != "$filepath" ] && [ $2 -eq 1 ]
     then

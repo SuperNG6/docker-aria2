@@ -2,7 +2,12 @@
 
 # make folders
 mkdir -p \
-	/config/ssl
+	/config/ssl \
+  /downloads1 \
+  /downloads2 \
+  /downloads3 \
+  /downloads4 \
+  /downloads5
 
 # copy
 if [[ ! -e /config/aria2.conf ]]
@@ -23,8 +28,13 @@ fi
 # permissions
 chown -R abc:abc \
 	/config \
-  /downloads
-
+  /downloads \
+  /downloads1 \
+  /downloads2 \
+  /downloads3 \
+  /downloads4 \
+  /downloads5
+  
 chmod a+x \
   /aria2/script/delete.sh \
   /aria2/script/delete.aria2.sh \
