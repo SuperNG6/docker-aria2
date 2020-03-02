@@ -52,6 +52,10 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 
 # Changelogs
+## 2020/03/02
+
+      1、更新base image lsiobase/alpine:3.10
+      2、增加了静默下载功能，默认下载不输出到console --quiet[=true|false]
 ## 2020/02/22
 
       1、update delete.sh & delete.aria2.sh 现在可以删除自定义目录的`.aria2`文件和文件夹了
@@ -159,6 +163,7 @@ docker create \
   -e SECRET=yourtoken \
   -e CACHE=512M \
   -e UpdateTracker=true \
+  -e QUIET=true
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
@@ -181,6 +186,7 @@ services:
       - SECRET=yourtoken
       - CACHE=512M
       - UpdateTracker=true
+      - QUIET=true
     volumes:
       - /path/to/appdata/config:/config
       - /path/to/downloads:/downloads
