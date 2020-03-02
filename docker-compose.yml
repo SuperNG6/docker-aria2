@@ -9,6 +9,7 @@ services:
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
       - UpdateTracker=true
+      - QUIET=true
     volumes:
       - /path/to/appdata/config:/config
       - /path/to/downloads:/downloads
