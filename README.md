@@ -52,6 +52,10 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 
 # Changelogs
+## 2020/04/17
+
+      1、使用jsdelivr cdn加速下载trackers，但时会出现缓存导致的不是最新版本
+      
 ## 2020/03/02
 
       1、更新base image lsiobase/alpine:3.10
