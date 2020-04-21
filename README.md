@@ -167,7 +167,7 @@ docker create \
   -e SECRET=yourtoken \
   -e CACHE=512M \
   -e UpdateTracker=true \
-  -e QUIET=true
+  -e QUIET=true \
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
