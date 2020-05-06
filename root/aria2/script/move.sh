@@ -1,13 +1,11 @@
-#!/usr/bin/env bash
-
 # Aria2下载目录
 DOWNLOAD_PATH='/downloads'
 
 # 目标目录
-TARGET_DIR='/downloads/recycle'
+TARGET_DIR='/downloads/completed'
 
 # 日志保存路径。注释或留空为不保存。
-LOG_PATH='/config/delete.log'
+LOG_PATH='/config/move.log'
 
 #============================================================
 
@@ -35,7 +33,7 @@ ${LIGHT_PURPLE_FONT_PREFIX}Target path:${FONT_COLOR_SUFFIX} ${TARGET_PATH}
 }
 
 MOVE_FILE() {
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start delete files ..."
+    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files ..."
     TASK_INFO
     mkdir -p ${TARGET_PATH}
     mv -f "${SOURCE_PATH}" "${TARGET_PATH}"

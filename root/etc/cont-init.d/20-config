@@ -3,11 +3,8 @@
 # make folders
 mkdir -p \
 	/config/ssl \
-  /downloads1 \
-  /downloads2 \
-  /downloads3 \
-  /downloads4 \
-  /downloads5
+  /downloads/completed \
+  /downloads/recycle
 
 # copy
 if [[ ! -e /config/aria2.conf ]]
@@ -25,23 +22,29 @@ then
   touch /config/dht.dat
 fi
 
+if [[ ! -e /config/move.log ]]
+then
+  touch /config/move.log
+fi
+
+if [[ ! -e /config/delete.log ]]
+then
+  touch /config/delete.log
+fi
+
 # permissions
 chown -R abc:abc \
 	/config \
-  /downloads \
-  /downloads1 \
-  /downloads2 \
-  /downloads3 \
-  /downloads4 \
-  /downloads5
+  /downloads
   
 chmod a+x \
   /aria2/script/delete.sh \
   /aria2/script/delete.aria2.sh \
-  /aria2/script/tracker.sh
+  /aria2/script/tracker.sh \
+  /aria2/script/move.sh
 
 # auto updatetracker
 if [ "$UpdateTracker" == "true" ]
 then
-  exec s6-setuidgid abc /aria2/script/tracker.sh
+  s6-setuidgid abc /aria2/script/tracker.sh
 fi
