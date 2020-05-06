@@ -45,13 +45,21 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 | Architecture | Tag            |
 | ------------ | -------------- |
-| x86-64       | amd64-latest   |
-| arm64        | arm64v8-latest |
-| armhf        | arm32v7-latest |
+| x86-64       | latest   |
+| arm64        | latest |
+| armhf        | latest |
 
 
 
 # Changelogs
+## 2020/05/06
+
+      1、新分支[superng6/aria2:recycle]，添加回收站功能/downloads/recycle（修改脚本来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
+      2、下载完文件后自动移动到/downloads/completed（修改脚本来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
+      3、更换ariac静态编译版本，解除aria2c线程限制（来自[P3TERX/aria2-builder](https://github.com/P3TERX/aria2-builder)，感谢）
+      4、不推荐所有人使用，目前版本的这两个特性，还没有做到能够选择关闭，仅提供给有回收站这个需求的用户所使用
+      5、下一个版本会着重完善这两个功能特性，我和P3大佬的一些想法不同，脚本不少地方需要修改，工期时间会比较长
+      
 ## 2020/04/17
 
       1、使用jsdelivr cdn加速下载trackers，但是会出现缓存导致的不是最新版本
