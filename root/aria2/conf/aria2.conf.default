@@ -93,7 +93,7 @@ auto-save-interval=60
 # 强制保存会话, 即使任务已经完成, 默认:false
 # 较新的版本开启后会在任务完成后依然保留.aria2文件
 force-save=true
-# 允许覆盖，当相关控制文件不存在时从头开始重新下载。默认:flase
+# 允许覆盖，当相关控制文件不存在时从头开始重新下载。默认:false
 allow-overwrite=false
 ## BT/PT下载相关 ##
 
