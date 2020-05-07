@@ -45,9 +45,9 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 | Architecture | Tag            |
 | ------------ | -------------- |
-| x86-64       | latest   |
-| arm64        | latest |
-| armhf        | latest |
+| x86-64       | latest         |
+| arm64        | latest         |
+| armhf        | latest         |
 
 
 
@@ -64,7 +64,10 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 ## 2020/04/17
 
       1、使用jsdelivr cdn加速下载trackers，但是会出现缓存导致的不是最新版本
-      
+
+<details>
+   <summary>Change Log History</summary>
+
 ## 2020/03/02
 
       1、更新base image lsiobase/alpine:3.10
@@ -104,6 +107,8 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
       4、本次更新请手动删除你的Aria2配置文件（可以直接删除配置目录）
       5、改善 delete.sh、delete.aria2.sh 路径判断逻辑，增加删除空目录功能
       6、重启Aria2后不会重复下载已完成的任务
+
+</details>
 
 # Document
 ## 在线webui
