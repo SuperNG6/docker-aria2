@@ -184,6 +184,7 @@ docker create \
   -e UpdateTracker=true \
   -e QUIET=true \
   -e RECYCLE=true \
+  -e MOVE=true \
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
