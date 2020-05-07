@@ -30,3 +30,4 @@ if [ "$UpdateTracker" == "true" ]
 then
   bash /aria2/script/tracker.sh
 fi
+
