@@ -3,13 +3,10 @@
 # make folders
 mkdir -p \
 	/config/ssl \
-  /downloads1 \
-  /downloads2 \
-  /downloads3 \
-  /downloads4 \
-  /downloads5
+  /downloads/completed \
+  /downloads/recycle
 
-# copy
+# copy files
 if [[ ! -e /config/aria2.conf ]]
 then
   cp /aria2/conf/aria2.conf.default /config/aria2.conf
@@ -25,23 +22,35 @@ then
   touch /config/dht.dat
 fi
 
-# permissions
-chown -R abc:abc \
-	/config \
-  /downloads \
-  /downloads1 \
-  /downloads2 \
-  /downloads3 \
-  /downloads4 \
-  /downloads5
-  
-chmod a+x \
-  /aria2/script/delete.sh \
-  /aria2/script/delete.aria2.sh \
-  /aria2/script/tracker.sh
+if [[ ! -e /config/move.log ]]
+then
+  touch /config/move.log
+fi
+
+if [[ ! -e /config/delete.log ]]
+then
+  touch /config/delete.log
+fi
+
+# move recycle bin or delete
+if [[ "$RECYCLE" = "true" ]]
+then
+    sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/recycle.sh@' /config/aria2.conf
+else
+    sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/delete.sh@' /config/aria2.conf
+fi
+
+# move or keep
+if [[ "$MOVE" = "true" ]]
+then
+    sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/move.sh@' /config/aria2.conf
+else
+    sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/delete.aria2.sh@' /config/aria2.conf
+fi
+
 
 # auto updatetracker
 if [ "$UpdateTracker" == "true" ]
 then
-  exec s6-setuidgid abc /aria2/script/tracker.sh
+  bash /aria2/script/tracker.sh
 fi
