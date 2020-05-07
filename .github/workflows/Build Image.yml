@@ -1,4 +1,4 @@
-name: Build amd64 Image
+name: Build Image
 on:
   push:
     paths-ignore:
@@ -16,7 +16,7 @@ jobs:
             with:
               publish: true
               imageName: superng6/aria2
-              platform: linux/amd64
+              platform: linux/amd64,linux/arm64,linux/arm/v7
               tag: latest
               dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
               dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
