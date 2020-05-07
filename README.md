@@ -64,6 +64,11 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
       5、更新base imgae `lsiobase/alpine:3.11`
       6、优化启动脚本
       7、增加是否保存磁力链接为种子选项，默认关闭(bt-save-metadata=false) `SMD=false`
+      8、默认force-save=false && save-session-interval=1，重启容器后不重复下载已完成和已删除的任务
+         这个我纠结了很久，我个人是不建议关闭force-save的，我有UPS，几乎不存在断电情况，关闭这个选项，意味着，重启容器后会丢失已完成和删除的任务列表
+         save-session-interval的频率太高也也会影响性能，但是新版本加入了回收站和自动移动下载完成文件，如果不调整这两个参数，重启容器会重复下载，并且因为文件位置已移动的缘故
+         allow-overwrite=true几乎等同于失效，所以新版本，调整了这两个参数
+      9、默认设置auto-save-interval=60，这个不能太低，否则会非常吃硬盘
     
 
 ## 2020/04/17
