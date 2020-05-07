@@ -6,7 +6,7 @@ mkdir -p \
   /downloads/completed \
   /downloads/recycle
 
-# copy
+# copy files
 if [[ ! -e /config/aria2.conf ]]
 then
   cp /aria2/conf/aria2.conf.default /config/aria2.conf
@@ -39,9 +39,27 @@ chown -R abc:abc \
   
 chmod a+x \
   /aria2/script/delete.sh \
+  /aria2/script/recycle.sh \
   /aria2/script/delete.aria2.sh \
   /aria2/script/tracker.sh \
   /aria2/script/move.sh
+
+# move recycle bin or delete
+if [[ "$RECYCLE" = "true" ]]
+then
+    sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/recycle.sh@' /config/aria2.conf
+else
+    sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/delete.sh@' /config/aria2.conf
+fi
+
+# move or keep
+if [[ "$MOVE" = "true" ]]
+then
+    sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/move.sh@' /config/aria2.conf
+else
+    sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/delete.aria2.sh@' /config/aria2.conf
+fi
+
 
 # auto updatetracker
 if [ "$UpdateTracker" == "true" ]

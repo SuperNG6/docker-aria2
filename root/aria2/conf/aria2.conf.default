@@ -138,7 +138,7 @@ seed-time=0
 # 继续之前的BT任务时, 无需再次校验, 默认:false
 #bt-seed-unverified=true
 # 保存磁力链接元数据为种子文件(.torrent文件), 默认:false
-bt-save-metadata=false
+bt-save-metadata=true
 # 加载已保存的元数据文件，默认:false
 bt-load-saved-metadata=true
 # 删除未选择文件，默认:false
@@ -149,14 +149,12 @@ bt-remove-unselected-file=true
 ## 执行额外命令 ##
 
 # 下载停止后执行的命令（下载停止包含下载错误和下载完成这两个状态，如果没有单独设置，则执行此项命令。）
-# 删除文件及.aria2后缀名文件
-on-download-stop=/aria2/script/delete.sh
-# 删除.aria2后缀名文件
-on-download-complete=/aria2/script/delete.aria2.sh
-# 下载错误后执行的命令（下载停止包含下载错误这个状态，如果没被设置或被注释，则执行下载停止后执行的命令。）
-#on-download-error=
+# 移动文件或文件夹至回收站/downloads/recycle,并删除.aria2后缀名文件
+on-download-stop=/aria2/script/recycle.sh
 # 下载完成后执行的命令（移动文件或文件夹到/downloads/recycle)
 on-download-complete=/aria2/script/move.sh
+# 下载错误后执行的命令（下载停止包含下载错误这个状态，如果没被设置或被注释，则执行下载停止后执行的命令。）
+#on-download-error=
 # 下载暂停后执行的命令
 # 显示下载任务信息
 #on-download-pause=/root/.aria2/info.sh
