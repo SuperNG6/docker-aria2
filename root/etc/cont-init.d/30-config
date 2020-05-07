@@ -1,13 +1,32 @@
 #!/usr/bin/with-contenv bash
 
-# permissions
-chown -R abc:abc \
-    /config \
-    /downloads
-  
-chmod a+x \
-  /aria2/script/delete.sh \
-  /aria2/script/recycle.sh \
-  /aria2/script/delete.aria2.sh \
-  /aria2/script/tracker.sh \
-  /aria2/script/move.sh
+# option switch
+# move recycle bin or delete
+if [[ "$RECYCLE" = "true" ]]
+then
+    sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/recycle.sh@' /config/aria2.conf
+else
+    sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/delete.sh@' /config/aria2.conf
+fi
+
+# move or keep
+if [[ "$MOVE" = "true" ]]
+then
+    sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/move.sh@' /config/aria2.conf
+else
+    sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/delete.aria2.sh@' /config/aria2.conf
+fi
+
+# bt-save-metadata=true
+if [[ "$SMD" = "true" ]]
+then
+    sed -i 's@^\(bt-save-metadata=\).*@\1true@' /config/aria2.conf
+else
+    sed -i 's@^\(bt-save-metadata=\).*@\1false@' /config/aria2.conf
+fi
+
+# auto updatetracker
+if [ "$UpdateTracker" == "true" ]
+then
+  bash /aria2/script/tracker.sh
+fi

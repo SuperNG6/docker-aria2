@@ -40,6 +40,9 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 解除aria2c下载线程限制
 - 支持自动更新tracker，每次启动容器时会自动更新tracker
 - 手动设置磁盘缓存`CACHE`，默认参数`128M`
+- 默认删除文件后移动至回收站，防止丢失文件
+- 更多可手动调节参数，大量选项不需要修改conf文件
+- 全平台镜像统一tag
 
 # Architecture
 
@@ -60,6 +63,8 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
       4、本次更新的两个选项（回收站，下载完成后移动到completed文件夹）均可手动开关，极大的提升了aria2的使用体验
       5、更新base imgae `lsiobase/alpine:3.11`
       6、优化启动脚本
+      7、增加是否保存磁力链接为种子选项，默认关闭(bt-save-metadata=false) `SMD=false`
+    
 
 ## 2020/04/17
 
@@ -185,6 +190,7 @@ docker create \
   -e QUIET=true \
   -e RECYCLE=true \
   -e MOVE=true \
+  -e SMD=false \
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
@@ -210,6 +216,7 @@ services:
       - QUIET=true
       - RECYCLE=true
       - MOVE=true
+      - SMD=false
     volumes:
       - /path/to/appdata/config:/config
       - /path/to/downloads:/downloads
