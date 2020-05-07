@@ -17,7 +17,7 @@ else
     sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/delete.aria2.sh@' /config/aria2.conf
 fi
 
-# bt-save-metadata=true
+# bt-save-metadata
 if [[ "$SMD" = "true" ]]
 then
     sed -i 's@^\(bt-save-metadata=\).*@\1true@' /config/aria2.conf
