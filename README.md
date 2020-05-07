@@ -58,7 +58,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 ## 2020/05/07
 
       1、添加回收站功能，默认开启`-e RECYCLE=true`，可选择关闭,/downloads/recycle（修改脚本自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
-      2、下载完文件后自动移动到/downloads/completed,默认开启`-e MOVE=true`，可选择关闭（修改脚本自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
+      2、下载完文件后自动移动到/downloads/completed,默认关闭`-e MOVE=false`，可选择开启（修改脚本自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
       3、更换ariac静态编译版本，解除aria2c线程限制（来自[P3TERX/aria2-builder](https://github.com/P3TERX/aria2-builder)，感谢）
       4、本次更新的两个选项（回收站，下载完成后移动到completed文件夹）均可手动开关，极大的提升了aria2的使用体验
       5、更新base imgae `lsiobase/alpine:3.11`
