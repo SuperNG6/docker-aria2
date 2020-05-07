@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 INFO="[\033[32mINFO\033[0m]"
 ERROR="[\033[31mERROR\033[0m]"

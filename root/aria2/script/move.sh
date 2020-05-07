@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Aria2下载目录
 DOWNLOAD_PATH='/downloads'
 
