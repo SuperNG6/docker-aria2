@@ -77,7 +77,7 @@ disable-ipv6=true
 http-accept-gzip=true
 # URI复用，默认: true
 reuse-uri=false
-# 禁用 netrc 支持，默认:flase
+# 禁用 netrc 支持，默认:false
 no-netrc=true
 
 ## 进度保存相关 ##
