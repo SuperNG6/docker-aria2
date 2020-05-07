@@ -35,7 +35,7 @@ ${LIGHT_PURPLE_FONT_PREFIX}Target path:${FONT_COLOR_SUFFIX} ${TARGET_PATH}
 }
 
 MOVE_FILE() {
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start delete files ..."
+    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files to recycle..."
     TASK_INFO
     mkdir -p ${TARGET_PATH}
     mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
