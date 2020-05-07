@@ -3,9 +3,7 @@ Docker Hub：https://hub.docker.com/r/superng6/aria2
 
 GitHub：https://www.github.com/SuperNG6/docker-aria2
 
-博客：https://sleele.com/2019/09/27/docker-aria2的最佳实践/
-
-PS：docker hub的用户是无法看到GitHub中的图片，会显示为框框，具体图文详情可以在我的博客上浏览
+博客：https://sleele.com/2019/09/27/docker-aria2的最佳实践/  
 
 >在茫茫多的docker aria2镜像中，一直找不到符合我需求的镜像
 
@@ -23,9 +21,10 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
    > 下载速度息息相关的BT下载DTH监听端口、BT下载监听端口，需要expose出来
  - 没有自动删除.aria2文件的自动执行脚本
    > aria2建立下载任务后会自动生成.aria2文件，aria2自身提供了api可以触发执行脚本
-   
+ - 没有回收站
+   > 不小心删除文件后无法找回，现在有了回收站，再也不用担心误删了
 # 本镜像的一些优点
-- 全平台架构`x86-64`、`arm64`、`armhf`
+- 全平台架构`x86-64`、`arm64`、`armhf`,统一latest tag
 - 做了usermapping，使用你自己的账户权限来运行，这点对于群辉来说尤其重要
 - 纯aria2，没有包含多于的服务
 - 超小镜像体积 10.77 MB
@@ -37,9 +36,10 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 内置400多条最新trackers（来自[XIU2 / TrackersListCollection](https://github.com/XIU2/TrackersListCollection)，感谢）
 - 默认上海时区 Asia/Shanghai
 - 直接设置token，不需要在配置文件里修改
-- 最新静态编译版的aria2c1.3.5
+- 最新静态编译版的aria2c1.3.5（来自[P3TERX/aria2-builder](https://github.com/P3TERX/aria2-builder)，感谢）
+- 解除aria2c下载线程限制
 - 支持自动更新tracker，每次启动容器时会自动更新tracker
-- 手动设置磁盘缓存，默认参数`x86-64:512M`、`arm64:256M`、`armhf:128M`
+- 手动设置磁盘缓存`CACHE`，默认参数`128M`
 
 # Architecture
 
@@ -52,13 +52,14 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 
 # Changelogs
-## 2020/05/06
+## 2020/05/07
 
-      1、新分支[superng6/aria2:recycle]，添加回收站功能/downloads/recycle（修改脚本来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
-      2、下载完文件后自动移动到/downloads/completed（修改脚本来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
+      1、添加回收站功能，默认开启`-e RECYCLE=true`，可选择关闭,/downloads/recycle（修改脚本自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
+      2、下载完文件后自动移动到/downloads/completed,默认开启`-e MOVE=true`，可选择关闭（修改脚本自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
       3、更换ariac静态编译版本，解除aria2c线程限制（来自[P3TERX/aria2-builder](https://github.com/P3TERX/aria2-builder)，感谢）
-      4、不推荐所有人使用，目前版本的这两个特性，还没有做到能够选择关闭，仅提供给有回收站这个需求的用户所使用
-      5、下一个版本会着重完善这两个功能特性，我和P3大佬的一些理念不同，脚本不少地方需要修改，工期时间会比较长
+      4、本次更新的两个选项（回收站，下载完成后移动到completed文件夹）均可手动开关，极大的提升了aria2的使用体验
+      5、更新base imgae `lsiobase/alpine:3.11`
+      6、优化启动脚本
 
 ## 2020/04/17
 
@@ -68,6 +69,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
       1、更新base image lsiobase/alpine:3.10
       2、增加了静默下载功能，默认下载不输出到console --quiet[=true|false]
+
 ## 2020/02/22
 
       1、update delete.sh & delete.aria2.sh 现在可以删除自定义目录的`.aria2`文件和文件夹了

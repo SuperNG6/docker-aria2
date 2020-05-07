@@ -32,18 +32,6 @@ then
   touch /config/delete.log
 fi
 
-# permissions
-chown -R abc:abc \
-	/config \
-  /downloads
-  
-chmod a+x \
-  /aria2/script/delete.sh \
-  /aria2/script/recycle.sh \
-  /aria2/script/delete.aria2.sh \
-  /aria2/script/tracker.sh \
-  /aria2/script/move.sh
-
 # move recycle bin or delete
 if [[ "$RECYCLE" = "true" ]]
 then
@@ -64,5 +52,5 @@ fi
 # auto updatetracker
 if [ "$UpdateTracker" == "true" ]
 then
-  s6-setuidgid abc /aria2/script/tracker.sh
+  bash /aria2/script/tracker.sh
 fi
