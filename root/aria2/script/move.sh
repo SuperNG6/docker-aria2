@@ -69,7 +69,7 @@ MOVE_FILE_2() {
     echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files ..."
     TASK_INFO_2
     mkdir -p ${TARGET_PATH}
-    mv -f "${SOURCE_PATH}/*" "${TARGET_PATH}"
+    mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
     MOVE_EXIT_CODE=$?
     if [ ${MOVE_EXIT_CODE} -eq 0 ]; then
         echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Move done: ${SOURCE_PATH} -> ${TARGET_PATH}"

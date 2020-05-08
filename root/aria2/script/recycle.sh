@@ -36,7 +36,7 @@ ${LIGHT_PURPLE_FONT_PREFIX}Target path:${FONT_COLOR_SUFFIX} ${TARGET_PATH}
 }
 
 MOVE_FILE() {
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files to recycle..."
+    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files to recycle bin..."
     TASK_INFO
     mkdir -p ${TARGET_PATH}
     mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
@@ -66,10 +66,10 @@ ${LIGHT_PURPLE_FONT_PREFIX}Target path:${FONT_COLOR_SUFFIX} ${TARGET_PATH}
 }
 
 MOVE_FILE_2() {
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files to recycle..."
+    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files to recycle bin..."
     TASK_INFO_2
     mkdir -p ${TARGET_PATH}
-    mv -f "${SOURCE_PATH}/*" "${TARGET_PATH}"
+    mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
     MOVE_EXIT_CODE=$?
     if [ ${MOVE_EXIT_CODE} -eq 0 ]; then
         echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Move done: ${SOURCE_PATH} -> ${TARGET_PATH}"
