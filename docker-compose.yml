@@ -1,4 +1,5 @@
-version: "2"
+version: "3"
+
 services:
   aria2:
     image: superng6/aria2
@@ -8,8 +9,13 @@ services:
       - PGID=100
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
+      - CACHE=512M
       - UpdateTracker=true
       - QUIET=true
+      - RECYCLE=true
+      - MOVE=true
+      - DMOF=false
+      - SMD=false
     volumes:
       - /path/to/appdata/config:/config
       - /path/to/downloads:/downloads
@@ -18,3 +24,4 @@ services:
       - 6881:6881/udp
       - 6800:6800
     restart: unless-stopped
+    

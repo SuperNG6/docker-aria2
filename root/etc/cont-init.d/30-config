@@ -17,6 +17,12 @@ else
     sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/delete.aria2.sh@' /config/aria2.conf
 fi
 
+# don't move one file
+if [[ "$DMOF" = "true" ]]
+then
+    sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/move_one.sh@' /config/aria2.conf
+fi
+
 # bt-save-metadata
 if [[ "$SMD" = "true" ]]
 then

@@ -61,6 +61,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
       2、现在，回收站和已完成任务文件夹可以保持完整的目录结构了
         例[source_path:/downloads/movies/date/Justice/Justice.mkv]->[recycle_path:/downloads/recycle/movies/date/Justice/Justice.mkv]
       3、有qBittorrent的7成功力了
+      4、添加文件数量等于1时不移动选项，默认关闭`-e DMOF=false`
 
 ## 2020/05/07
 
@@ -202,6 +203,7 @@ docker create \
   -e QUIET=true \
   -e RECYCLE=true \
   -e MOVE=true \
+  -e DMOF=false \
   -e SMD=false \
   -p 6881:6881 \
   -p 6881:6881/udp \
@@ -213,7 +215,8 @@ docker create \
   ````
 docker-compose  
   ````
-  version: "2"
+version: "3"
+
 services:
   aria2:
     image: superng6/aria2
@@ -228,6 +231,7 @@ services:
       - QUIET=true
       - RECYCLE=true
       - MOVE=true
+      - DMOF=false
       - SMD=false
     volumes:
       - /path/to/appdata/config:/config
