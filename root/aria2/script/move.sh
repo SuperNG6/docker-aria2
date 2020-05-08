@@ -13,7 +13,7 @@ LOG_PATH='/config/move.log'
 
 FILE_PATH=$3                                   # Aria2传递给脚本的文件路径。BT下载有多个文件时该值为文件夹内第一个文件，如/root/Download/a/b/1.mp4
 RELATIVE_PATH=${FILE_PATH#${DOWNLOAD_PATH}/}   # 路径转换，去掉开头的下载路径。
-TOP_PATH=${DOWNLOAD_PATH}/${RELATIVE_PATH%%/*} # 路径转换，BT下载文件夹时为顶层文件夹路径，普通单文件下载时与文件路径相同。
+TOP_PATH=${FILE_PATH%/*}                       # 路径转换，BT下载文件夹时为顶层文件夹路径，普通单文件下载时与文件路径相同。
 RED_FONT_PREFIX="\033[31m"
 LIGHT_GREEN_FONT_PREFIX="\033[1;32m"
 YELLOW_FONT_PREFIX="\033[1;33m"
@@ -38,7 +38,7 @@ MOVE_FILE() {
     echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files ..."
     TASK_INFO
     mkdir -p ${TARGET_PATH}
-    mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
+    mv -vf "${SOURCE_PATH}" "${TARGET_PATH}"
     MOVE_EXIT_CODE=$?
     if [ ${MOVE_EXIT_CODE} -eq 0 ]; then
         echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Move done: ${SOURCE_PATH} -> ${TARGET_PATH}"
