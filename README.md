@@ -55,6 +55,13 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 
 # Changelogs
+## 2020/05/08
+
+      1、步子迈的太大，扯到了。完善回收站脚本\完善移动文件脚本
+      2、现在，回收站和已完成任务文件夹可以保持完整的目录结构了
+        例[source_path:/downloads/movies/date/Justice/Justice.mkv]->[recycle_path:/downloads/recycle/movies/date/Justice/Justice.mkv]
+      3、有qBittorrent的7成功力了
+
 ## 2020/05/07
 
       1、添加回收站功能，默认关闭`-e RECYCLE=false`，可选择开启,/downloads/recycle（修改脚本自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
