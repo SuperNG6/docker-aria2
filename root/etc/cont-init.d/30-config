@@ -13,7 +13,7 @@ fi
 if [[ "$MOVE" = "true" ]]
 then
     sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/move.sh@' /config/aria2.conf
-elif [[ "$DMOF" = "true" ]]
+elif [[ "$MOVE" = "DMOF" ]]
 then
     sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/move_one.sh@' /config/aria2.conf
 else

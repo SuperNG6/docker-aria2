@@ -57,11 +57,11 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 # Changelogs
 ## 2020/05/08
 
-      1、步子迈的太大，扯到了。完善回收站脚本\完善移动文件脚本
+      1、步子迈的太大，扯到了。完善回收站脚本、完善移动文件脚本
       2、现在，回收站和已完成任务文件夹可以保持完整的目录结构了
         例[source_path:/downloads/movies/date/Justice/Justice.mkv]->[recycle_path:/downloads/recycle/movies/date/Justice/Justice.mkv]
-      3、有qBittorrent的7成功力了
-      4、添加文件数量等于1时不移动选项，默认关闭`-e DMOF=false`
+      3、添加文件数量等于1时不移动选项，默认关闭`-e MOVE=DMOF`
+      4、有qBittorrent的7成功力了
 
 ## 2020/05/07
 
@@ -203,7 +203,6 @@ docker create \
   -e QUIET=true \
   -e RECYCLE=true \
   -e MOVE=true \
-  -e DMOF=false \
   -e SMD=false \
   -p 6881:6881 \
   -p 6881:6881/udp \
@@ -231,7 +230,6 @@ services:
       - QUIET=true
       - RECYCLE=true
       - MOVE=true
-      - DMOF=false
       - SMD=false
     volumes:
       - /path/to/appdata/config:/config
