@@ -2,24 +2,19 @@
 
 # Aria2下载目录
 DOWNLOAD_PATH='/downloads'
-DOWNLOAD_ANI_PATH='/downloads/ani'
 
 # 目标目录
-TARGET_DIR='/downloads/completed'
-TARGET_ANI_DIR='/downloads/completed/ani'
+TARGET_DIR='/downloads/recycle'
 
 # 日志保存路径。注释或留空为不保存。
-LOG_PATH='/config/move.log'
+LOG_PATH='/config/delete.log'
 
 #============================================================
 
-FILE_PATH=$3                                                    # Aria2传递给脚本的文件路径。BT下载有多个文件时该值为文件夹内第一个文件，如/root/Download/a/b/1.mp4
-RELATIVE_PATH=${FILE_PATH#${DOWNLOAD_PATH}/}                    # 普通文件路径转换，去掉开头的下载路径。
-RELATIVE_ANI_PATH=${FILE_PATH#${DOWNLOAD_ANI_PATH}/}            # 动画片路径转换，去掉开头的下载路径。
-CONTRAST_PATH=${DOWNLOAD_PATH}/${RELATIVE_PATH%%/*}             # 普通文件路径对比判断
-CONTRAST_ANI_PATH=${DOWNLOAD_ANI_PATH}/${RELATIVE_ANI_PATH%%/*} # 动画片根文件夹路径对比判断
-ANI_PATH=${DOWNLOAD_ANI_PATH}/${RELATIVE_ANI_PATH}              # 动画片路径判断
-TOP_PATH=${FILE_PATH%/*}                                        # 路径转换，BT下载文件夹时为顶层文件夹路径，普通单文件下载时与文件路径相同。
+FILE_PATH=$3                                        # Aria2传递给脚本的文件路径。BT下载有多个文件时该值为文件夹内第一个文件，如/root/Download/a/b/1.mp4
+RELATIVE_PATH=${FILE_PATH#${DOWNLOAD_PATH}/}        # 路径转换，去掉开头的下载路径。
+CONTRAST_PATH=${DOWNLOAD_PATH}/${RELATIVE_PATH%%/*} # 文件路径对比判断
+TOP_PATH=${FILE_PATH%/*}                            # 路径转换，BT下载文件夹时为顶层文件夹路径，普通单文件下载时与文件路径相同。
 RED_FONT_PREFIX="\033[31m"
 LIGHT_GREEN_FONT_PREFIX="\033[1;32m"
 YELLOW_FONT_PREFIX="\033[1;33m"
@@ -41,7 +36,7 @@ ${LIGHT_PURPLE_FONT_PREFIX}Target path:${FONT_COLOR_SUFFIX} ${TARGET_PATH}
 }
 
 MOVE_FILE() {
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files ..."
+    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files to recycle bin..."
     TASK_INFO
     mkdir -p ${TARGET_PATH}
     mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
@@ -67,19 +62,13 @@ fi
 
 if [ -e "${FILE_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${FILE_PATH}.aria2"
-elif [ -e "${CONTRAST_ANI_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${CONTRAST_ANI_PATH}.aria2"
 elif [ -e "${TOP_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${TOP_PATH}.aria2"
 fi
 
-if [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文件下载，不进行任何移动。
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Clean up extra files ..."
-    [ -e "${DOT_ARIA2_FILE}" ] && rm -vf "${DOT_ARIA2_FILE}"
-    exit 0
-elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（动画片文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
-    SOURCE_PATH="${CONTRAST_ANI_PATH}"
-    TARGET_PATH="${TARGET_ANI_DIR}"
+if [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文件下载，移动文件到设定的文件夹。
+    SOURCE_PATH="${FILE_PATH}"
+    TARGET_PATH="${TARGET_DIR}"
     MOVE_FILE
     exit 0
 elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
@@ -88,7 +77,7 @@ elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载�
     TARGET_PATH="${TARGET_PATH_ORIGINAL%/*}"
     MOVE_FILE
     exit 0
-elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 第三方度盘工具下载（子文件夹或多级目录等情况下的单文件下载）、BT下载（文件夹内文件数等于1），移动整个文件夹到设定的文件夹。
+elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 第三方度盘工具下载（子文件夹或多级目录等情况下的单文件下载）、BT下载（文件夹内文件数等于1），移动文件到设定的文件夹下的相同路径文件夹。
     SOURCE_PATH="${FILE_PATH}"
     TARGET_PATH="${TARGET_DIR}/${RELATIVE_PATH%/*}"
     MOVE_FILE
