@@ -9,11 +9,11 @@ services:
       - PGID=100
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
-      - CACHE=512M
+      - CACHE=256M
       - UpdateTracker=true
       - QUIET=true
-      - RECYCLE=true
-      - MOVE=true
+      - RECYCLE=false
+      - MOVE=dmof
       - SMD=false
     volumes:
       - /path/to/appdata/config:/config
