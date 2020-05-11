@@ -1,6 +1,8 @@
 name: Build Image
 on:
-  release:
+  push:
+    paths-ignore:
+    - 'README.md'
 
 jobs:
   build:
