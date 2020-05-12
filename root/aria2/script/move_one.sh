@@ -75,6 +75,22 @@ MOVE_FILE() {
     [ -e "${DOT_ARIA2_FILE}" ] && rm -vf "${DOT_ARIA2_FILE}"
 }
 
+RM_ARIA_INFO() {
+    echo -e "
+-------------------------- [${YELLOW_FONT_PREFIX}RM .ARIA2 INFO${FONT_COLOR_SUFFIX}] --------------------------
+${LIGHT_PURPLE_FONT_PREFIX}Download path:${FONT_COLOR_SUFFIX} ${DOWNLOAD_PATH}
+${LIGHT_PURPLE_FONT_PREFIX}File path:${FONT_COLOR_SUFFIX} ${FILE_PATH}
+${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${FILE_PATH}.aria2
+-------------------------- [${YELLOW_FONT_PREFIX}RM .ARIA2 INFO${FONT_COLOR_SUFFIX}] --------------------------
+"
+}
+
+RM_AIRA2() {
+    RM_ARIA_INFO
+    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Clean up extra files ..."
+    [ -e "${DOT_ARIA2_FILE}" ] && rm -vf "${FILE_PATH}.aria2"
+}
+
 # ============================================================
 
 if [ -z $2 ]; then
@@ -89,6 +105,8 @@ fi
 
 if [ -e "${FILE_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${FILE_PATH}.aria2"
+elif [ -e "${CONTRAST_PATH}.aria2" ]; then
+    DOT_ARIA2_FILE="${CONTRAST_PATH}.aria2"
 elif [ -e "${CONTRAST_ANI_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_ANI_PATH}.aria2"
 elif [ -e "${CONTRAST_MOV_PATH}.aria2" ]; then
@@ -103,8 +121,7 @@ fi
 
 
 if [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文件下载，不进行任何移动。
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Clean up extra files ..."
-    [ -e "${DOT_ARIA2_FILE}" ] && rm -vf "${DOT_ARIA2_FILE}"
+    RM_AIRA2
     exit 0
 elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（动画片文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_ANI_PATH}"

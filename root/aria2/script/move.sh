@@ -54,6 +54,7 @@ ${LIGHT_PURPLE_FONT_PREFIX}Download path:${FONT_COLOR_SUFFIX} ${DOWNLOAD_PATH}
 ${LIGHT_PURPLE_FONT_PREFIX}File path:${FONT_COLOR_SUFFIX} ${FILE_PATH}
 ${LIGHT_PURPLE_FONT_PREFIX}Source path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}
 ${LIGHT_PURPLE_FONT_PREFIX}Target path:${FONT_COLOR_SUFFIX} ${TARGET_PATH}
+${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${DOT_ARIA2_FILE}
 -------------------------- [${YELLOW_FONT_PREFIX}TASK INFO${FONT_COLOR_SUFFIX}] --------------------------
 "
 }
@@ -89,6 +90,8 @@ fi
 
 if [ -e "${FILE_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${FILE_PATH}.aria2"
+elif [ -e "${CONTRAST_PATH}.aria2" ]; then
+    DOT_ARIA2_FILE="${CONTRAST_PATH}.aria2"
 elif [ -e "${CONTRAST_ANI_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_ANI_PATH}.aria2"
 elif [ -e "${CONTRAST_MOV_PATH}.aria2" ]; then
