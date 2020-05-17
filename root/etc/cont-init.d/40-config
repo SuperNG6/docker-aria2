@@ -6,9 +6,5 @@ chown -R abc:abc \
     /downloads
   
 chmod a+x \
-  /aria2/script/delete.sh \
-  /aria2/script/recycle.sh \
-  /aria2/script/delete.aria2.sh \
-  /aria2/script/tracker.sh \
-  /aria2/script/move.sh \
-  /aria2/script/move_one.sh
+  /aria2/script/*
+

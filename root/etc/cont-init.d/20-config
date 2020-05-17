@@ -27,6 +27,11 @@ then
   touch /config/move.log
 fi
 
+if [[ ! -e /config/recycle.log ]]
+then
+  touch /config/recycle.log
+fi
+
 if [[ ! -e /config/delete.log ]]
 then
   touch /config/delete.log

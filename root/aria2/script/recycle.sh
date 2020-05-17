@@ -15,7 +15,7 @@ TARGET_TVS_DIR='/downloads/recycle/tv'
 TARGET_CUS_DIR="/downloads/recycle/$cus"
 
 # 日志保存路径。注释或留空为不保存。
-LOG_PATH='/config/delete.log'
+LOG_PATH='/config/recycle.log'
 
 # ============================================================
 
