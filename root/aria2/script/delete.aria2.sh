@@ -1,16 +1,19 @@
-#!/usr/bin/env bash
+#!/usr/bin/with-contenv bash
 
 # Aria2下载目录
 DOWNLOAD_PATH='/downloads'
 DOWNLOAD_ANI_PATH='/downloads/ani'
 DOWNLOAD_MOV_PATH='/downloads/movies'
 DOWNLOAD_TVS_PATH='/downloads/tv'
+DOWNLOAD_CUS_PATH="/downloads/$cus"
 
 # 目标目录
 TARGET_DIR='/downloads/completed'
 TARGET_ANI_DIR='/downloads/completed/ani'
 TARGET_MOV_DIR='/downloads/completed/movies'
 TARGET_TVS_DIR='/downloads/completed/tv'
+TARGET_CUS_DIR="/downloads/completed/$cus"
+
 
 # 日志保存路径。注释或留空为不保存。
 LOG_PATH='/config/delete.log'
@@ -23,16 +26,19 @@ RELATIVE_PATH=${FILE_PATH#${DOWNLOAD_PATH}/}                    # 普通文件�
 RELATIVE_ANI_PATH=${FILE_PATH#${DOWNLOAD_ANI_PATH}/}            # 动画片路径转换，去掉开头的下载路径。
 RELATIVE_MOV_PATH=${FILE_PATH#${DOWNLOAD_MOV_PATH}/}            # 电影路径转换，去掉开头的下载路径。
 RELATIVE_TVS_PATH=${FILE_PATH#${DOWNLOAD_TVS_PATH}/}            # 电视剧、综艺路径转换，去掉开头的下载路径。
+RELATIVE_CUS_PATH=${FILE_PATH#${DOWNLOAD_CUS_PATH}/}            # 自定义路径转换，去掉开头的下载路径。
 
 CONTRAST_PATH=${DOWNLOAD_PATH}/${RELATIVE_PATH%%/*}             # 普通文件路径对比判断
 CONTRAST_ANI_PATH=${DOWNLOAD_ANI_PATH}/${RELATIVE_ANI_PATH%%/*} # 动画片根文件夹路径对比判断
 CONTRAST_MOV_PATH=${DOWNLOAD_MOV_PATH}/${RELATIVE_MOV_PATH%%/*} # 电影根文件夹路径对比判断
 CONTRAST_TVS_PATH=${DOWNLOAD_TVS_PATH}/${RELATIVE_TVS_PATH%%/*} # 电视剧、综艺根文件夹路径对比判断
+CONTRAST_CUS_PATH=${DOWNLOAD_CUS_PATH}/${RELATIVE_CUS_PATH%%/*} # 自定义路径根文件夹路径对比判断
 
 TOP_PATH=${FILE_PATH%/*}                                        # 普通文件路径转换，BT下载文件夹时为顶层文件夹路径，普通单文件下载时与文件路径相同。
 ANI_PATH=${DOWNLOAD_ANI_PATH}/${RELATIVE_ANI_PATH}              # 动画片路径判断
 MOV_PATH=${DOWNLOAD_MOV_PATH}/${RELATIVE_MOV_PATH}              # 电影路径判断
 TVS_PATH=${DOWNLOAD_TVS_PATH}/${RELATIVE_TVS_PATH}              # 电视剧、综艺路径判断
+CUS_PATH=${DOWNLOAD_CUS_PATH}/${RELATIVE_CUS_PATH}              # 自定义路径判断
 
 # ============================================================
 
@@ -85,10 +91,11 @@ elif [ -e "${CONTRAST_MOV_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_MOV_PATH}.aria2"
 elif [ -e "${CONTRAST_TVS_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_TVS_PATH}.aria2"
+elif [ -e "${CONTRAST_CUS_PATH}.aria2" ]; then
+    DOT_ARIA2_FILE="${CONTRAST_CUS_PATH}.aria2"
 elif [ -e "${TOP_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${TOP_PATH}.aria2"
 fi
-
 # =============================判断文件路径、执行移动文件=============================
 
 if [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文件下载，移动文件到设定的文件夹。
@@ -111,6 +118,11 @@ elif [ "${TVS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（电�
     TARGET_PATH="${TARGET_TVS_DIR}"
     MOVE_FILE
     exit 0
+elif [ "${CUS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # 自定义路径下载（自定义路径文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
+    SOURCE_PATH="${CONTRAST_CUS_PATH}"
+    TARGET_PATH="${TARGET_CUS_DIR}"
+    MOVE_FILE
+    exit 0
 elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${TOP_PATH}"
     TARGET_PATH_ORIGINAL="${TARGET_DIR}/${RELATIVE_PATH%/*}"
@@ -118,8 +130,9 @@ elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载�
     MOVE_FILE
     exit 0
 elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 第三方度盘工具下载（子文件夹或多级目录等情况下的单文件下载）、BT下载（文件夹内文件数等于1），移动文件到设定的文件夹下的相同路径文件夹。
-    SOURCE_PATH="${FILE_PATH}"
-    TARGET_PATH="${TARGET_DIR}/${RELATIVE_PATH%/*}"
+    SOURCE_PATH="${TOP_PATH}"
+    TARGET_PATH_ORIGINAL="${TARGET_DIR}/${RELATIVE_PATH%/*}"
+    TARGET_PATH="${TARGET_PATH_ORIGINAL%/*}"
     MOVE_FILE
     exit 0
 fi
