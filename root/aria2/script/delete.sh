@@ -134,12 +134,6 @@ elif [ "${CUS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # 自定义路径�
     TARGET_PATH="${TARGET_CUS_DIR}"
     MOVE_FILE
     exit 0
-elif [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
-    SOURCE_PATH="${TOP_PATH}"
-    TARGET_PATH_ORIGINAL="${TARGET_DIR}/${RELATIVE_PATH%/*}"
-    TARGET_PATH="${TARGET_PATH_ORIGINAL%/*}"
-    MOVE_FILE
-    exit 0
 elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${TOP_PATH}"
     TARGET_PATH_ORIGINAL="${TARGET_DIR}/${RELATIVE_PATH%/*}"
