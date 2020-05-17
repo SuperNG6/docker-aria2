@@ -1,18 +1,18 @@
-#!/usr/bin/with-contenv bash
+#!/usr/bin/env bash
 
 # Aria2下载目录
 DOWNLOAD_PATH='/downloads'
 DOWNLOAD_ANI_PATH='/downloads/ani'
 DOWNLOAD_MOV_PATH='/downloads/movies'
 DOWNLOAD_TVS_PATH='/downloads/tv'
-DOWNLOAD_CUS_PATH="/downloads/$cus"
+DOWNLOAD_CUS_PATH="/downloads/$CUS"
 
 # 目标目录
 TARGET_DIR='/downloads/completed'
 TARGET_ANI_DIR='/downloads/completed/ani'
 TARGET_MOV_DIR='/downloads/completed/movies'
 TARGET_TVS_DIR='/downloads/completed/tv'
-TARGET_CUS_DIR="/downloads/completed/$cus"
+TARGET_CUS_DIR="/downloads/completed/$CUS"
 
 
 # 日志保存路径。注释或留空为不保存。
