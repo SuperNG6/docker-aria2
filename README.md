@@ -57,10 +57,11 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 # Changelogs
 ## 2020/05/18
 
-      1、增加添加自定义二级目录功能`CUSDIR=cusdir`-->`/download/cusdir` （ENV中只能添加一个CUS）
+      1、增加自定义二级目录功能`CUSDIR=cusdir`-->`/download/cusdir` （ENV中只能添加一个CUS）
       2、预设的三个目录`动画片->ANIDIR`,`电影->MOVDIR`,`电视->TVDIR`，可根据自己喜好修改预设分类目录名称
         详见《环境变量说明》
       3、完善了单文件任务中包含多级目录的移动机制
+      4、进一步完善脚本
 
 <details>
    <summary>Change Log History</summary>
