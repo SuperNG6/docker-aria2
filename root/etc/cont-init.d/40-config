@@ -7,4 +7,3 @@ chown -R abc:abc \
   
 chmod a+x \
   /aria2/script/*
-

@@ -11,7 +11,9 @@ FROM lsiobase/alpine:3.11
 # set label
 LABEL maintainer="NG6"
 ENV TZ=Asia/Shanghai UpdateTracker=true SECRET=yourtoken CACHE=128M QUIET=true \
-RECYCLE=false MOVE=false SMD=false CUS=cusdir \
+RECYCLE=false MOVE=false SMD=false \
+ANIDIR=ani MOVDIR=movies TVDIR=tv \
+CUSDIR=cusdir \
 PUID=1026 PGID=100
 
 # copy local files && aria2c

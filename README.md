@@ -55,10 +55,15 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 
 # Changelogs
-## 2020/05/17
+## 2020/05/18
 
-      1、增加添加自定义二级目录功能`CUS=cusdir`-->`/download/cusdir` （ENV中只能添加一个CUS）
-      2、完善了单文件任务中包含多级目录的移动机制
+      1、增加添加自定义二级目录功能`CUSDIR=cusdir`-->`/download/cusdir` （ENV中只能添加一个CUS）
+      2、预设的三个目录`动画片->ANIDIR`,`电影->MOVDIR`,`电视->TVDIR`，可根据自己喜好修改预设分类目录名称
+        详见《环境变量说明》
+      3、完善了单文件任务中包含多级目录的移动机制
+
+<details>
+   <summary>Change Log History</summary>
 
 ## 2020/05/12
 
@@ -105,9 +110,6 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 ## 2020/04/17
 
       1、使用jsdelivr cdn加速下载trackers，但是会出现缓存导致的不是最新版本
-
-<details>
-   <summary>Change Log History</summary>
 
 ## 2020/03/02
 
@@ -213,17 +215,21 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 |参数|说明|
 |-|:-|
 | `--name=aria2` |容器名设置为aria2|
-| `本地文件夹1:/downloads` |Aria2下载位置|
-| `本地文件夹2:/config` |Aria2配置文件位置|
-| `PUID=1026` |Linux用户UID|
-| `PGID=100` |Linux用户GID|
-| `SECRET=yourtoken` |Aria2 token|
-| `CACHE=1024M` |Aria2磁盘缓存配置|
-| `UpdateTracker=true` |启动容器时更新Trackers|
-| `RECYCLE=true` |启用回收站|
-| `MOVE=true` |下载完成文件后移动文件或文件夹|
-| `MOVE=dmof` |下载任务为单个文件则不移动，若为文件夹则移动|
-| `SMD=true` |保存磁力链接为种子文件|
+| `-v 本地文件夹1:/downloads` |Aria2下载位置|
+| `-v 本地文件夹2:/config` |Aria2配置文件位置|
+| `-e PUID=1026` |Linux用户UID|
+| `-e PGID=100` |Linux用户GID|
+| `-e SECRET=yourtoken` |Aria2 token|
+| `-e CACHE=1024M` |Aria2磁盘缓存配置|
+| `-e UpdateTracker=true` |启动容器时更新Trackers|
+| `-e RECYCLE=true` |启用回收站|
+| `-e MOVE=true` |下载完成文件后移动文件或文件夹|
+| `-e MOVE=dmof` |下载任务为单个文件则不移动，若为文件夹则移动|
+| `-e SMD=true` |保存磁力链接为种子文件|
+| `-e ANIDIR=ani` |动画片分类目录名称(支持中文名称)|
+| `-e MOVDIR=movies` |电影分类目录名称(支持中文名称)|
+| `-e TVDIR=tv` |电视分类目录名称(支持中文名称)|
+| `-e CUSDIR=cusdir` |自定义分类目录名称(支持中文名称)|
 | `-p 6800:6800` |Aria2 RPC连接端口|
 | `-p 6881:6881` |Aria2 tcp下载端口|
 | `-p 6881:6881/udp` |Aria2 p2p udp下载端口|
@@ -248,6 +254,10 @@ docker create \
   -e RECYCLE=true \
   -e MOVE=true \
   -e SMD=false \
+  -e ANIDIR=ani \
+  -e MOVDIR=movies \
+  -e TVDIR=tv \
+  -e CUSDIR=cusdir \
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
@@ -275,6 +285,10 @@ services:
       - RECYCLE=true
       - MOVE=true
       - SMD=false
+      - ANIDIR=ani
+      - MOVDIR=movies
+      - TVDIR=tv
+      - CUSDIR=cusdir
     volumes:
       - /path/to/appdata/config:/config
       - /path/to/downloads:/downloads

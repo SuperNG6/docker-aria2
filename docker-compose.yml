@@ -9,12 +9,16 @@ services:
       - PGID=100
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
-      - CACHE=256M
+      - CACHE=512M
       - UpdateTracker=true
       - QUIET=true
-      - RECYCLE=false
-      - MOVE=dmof
+      - RECYCLE=true
+      - MOVE=true
       - SMD=false
+      - ANIDIR=ani
+      - MOVDIR=movies
+      - TVDIR=tv
+      - CUSDIR=cusdir
     volumes:
       - /path/to/appdata/config:/config
       - /path/to/downloads:/downloads
@@ -22,5 +26,5 @@ services:
       - 6881:6881
       - 6881:6881/udp
       - 6800:6800
-    restart: unless-stopped
+    restart: unless-stopped   
     

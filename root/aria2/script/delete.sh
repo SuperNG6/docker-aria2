@@ -2,17 +2,10 @@
 
 # Aria2下载目录
 DOWNLOAD_PATH='/downloads'
-DOWNLOAD_ANI_PATH='/downloads/ani'
-DOWNLOAD_MOV_PATH='/downloads/movies'
-DOWNLOAD_TVS_PATH='/downloads/tv'
-DOWNLOAD_CUS_PATH="/downloads/$CUS"
-
-# 目标目录
-TARGET_DIR='/downloads/completed'
-TARGET_ANI_DIR='/downloads/completed/ani'
-TARGET_MOV_DIR='/downloads/completed/movies'
-TARGET_TVS_DIR='/downloads/completed/tv'
-TARGET_CUS_DIR="/downloads/completed/$CUS"
+DOWNLOAD_ANI_PATH=${DOWNLOAD_PATH}/${ANIDIR}
+DOWNLOAD_MOV_PATH=${DOWNLOAD_PATH}/${MOVDIR}
+DOWNLOAD_TVS_PATH=${DOWNLOAD_PATH}/${TVDIR}
+DOWNLOAD_CUS_PATH=${DOWNLOAD_PATH}/${CUSDIR}
 
 
 # 日志保存路径。注释或留空为不保存。
@@ -66,7 +59,7 @@ ${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${DOT_ARIA2_FILE}
 MOVE_FILE() {
     echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Download stop, start deleting files..."
     TASK_INFO
-    rm -vrf "${SOURCE_PATH}"
+    rm -rf "${SOURCE_PATH}"
     MOVE_EXIT_CODE=$?
     if [ ${MOVE_EXIT_CODE} -eq 0 ]; then
         echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} deleted files: ${SOURCE_PATH}"
@@ -111,39 +104,30 @@ fi
 
 if [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文件下载，移动文件到设定的文件夹。
     SOURCE_PATH="${FILE_PATH}"
-    TARGET_PATH="${TARGET_DIR}"
     MOVE_FILE
     exit 0
 elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（动画片文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_ANI_PATH}"
-    TARGET_PATH="${TARGET_ANI_DIR}"
     MOVE_FILE
     exit 0
 elif [ "${MOV_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（电影文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_MOV_PATH}"
-    TARGET_PATH="${TARGET_MOV_DIR}"
     MOVE_FILE
     exit 0
 elif [ "${TVS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（电视剧、综艺文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_TVS_PATH}"
-    TARGET_PATH="${TARGET_TVS_DIR}"
     MOVE_FILE
     exit 0
 elif [ "${CUS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # 自定义路径下载（自定义路径文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_CUS_PATH}"
-    TARGET_PATH="${TARGET_CUS_DIR}"
     MOVE_FILE
     exit 0
 elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${TOP_PATH}"
-    TARGET_PATH_ORIGINAL="${TARGET_DIR}/${RELATIVE_PATH%/*}"
-    TARGET_PATH="${TARGET_PATH_ORIGINAL%/*}"
     MOVE_FILE
     exit 0
 elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 第三方度盘工具下载（子文件夹或多级目录等情况下的单文件下载）、BT下载（文件夹内文件数等于1），移动文件到设定的文件夹下的相同路径文件夹。
     SOURCE_PATH="${TOP_PATH}"
-    TARGET_PATH_ORIGINAL="${TARGET_DIR}/${RELATIVE_PATH%/*}"
-    TARGET_PATH="${TARGET_PATH_ORIGINAL%/*}"
     MOVE_FILE
     exit 0
 fi

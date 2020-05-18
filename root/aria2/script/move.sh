@@ -2,17 +2,17 @@
 
 # Aria2下载目录
 DOWNLOAD_PATH='/downloads'
-DOWNLOAD_ANI_PATH='/downloads/ani'
-DOWNLOAD_MOV_PATH='/downloads/movies'
-DOWNLOAD_TVS_PATH='/downloads/tv'
-DOWNLOAD_CUS_PATH="/downloads/$CUS"
+DOWNLOAD_ANI_PATH=${DOWNLOAD_PATH}/${ANIDIR}
+DOWNLOAD_MOV_PATH=${DOWNLOAD_PATH}/${MOVDIR}
+DOWNLOAD_TVS_PATH=${DOWNLOAD_PATH}/${TVDIR}
+DOWNLOAD_CUS_PATH=${DOWNLOAD_PATH}/${CUSDIR}
 
 # 目标目录
 TARGET_DIR='/downloads/completed'
-TARGET_ANI_DIR='/downloads/completed/ani'
-TARGET_MOV_DIR='/downloads/completed/movies'
-TARGET_TVS_DIR='/downloads/completed/tv'
-TARGET_CUS_DIR="/downloads/completed/$CUS"
+TARGET_ANI_DIR=${TARGET_DIR}/${ANIDIR}
+TARGET_MOV_DIR=${TARGET_DIR}/${MOVDIR}
+TARGET_TVS_DIR=${TARGET_DIR}/${TVDIR}
+TARGET_CUS_DIR=${TARGET_DIR}/${CUSDIR}
 
 
 # 日志保存路径。注释或留空为不保存。
