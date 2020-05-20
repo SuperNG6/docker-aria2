@@ -1,22 +1,33 @@
 name: Build Image
+
 on:
   push:
     paths-ignore:
       - "README.md"
 
 jobs:
-  build:
+  buildx:
     runs-on: ubuntu-latest
-    name: Build image job
     steps:
-      - name: Checkout master
-        uses: actions/checkout@master
-      - name: Build and publish image
-        uses: ilteoood/docker_buildx@1.0.2
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Dockerhub login
+        env:
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        run: |
+          echo "${DOCKER_PASSWORD}" | docker login --username ${DOCKER_USERNAME} --password-stdin
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: crazy-max/ghaction-docker-buildx@v1
         with:
-          publish: true
-          imageName: superng6/aria2
-          platform: linux/amd64,linux/arm64,linux/arm/v7
-          tag: latest
-          dockerHubUser: ${{ secrets.DOCKER_USERNAME }}
-          dockerHubPassword: ${{ secrets.DOCKER_PASSWORD }}
+          buildx-version: latest
+      - name: Build dockerfile (with push)
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        run: |
+          docker buildx build \
+          --platform=linux/amd64,linux/arm/v7,linux/arm64 \
+          --output "type=image,push=true" \
+          --file ./Dockerfile . \
+          --tag superng6/aria2:latest
