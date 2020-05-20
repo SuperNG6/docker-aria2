@@ -91,7 +91,7 @@ elif [ -e "${TOP_PATH}.aria2" ]; then
 fi
 # =============================判断文件路径、执行移动文件=============================
 
-if [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文件下载，移动文件到设定的文件夹。
+if [ -e "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文件下载任务
     SOURCE_PATH="${FILE_PATH}"
     MOVE_FILE
     exit 0
@@ -112,10 +112,6 @@ elif [ "${CUS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # 自定义路径�
     MOVE_FILE
     exit 0
 elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
-    SOURCE_PATH="${TOP_PATH}"
-    MOVE_FILE
-    exit 0
-elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 第三方度盘工具下载（子文件夹或多级目录等情况下的单文件下载）、BT下载（文件夹内文件数等于1），移动文件到设定的文件夹下的相同路径文件夹。
     SOURCE_PATH="${TOP_PATH}"
     MOVE_FILE
     exit 0

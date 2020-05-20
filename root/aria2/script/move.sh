@@ -60,7 +60,6 @@ ${LIGHT_PURPLE_FONT_PREFIX}Download path:${FONT_COLOR_SUFFIX} ${DOWNLOAD_PATH}
 ${LIGHT_PURPLE_FONT_PREFIX}File path:${FONT_COLOR_SUFFIX} ${FILE_PATH}
 ${LIGHT_PURPLE_FONT_PREFIX}Source path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}
 ${LIGHT_PURPLE_FONT_PREFIX}Target path:${FONT_COLOR_SUFFIX} ${TARGET_PATH}
-${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${DOT_ARIA2_FILE}
 -------------------------- [${YELLOW_FONT_PREFIX}TASK INFO${FONT_COLOR_SUFFIX}] --------------------------
 "
 }
@@ -115,6 +114,26 @@ fi
 if [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文件下载，移动文件到设定的文件夹。
     SOURCE_PATH="${FILE_PATH}"
     TARGET_PATH="${TARGET_DIR}"
+    MOVE_FILE
+    exit 0
+elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 动画片目录中的单文件下载，保留目录结构移动
+    SOURCE_PATH="${FILE_PATH}"
+    TARGET_PATH="${TARGET_ANI_DIR}"
+    MOVE_FILE
+    exit 0
+elif [ "${MOV_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 电影目录中的单文件下载，保留目录结构移动
+    SOURCE_PATH="${FILE_PATH}"
+    TARGET_PATH="${TARGET_MOV_DIR}"
+    MOVE_FILE
+    exit 0
+elif [ "${TVS_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 电视剧目录中的单文件下载，保留目录结构移动
+    SOURCE_PATH="${FILE_PATH}"
+    TARGET_PATH="${TARGET_TVS_DIR}"
+    MOVE_FILE
+    exit 0
+elif [ "${CUS_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 自定义目录中的单文件下载，保留目录结构移动
+    SOURCE_PATH="${FILE_PATH}"
+    TARGET_PATH="${TARGET_CUS_DIR}"
     MOVE_FILE
     exit 0
 elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（动画片文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
