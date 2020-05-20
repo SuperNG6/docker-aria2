@@ -12,7 +12,7 @@ jobs:
       - name: Checkout master
         uses: actions/checkout@master
       - name: Build and publish image
-        uses: ilteoood/docker_buildx@1.0.3
+        uses: ilteoood/docker_buildx@1.0.2
         with:
           publish: true
           imageName: superng6/aria2
