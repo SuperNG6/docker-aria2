@@ -3,7 +3,7 @@ name: Build Image
 on:
   push:
     branches:
-      - 'master'
+      - 'aria2-with-ariang'
     paths-ignore:
       - "README.md"
 
