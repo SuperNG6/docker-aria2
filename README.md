@@ -49,7 +49,8 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 # Architecture
 ### 全平台镜像统一Tag
 
-latest(default none webui)  
+latest (default none webui) 
+docker pull superng6/aria2:latest  
 
 | Architecture | Tag            |
 | ------------ | -------------- |
@@ -58,6 +59,7 @@ latest(default none webui)
 | armhf        | latest         |
 
 webui-latest (default webui ariang)  
+docker pull superng6/aria2:webui-latest  
 
 | Architecture | Tag            |
 | ------------ | -------------- |
@@ -72,7 +74,7 @@ webui-latest (default webui ariang)
       1、aria2-with-webui分支添加aria2 webui ariang（真不知道有啥用，但是好多人就是喜欢往容器里也有webuid）
       2、内置AriaNg-1.1.6-AllInOne，如果想替换为其他webui或其他版本ariang，挂载`/www`，把weibui扔进去就可以了
       3、使用darkhttpd，轻量化网页服务器
-      
+
 ## 2020/05/20
 
       1、调整`dmof`逻辑，下载任务为单文件且路径为自定义路径则保留目录结构移动
