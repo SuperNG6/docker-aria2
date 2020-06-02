@@ -1,0 +1,3 @@
+#!/usr/bin/with-contenv bash
+
+darkhttpd /www --index index.html --port 80 --daemon

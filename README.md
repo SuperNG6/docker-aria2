@@ -50,13 +50,19 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 ### 全平台镜像统一Tag
 | Architecture | Tag            |
 | ------------ | -------------- |
-| x86-64       | latest         |
-| arm64        | latest         |
-| armhf        | latest         |
+| x86-64       | ariang-latest         |
+| arm64        | ariang-latest         |
+| armhf        | ariang-latest         |
 
 
 
 # Changelogs
+## 2020/06/02
+
+      1、aria2-with-webui分支添加aria2 webui ariang（真不知道有啥用，但是好多人就是喜欢往容器里也有个webuid）
+      2、内置AriaNg-1.1.6-AllInOne，如果想替换为其他webui或版本，挂载`/www`，把weibui扔进去就可以了
+      3、使用darkhttpd，轻量化网页服务器
+      
 ## 2020/05/20
 
       1、调整`dmof`逻辑，下载任务为单文件且路径为自定义路径则保留目录结构移动

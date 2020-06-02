@@ -3,6 +3,7 @@
 # make folders
 mkdir -p \
 	/config/ssl \
+  /www \
   /downloads/completed \
   /downloads/recycle
 

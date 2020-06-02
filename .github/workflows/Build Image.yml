@@ -32,4 +32,4 @@ jobs:
           --platform=linux/amd64,linux/arm/v7,linux/arm64 \
           --output "type=image,push=true" \
           --file ./Dockerfile . \
-          --tag superng6/aria2:latest
+          --tag superng6/aria2:ariang-latest
