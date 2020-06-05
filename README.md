@@ -190,6 +190,7 @@ http  http://sleele.gitee.io/ariang/#!/downloading
 在docker上部署最新版ariang  
 https://github.com/SuperNG6/docker-ariang  
 https://hub.docker.com/r/superng6/ariang  
+blog:https://sleele.com/2020/06/03/tiny-docker-ariang/  
 
 ## 挂载路径
 ``/config`` ``/downloads``
