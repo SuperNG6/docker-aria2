@@ -72,7 +72,7 @@ docker pull superng6/aria2:webui-latest
 ## 2020/06/02
 
       1、aria2-with-webui分支添加aria2 webui ariang（真不知道有啥用，但是好多人就是喜欢容器里也有webui）
-      2、内置AriaNg-1.1.6-AllInOne，如果想替换为其他webui或其他版本ariang，挂载`/www`，把weibui扔进去就可以了
+      2、内置AriaNg-1.1.6-AllInOne，如果想替换为其他webui或其他版本ariang，挂载`/www`，把webui扔进去就可以了
       3、使用darkhttpd，轻量化网页服务器，默认webui端口为`80`
 
 ## 2020/05/20
