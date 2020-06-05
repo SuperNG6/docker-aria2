@@ -58,7 +58,7 @@ docker pull superng6/aria2:latest
 | arm64        | latest         |
 | armhf        | latest         |
 
-#### webui-latest (default webui ariang)
+#### webui-latest (default aria2 with webui ariang)
 docker pull superng6/aria2:webui-latest  
 
 | Architecture | Tag            |
