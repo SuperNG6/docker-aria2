@@ -186,6 +186,11 @@ docker pull superng6/aria2:webui-latest
 仅https https://sleele.gitee.io/#!/downloading  
 http  http://sleele.gitee.io/ariang/#!/downloading  
 
+## 自行构建webui
+在docker上部署最新版ariang  
+https://github.com/SuperNG6/docker-ariang  
+https://hub.docker.com/r/superng6/ariang  
+
 ## 挂载路径
 ``/config`` ``/downloads``
 ## 默认关闭SSL，如需需要请手动开启
