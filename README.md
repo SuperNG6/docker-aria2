@@ -59,6 +59,12 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 # Changelogs
 ## 2020/06/02
 
+      1、新增设置下载文件预分配磁盘模式选择，部分arm设备系统可能需要选择为`FA=none`
+         不过好像aria2即便把`file-allocation=none`，也会使用`prealloc`，导致磁盘预分配时间大大加长
+         能够使用`file-allocation=falloc`就使用这个，大部分操作系统都支持
+
+## 2020/06/02
+
       1、aria2-with-webui分支添加aria2 webui ariang（真不知道有啥用，但是好多人就是喜欢往容器里也有webuid）
       2、内置AriaNg-1.1.6-AllInOne，如果想替换为其他webui或其他版本ariang，挂载`/www`，把weibui扔进去就可以了
       3、使用darkhttpd，轻量化网页服务器
@@ -244,6 +250,7 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 | `-e MOVDIR=movies` |电影分类目录名称(支持中文名称)|
 | `-e TVDIR=tv` |电视分类目录名称(支持中文名称)|
 | `-e CUSDIR=cusdir` |自定义分类目录名称(支持中文名称)|
+| `-e FA=` |磁盘预分配模式`none`,`falloc`,`trunc`,`prealloc`|
 | `-p 6800:6800` |Aria2 RPC连接端口|
 | `-p 6881:6881` |Aria2 tcp下载端口|
 | `-p 6881:6881/udp` |Aria2 p2p udp下载端口|
