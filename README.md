@@ -69,7 +69,7 @@ docker pull superng6/aria2:webui-latest
 
 
 # Changelogs
-## 2020/06/02
+## 2020/06/18
 
       1、新增设置下载文件预分配磁盘模式选择，部分arm设备系统可能需要选择为`FA=none`
          不过好像aria2即便把`file-allocation=none`，也会使用`prealloc`，导致磁盘预分配时间大大加长
