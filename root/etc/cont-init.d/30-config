@@ -28,6 +28,20 @@ else
     sed -i 's@^\(bt-save-metadata=\).*@\1false@' /config/aria2.conf
 fi
 
+# file-allocation
+if [[ "$FA" = "falloc" ]]
+then
+    sed -i 's@^\(file-allocation=\).*@\1falloc@' /config/aria2.conf
+elif [[ "$FA" = "trunc" ]]
+then
+    sed -i 's@^\(file-allocation=\).*@\1trunc@' /config/aria2.conf
+elif [[ "$FA" = "prealloc" ]]
+then
+    sed -i 's@^\(file-allocation=\).*@\1prealloc@' /config/aria2.conf
+else
+    sed -i 's@^\(file-allocation=\).*@\1none@' /config/aria2.conf 
+fi
+
 # auto updatetracker
 if [ "$UpdateTracker" == "true" ]
 then
