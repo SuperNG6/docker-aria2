@@ -1,3 +1,5 @@
+![](https://img.shields.io/docker/pulls/superng6/aria2) ![GitHub last commit](https://img.shields.io/github/last-commit/superng6/docker-aria2) ![](https://img.shields.io/github/issues-closed/superng6/docker-aria2) ![](https://img.shields.io/github/issues/superng6/docker-aria2) ![GitHub stars](https://img.shields.io/github/stars/superng6/docker-aria2) ![GitHub forks](https://img.shields.io/github/forks/superng6/docker-aria2)
+
 # Docker Aria2的最佳实践
 Docker Hub：https://hub.docker.com/r/superng6/aria2
 
