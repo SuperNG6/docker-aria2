@@ -1,4 +1,4 @@
-FROM lsiobase/alpine:3.11 as builder
+FROM lsiobase/alpine:3.12 as builder
 # ARIANG_VER
 ARG ARIANG_VER=1.1.6
 # download static aria2c && AriaNg AllInOne
@@ -8,13 +8,14 @@ RUN apk add --no-cache curl unzip \
 && curl -fsSL git.io/aria2c.sh | bash
 
 # install static aria2c
-FROM lsiobase/alpine:3.11
+FROM lsiobase/alpine:3.12
 
 # set label
 LABEL maintainer="NG6"
-ENV TZ=Asia/Shanghai UpdateTracker=true SECRET=yourtoken CACHE=128M QUIET=true \
+ENV TZ=Asia/Shanghai UT=true SECRET=yourtoken CACHE=128M QUIET=true \
 RECYCLE=false MOVE=false SMD=false FA=falloc \
 ANIDIR=ani MOVDIR=movies TVDIR=tv \
+ADDRESS=127.0.0.1 PORT=6800 \
 CUSDIR=cusdir \
 PUID=1026 PGID=100
 
@@ -23,10 +24,10 @@ COPY root/ /
 COPY --from=builder /tmp/index.html /www/index.html
 COPY --from=builder /usr/local/bin/aria2c /usr/local/bin/aria2c
 # install darkhttpd
-RUN apk add --no-cache darkhttpd
+RUN apk add --no-cache darkhttpd curl
 # permissions
 RUN chmod a+x /usr/local/bin/aria2c
 # volume
 VOLUME /config /downloads /www
 
-EXPOSE 80  6800  6881  6881/udp
+EXPOSE 80  6881  6881/udp

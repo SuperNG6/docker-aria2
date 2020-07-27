@@ -1,3 +1,5 @@
+![](https://img.shields.io/docker/pulls/superng6/aria2) ![GitHub last commit](https://img.shields.io/github/last-commit/superng6/docker-aria2) ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/superng6/aria2/latest) ![Docker Automated build](https://img.shields.io/docker/automated/superng6/aria2) ![](https://img.shields.io/github/issues-closed/superng6/docker-aria2) ![](https://img.shields.io/github/issues/superng6/docker-aria2) ![GitHub stars](https://img.shields.io/github/stars/superng6/docker-aria2) ![GitHub forks](https://img.shields.io/github/forks/superng6/docker-aria2)
+
 # Docker Aria2的最佳实践
 Docker Hub：https://hub.docker.com/r/superng6/aria2
 
@@ -48,6 +50,19 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 # Architecture
 ### 全平台镜像统一Tag
+
+#### latest (default none webui)
+docker pull superng6/aria2:latest  
+
+| Architecture | Tag            |
+| ------------ | -------------- |
+| x86-64       | latest         |
+| arm64        | latest         |
+| armhf        | latest         |
+
+#### webui-latest (default aria2 with webui ariang)
+docker pull superng6/aria2:webui-latest  
+
 | Architecture | Tag            |
 | ------------ | -------------- |
 | x86-64       | webui-latest         |
@@ -55,9 +70,14 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 | armhf        | webui-latest         |
 
 
-
 # Changelogs
-## 2020/06/02
+## 2020/07/27
+
+      1、新增支持rpc的方式更新trackers（来自P3TERX）
+      2、可选是否每天自动更新trackers(不需要重启aria2) `RUT=true`
+      3、参数更改`UpdateTracker`变为`UT`
+
+## 2020/06/18
 
       1、新增设置下载文件预分配磁盘模式选择，部分arm设备系统可能需要选择为`FA=none`
          不过好像aria2即便把`file-allocation=none`，也会使用`prealloc`，导致磁盘预分配时间大大加长
@@ -65,9 +85,9 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 ## 2020/06/02
 
-      1、aria2-with-webui分支添加aria2 webui ariang（真不知道有啥用，但是好多人就是喜欢往容器里也有webuid）
-      2、内置AriaNg-1.1.6-AllInOne，如果想替换为其他webui或其他版本ariang，挂载`/www`，把weibui扔进去就可以了
-      3、使用darkhttpd，轻量化网页服务器
+      1、aria2-with-webui分支添加aria2 webui ariang（真不知道有啥用，但是好多人就是喜欢容器里也有webui）
+      2、内置AriaNg-1.1.6-AllInOne，如果想替换为其他webui或其他版本ariang，挂载`/www`，把webui扔进去就可以了
+      3、使用darkhttpd，轻量化网页服务器，默认webui端口为`80`
 
 ## 2020/05/20
 
@@ -180,6 +200,12 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 仅https https://sleele.gitee.io/#!/downloading  
 http  http://sleele.gitee.io/ariang/#!/downloading  
 
+## 自行构建webui
+在docker上部署最新版ariang  
+https://sleele.com/2020/06/03/tiny-docker-ariang/  
+https://github.com/SuperNG6/docker-ariang  
+https://hub.docker.com/r/superng6/ariang  
+
 ## 挂载路径
 ``/config`` ``/downloads``
 ## 默认关闭SSL，如需需要请手动开启
@@ -241,7 +267,8 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 | `-e PGID=100` |Linux用户GID|
 | `-e SECRET=yourtoken` |Aria2 token|
 | `-e CACHE=1024M` |Aria2磁盘缓存配置|
-| `-e UpdateTracker=true` |启动容器时更新Trackers|
+| `-e UT=true` |启动容器时更新trackers|
+| `-e RUT=true` |每天凌晨3点更新trackers|
 | `-e RECYCLE=true` |启用回收站|
 | `-e MOVE=true` |下载完成文件后移动文件或文件夹|
 | `-e MOVE=dmof` |下载任务为单个文件则不移动，若为文件夹则移动|
@@ -256,6 +283,11 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 | `-p 6881:6881/udp` |Aria2 p2p udp下载端口|
 | `--restart unless-stopped` |自动重启容器|
 
+### 如果是使用aria2自带的https链接需要注意以下几点
+1、`ADDRESS=127.0.0.1`请修改地址为你的aria2地址
+   `PORT=6800`请修改地址为你的aria2 rpc端口
+2、推荐使用nginx反向代理aria2 rpc实现https，这样可以开启http2和gzip以提升性能
+   并且可以直接使用rpc更新tracker，不需要进行任何的多余设置
 
 ## Linux
 
@@ -270,7 +302,9 @@ docker create \
   -e TZ=Asia/Shanghai \
   -e SECRET=yourtoken \
   -e CACHE=512M \
-  -e UpdateTracker=true \
+  -e UT=false \
+  -e RUT=true \
+  -e FA=falloc \
   -e QUIET=true \
   -e RECYCLE=true \
   -e MOVE=true \
@@ -301,8 +335,10 @@ services:
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
       - CACHE=512M
-      - UpdateTracker=true
+      - UT=false
+      - RUT=true
       - QUIET=true
+      - FA=falloc
       - RECYCLE=true
       - MOVE=true
       - SMD=false
