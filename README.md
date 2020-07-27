@@ -36,6 +36,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 包含了执行删除正在下载任务事时自动执行删除文件（删除已完成的任务不会删除文件，请放心）和aria2文件的脚本
 - 内置最优的aria2配置文件（来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
 - 内置400多条最新trackers（来自[XIU2 / TrackersListCollection](https://github.com/XIU2/TrackersListCollection)，感谢）
+- 每天自动更新trackers，不需要重启aria2即可生效（来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
 - 默认上海时区 Asia/Shanghai
 - 直接设置token，不需要在配置文件里修改
 - 最新静态编译版的aria2c1.3.5（来自[P3TERX/aria2-builder](https://github.com/P3TERX/aria2-builder)，感谢）
