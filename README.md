@@ -267,7 +267,8 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 | `-e PGID=100` |Linux用户GID|
 | `-e SECRET=yourtoken` |Aria2 token|
 | `-e CACHE=1024M` |Aria2磁盘缓存配置|
-| `-e UT=true` |启动容器时更新Trackers|
+| `-e UT=true` |启动容器时更新trackers|
+| `-e RUT=true` |每天凌晨3点更新trackers|
 | `-e RECYCLE=true` |启用回收站|
 | `-e MOVE=true` |下载完成文件后移动文件或文件夹|
 | `-e MOVE=dmof` |下载任务为单个文件则不移动，若为文件夹则移动|
@@ -282,6 +283,11 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 | `-p 6881:6881/udp` |Aria2 p2p udp下载端口|
 | `--restart unless-stopped` |自动重启容器|
 
+### 如果是使用aria2自带的https链接需要注意以下几点
+1、`ADDRESS=127.0.0.1`请修改地址为你的aria2地址
+   `PORT=6800`请修改地址为你的aria2 rpc端口
+2、推荐使用nginx反向代理aria2 rpc实现https，这样可以开启http2和gzip以提升性能
+   并且可以直接使用rpc更新tracker，不需要进行任何的多余设置
 
 ## Linux
 

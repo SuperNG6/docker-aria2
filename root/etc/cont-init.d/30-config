@@ -43,8 +43,16 @@ else
 fi
 
 # auto updatetracker
-if [ "$UpdateTracker" == "true" ]
+if [ "$UT" == "true" ]
 then
   bash /aria2/script/tracker.sh
 fi
 
+# rpc update tracker
+if [ "$RUT" == "true" ]
+then
+  cp /aria2/conf/rpc-tracker1 /etc/crontabs/root
+  /usr/sbin/crond
+else
+  cp /aria2/conf/rpc-tracker0 /etc/crontabs/root
+fi
