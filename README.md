@@ -1,4 +1,4 @@
-![](https://img.shields.io/docker/pulls/superng6/aria2) ![GitHub last commit](https://img.shields.io/github/last-commit/superng6/docker-aria2) ![](https://img.shields.io/github/issues-closed/superng6/docker-aria2) ![](https://img.shields.io/github/issues/superng6/docker-aria2) ![GitHub stars](https://img.shields.io/github/stars/superng6/docker-aria2) ![GitHub forks](https://img.shields.io/github/forks/superng6/docker-aria2)
+![](https://img.shields.io/docker/pulls/superng6/aria2) ![GitHub last commit](https://img.shields.io/github/last-commit/superng6/docker-aria2) ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/superng6/aria2/latest) ![Docker Automated build](https://img.shields.io/docker/automated/superng6/aria2) ![](https://img.shields.io/github/issues-closed/superng6/docker-aria2) ![](https://img.shields.io/github/issues/superng6/docker-aria2) ![GitHub stars](https://img.shields.io/github/stars/superng6/docker-aria2) ![GitHub forks](https://img.shields.io/github/forks/superng6/docker-aria2)
 
 # Docker Aria2的最佳实践
 Docker Hub：https://hub.docker.com/r/superng6/aria2
@@ -71,6 +71,12 @@ docker pull superng6/aria2:webui-latest
 
 
 # Changelogs
+## 2020/07/27
+
+      1、新增支持rpc的方式更新trackers（来自P3TERX）
+      2、可选是否每天自动更新trackers(不需要重启aria2) `RUT=true`
+      3、参数更改`UpdateTracker`变为`UT`
+
 ## 2020/06/18
 
       1、新增设置下载文件预分配磁盘模式选择，部分arm设备系统可能需要选择为`FA=none`
@@ -261,7 +267,7 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 | `-e PGID=100` |Linux用户GID|
 | `-e SECRET=yourtoken` |Aria2 token|
 | `-e CACHE=1024M` |Aria2磁盘缓存配置|
-| `-e UpdateTracker=true` |启动容器时更新Trackers|
+| `-e UT=true` |启动容器时更新Trackers|
 | `-e RECYCLE=true` |启用回收站|
 | `-e MOVE=true` |下载完成文件后移动文件或文件夹|
 | `-e MOVE=dmof` |下载任务为单个文件则不移动，若为文件夹则移动|
@@ -290,7 +296,7 @@ docker create \
   -e TZ=Asia/Shanghai \
   -e SECRET=yourtoken \
   -e CACHE=512M \
-  -e UpdateTracker=true \
+  -e UT=true \
   -e FA=falloc \
   -e QUIET=true \
   -e RECYCLE=true \
@@ -322,7 +328,7 @@ services:
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
       - CACHE=512M
-      - UpdateTracker=true
+      - UT=true
       - QUIET=true
       - FA=falloc
       - RECYCLE=true
