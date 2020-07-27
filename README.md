@@ -302,7 +302,8 @@ docker create \
   -e TZ=Asia/Shanghai \
   -e SECRET=yourtoken \
   -e CACHE=512M \
-  -e UT=true \
+  -e UT=false \
+  -e RUT=true \
   -e FA=falloc \
   -e QUIET=true \
   -e RECYCLE=true \
@@ -334,7 +335,8 @@ services:
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
       - CACHE=512M
-      - UT=true
+      - UT=false
+      - RUT=true
       - QUIET=true
       - FA=falloc
       - RECYCLE=true
