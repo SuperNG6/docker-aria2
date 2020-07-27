@@ -14,7 +14,7 @@ ENV TZ=Asia/Shanghai UT=true SECRET=yourtoken CACHE=128M QUIET=true \
 RECYCLE=false MOVE=false SMD=false FA=falloc \
 ANIDIR=ani MOVDIR=movies TVDIR=tv \
 CUSDIR=cusdir \
-ADDRESS=127.0.0.1 PORT=6800 \
+RUT=true ADDRESS=127.0.0.1 PORT=6800 \
 PUID=1026 PGID=100
 
 # copy local files && aria2c
