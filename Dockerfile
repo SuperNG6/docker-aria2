@@ -1,4 +1,4 @@
-FROM lsiobase/alpine:3.11 as builder
+FROM lsiobase/alpine:3.12 as builder
 
 # download static aria2c
 RUN apk add --no-cache curl \
@@ -6,7 +6,7 @@ RUN apk add --no-cache curl \
 
 
 # install static aria2c
-FROM lsiobase/alpine:3.11
+FROM lsiobase/alpine:3.12
 
 # set label
 LABEL maintainer="NG6"
