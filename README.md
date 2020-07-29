@@ -285,9 +285,9 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 | `--restart unless-stopped` |自动重启容器|
 
 ### 如果是使用aria2自带的https链接需要注意以下几点
-1、`ADDRESS=127.0.0.1`请修改地址为你的aria2地址
-   `PORT=6800`请修改地址为你的aria2 rpc端口
-2、推荐使用nginx反向代理aria2 rpc实现https，这样可以开启http2和gzip以提升性能
+1、`ADDRESS=127.0.0.1`请修改地址为你的aria2地址(不是aria2自带https不用改)
+   `PORT=6800`请修改地址为你的aria2 rpc端口(如果修改conf文件里的端口则需要变更，但是应该没有人会改)  
+2、推荐使用nginx反向代理aria2 rpc 实现https，这样可以开启http2和gzip以提升性能
    并且可以直接使用rpc更新tracker，不需要进行任何的多余设置
 
 ## Linux
