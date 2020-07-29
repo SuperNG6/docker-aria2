@@ -1,24 +1,9 @@
 #!/usr/bin/with-contenv bash
 
 # option switch
-# move recycle bin or delete
-if [[ "$RECYCLE" = "true" ]]
-then
-    sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/recycle.sh@' /config/aria2.conf
-else
-    sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/delete.sh@' /config/aria2.conf
-fi
+sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/stop.sh@' /config/aria2.conf
+sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/completed.sh@' /config/aria2.conf
 
-# move or keep or don't move one file
-if [[ "$MOVE" = "true" ]]
-then
-    sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/move.sh@' /config/aria2.conf
-elif [[ "$MOVE" = "dmof" ]]
-then
-    sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/move_one.sh@' /config/aria2.conf
-else
-    sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/delete.aria2.sh@' /config/aria2.conf
-fi
 
 # bt-save-metadata
 if [[ "$SMD" = "true" ]]

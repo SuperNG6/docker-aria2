@@ -2,8 +2,7 @@ FROM lsiobase/alpine:3.12 as builder
 
 # download static aria2c
 RUN apk add --no-cache curl \
-&& curl -fsSL git.io/aria2c.sh | bash
-
+&& curl -fsSL https://raw.githubusercontent.com/SuperNG6/docker-aria2/master/download.sh | bash
 
 # install static aria2c
 FROM lsiobase/alpine:3.12
@@ -11,10 +10,7 @@ FROM lsiobase/alpine:3.12
 # set label
 LABEL maintainer="NG6"
 ENV TZ=Asia/Shanghai UT=true SECRET=yourtoken CACHE=128M QUIET=true \
-RECYCLE=false MOVE=false SMD=false FA=falloc \
-ANIDIR=ani MOVDIR=movies TVDIR=tv \
-CUSDIR=cusdir \
-RUT=true ADDRESS=127.0.0.1 PORT=6800 \
+SMD=false RUT=true ADDRESS=127.0.0.1 PORT=6800 \
 PUID=1026 PGID=100
 
 # copy local files && aria2c
@@ -22,7 +18,7 @@ COPY root/ /
 COPY --from=builder  /usr/local/bin/aria2c  /usr/local/bin/aria2c
 
 # permissions
-RUN apk add --no-cache curl \
+RUN apk add --no-cache curl findutils \
 && chmod a+x /usr/local/bin/aria2c \
 && rm -rf /var/cache/apk/* /tmp/*
 
