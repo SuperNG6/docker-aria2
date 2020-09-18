@@ -22,7 +22,7 @@ COPY root/ /
 COPY --from=builder  /usr/local/bin/aria2c  /usr/local/bin/aria2c
 
 # permissions
-RUN apk add --no-cache curl \
+RUN apk add --no-cache curl findutils \
 && chmod a+x /usr/local/bin/aria2c \
 && rm -rf /var/cache/apk/* /tmp/*
 
