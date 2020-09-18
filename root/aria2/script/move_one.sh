@@ -64,6 +64,15 @@ ${LIGHT_PURPLE_FONT_PREFIX}Target path:${FONT_COLOR_SUFFIX} ${TARGET_PATH}
 "
 }
 
+# =============================内容过滤=============================
+
+if [ "$CF" == "true" ]
+then
+  bash /aria2/script/exclude_files.sh
+fi
+
+# =============================移动文件=============================
+
 MOVE_FILE() {
     echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files ..."
     TASK_INFO
@@ -184,6 +193,7 @@ elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 第三方�
     MOVE_FILE
     exit 0
 fi
+
 
 echo -e "${ERROR} Unknown error."
 TASK_INFO
