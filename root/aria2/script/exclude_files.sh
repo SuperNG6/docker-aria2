@@ -75,6 +75,6 @@ DELETE_EXCLUDE_FILE() {
 }
 
 CLEAN_UP() {
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 被移出文件的路径: ${TASK_PATH}" | tee -a ${LOG_PATH}
+    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 被移出文件的路径: ${TASK_PATH}" >> ${LOG_PATH}
     DELETE_EXCLUDE_FILE
 }
