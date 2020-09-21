@@ -2,9 +2,6 @@
 
 SCRIPT_CONF="/config/文件过滤.conf"
 
-
-#!/usr/bin/env bash
-
 # Aria2下载目录
 DOWNLOAD_PATH='/downloads'
 DOWNLOAD_ANI_PATH=${DOWNLOAD_PATH}/${ANIDIR}
@@ -72,12 +69,12 @@ DELETE_EXCLUDE_FILE() {
     if [[ ${FILE_NUM} -gt 1 ]] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} ]]; then
         echo -e "${INFO} Deleting excluded files ..."
         [[ -n ${MIN_SIZE} ]] && find "${TASK_PATH}" -type f -size -${MIN_SIZE} -print0 | xargs -0 rm -vf
-        [[ -n ${EXCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | >> ${LOG_PATH}
-        [[ -n ${INCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | >> ${LOG_PATH}
+        [[ -n ${EXCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${LOG_PATH}
+        [[ -n ${INCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${LOG_PATH}
     fi
 }
 
 CLEAN_UP() {
+    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 被移出文件的路径: ${TASK_PATH}" | tee -a ${LOG_PATH}
     DELETE_EXCLUDE_FILE
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 被移出文件的路径: ${TASK_PATH}"
 }
