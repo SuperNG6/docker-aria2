@@ -13,6 +13,11 @@ then
   cp /aria2/conf/aria2.conf.default /config/aria2.conf
 fi
 
+if [[ ! -e /config/文件过滤.conf ]]
+then
+  cp /aria2/conf/文件过滤.conf /config/文件过滤.conf
+fi
+
 if [[ ! -e /config/aria2.session ]]
 then
   touch /config/aria2.session
@@ -37,3 +42,9 @@ if [[ ! -e /config/delete.log ]]
 then
   touch /config/delete.log
 fi
+
+if [[ ! -e /config/文件过滤日志.log ]]
+then
+  touch /config/文件过滤日志.log
+fi
+
