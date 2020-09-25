@@ -11,7 +11,7 @@ FROM lsiobase/alpine:3.12
 # set label
 LABEL maintainer="NG6"
 ENV TZ=Asia/Shanghai UT=true SECRET=yourtoken CACHE=128M QUIET=true \
-RECYCLE=false MOVE=false SMD=false FA=falloc \
+RECYCLE=false MOVE=false SMD=false FA=falloc CF=false \
 ANIDIR=ani MOVDIR=movies TVDIR=tv \
 CUSDIR=cusdir \
 RUT=true ADDRESS=127.0.0.1 PORT=6800 \
@@ -22,7 +22,7 @@ COPY root/ /
 COPY --from=builder  /usr/local/bin/aria2c  /usr/local/bin/aria2c
 
 # permissions
-RUN apk add --no-cache curl \
+RUN apk add --no-cache curl findutils \
 && chmod a+x /usr/local/bin/aria2c \
 && rm -rf /var/cache/apk/* /tmp/*
 

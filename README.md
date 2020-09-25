@@ -72,6 +72,12 @@ docker pull superng6/aria2:webui-latest
 
 
 # Changelogs
+## 2020/09/25
+
+      1、新增任务文件过滤，由于aria2自身限制，只能在下载后才能移出文件
+         请在/config/文件过滤.conf中设置
+         开关`CF=true`，在同时开启下载后移动文件选项时生效
+
 ## 2020/07/27
 
       1、新增支持rpc的方式更新trackers（来自P3TERX）
@@ -90,6 +96,9 @@ docker pull superng6/aria2:webui-latest
       2、内置AriaNg-1.1.6-AllInOne，如果想替换为其他webui或其他版本ariang，挂载`/www`，把webui扔进去就可以了
       3、使用darkhttpd，轻量化网页服务器，默认webui端口为`80`
 
+<details>
+   <summary>Change Log History</summary>
+
 ## 2020/05/20
 
       1、调整`dmof`逻辑，下载任务为单文件且路径为自定义路径则保留目录结构移动
@@ -102,9 +111,6 @@ docker pull superng6/aria2:webui-latest
         详见《环境变量说明》
       3、完善了单文件任务中包含多级目录的移动机制
       4、进一步完善脚本
-
-<details>
-   <summary>Change Log History</summary>
 
 ## 2020/05/12
 
@@ -279,6 +285,7 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 | `-e TVDIR=tv` |电视分类目录名称(支持中文名称)|
 | `-e CUSDIR=cusdir` |自定义分类目录名称(支持中文名称)|
 | `-e FA=` |磁盘预分配模式`none`,`falloc`,`trunc`,`prealloc`|
+| `-e CF=true` |文件过滤，在同时开启下载后移动文件选项时生效|
 | `-p 6800:6800` |Aria2 RPC连接端口|
 | `-p 6881:6881` |Aria2 tcp下载端口|
 | `-p 6881:6881/udp` |Aria2 p2p udp下载端口|
