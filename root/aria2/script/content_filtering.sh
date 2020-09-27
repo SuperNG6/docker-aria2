@@ -75,5 +75,8 @@ DELETE_EXCLUDE_FILE() {
 
 CLEAN_UP() {
     echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 被移出文件的任务路径: ${TASK_PATH}" >> ${LOG_PATH}
+    LOAD_SCRIPT_CONF
     DELETE_EXCLUDE_FILE
 }
+
+CLEAN_UP
