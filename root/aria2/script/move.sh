@@ -106,7 +106,7 @@ DELETE_EXCLUDE_FILE() {
 
 CLEAN_UP() {
     if [ "$CF" == "true" ]; then
-        echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 文件过滤路径: ${SOURCE_PATH}" | tee -a ${CF_LOG_PATH}
+        echo -e "$(date +"%m/%d %H:%M:%S") 被过滤文件的任务路径: ${SOURCE_PATH}" | tee -a ${CF_LOG_PATH}
         LOAD_SCRIPT_CONF
         DELETE_EXCLUDE_FILE
     fi
