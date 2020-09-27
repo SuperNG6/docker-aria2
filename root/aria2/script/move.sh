@@ -138,8 +138,7 @@ DELETE_EXCLUDE_FILE() {
 }
 
 CLEAN_UP() {
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 文件过滤路径: ${TASK_PATH}" >> ${CF_LOG_PATH}
-    LOAD_SCRIPT_CONF
+    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 文件过滤路径: ${TASK_PATH}" | tee -a ${CF_LOG_PATH}
     DELETE_EXCLUDE_FILE
 }
 
@@ -147,7 +146,8 @@ CLEAN_UP() {
 
 if [ "$CF" == "true" ]
 then
-  CLEAN_UP
+    LOAD_SCRIPT_CONF
+    CLEAN_UP
 fi
 
 # =============================判断文件路径、执行移动文件=============================
