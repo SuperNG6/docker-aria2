@@ -66,36 +66,6 @@ ${LIGHT_PURPLE_FONT_PREFIX}Target path:${FONT_COLOR_SUFFIX} ${TARGET_PATH}
 "
 }
 
-# =============================读取conf文件设置=============================
-
-LOAD_SCRIPT_CONF() {
-    MIN_SIZE="$(grep ^min-size "${SCRIPT_CONF}" | cut -d= -f2-)"
-    INCLUDE_FILE="$(grep ^include-file "${SCRIPT_CONF}" | cut -d= -f2-)"
-    EXCLUDE_FILE="$(grep ^exclude-file "${SCRIPT_CONF}" | cut -d= -f2-)"
-}
-
-DELETE_EXCLUDE_FILE() {
-    if [[ ${FILE_NUM} -gt 1 ]] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} ]]; then
-        echo -e "${INFO} Deleting excluded files ..."
-        [[ -n ${MIN_SIZE} ]] && find "${TASK_PATH}" -type f -size -${MIN_SIZE} -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
-        [[ -n ${EXCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
-        [[ -n ${INCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
-    fi
-}
-
-CLEAN_UP() {
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 文件过滤路径: ${TASK_PATH}" >> ${CF_LOG_PATH}
-    LOAD_SCRIPT_CONF
-    DELETE_EXCLUDE_FILE
-}
-
-# =============================内容过滤=============================
-
-if [ "$CF" == "true" ]
-then
-  CLEAN_UP
-fi
-
 # =============================移动文件=============================
 
 MOVE_FILE() {
@@ -164,6 +134,36 @@ elif [ -e "${CONTRAST_CUS_PATH}.aria2" ]; then
 elif [ -e "${TOP_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${TOP_PATH}.aria2"
     TASK_PATH=${TOP_PATH}
+fi
+
+# =============================读取conf文件设置=============================
+
+LOAD_SCRIPT_CONF() {
+    MIN_SIZE="$(grep ^min-size "${SCRIPT_CONF}" | cut -d= -f2-)"
+    INCLUDE_FILE="$(grep ^include-file "${SCRIPT_CONF}" | cut -d= -f2-)"
+    EXCLUDE_FILE="$(grep ^exclude-file "${SCRIPT_CONF}" | cut -d= -f2-)"
+}
+
+DELETE_EXCLUDE_FILE() {
+    if [[ ${FILE_NUM} -gt 1 ]] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} ]]; then
+        echo -e "${INFO} Deleting excluded files ..."
+        [[ -n ${MIN_SIZE} ]] && find "${TASK_PATH}" -type f -size -${MIN_SIZE} -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+        [[ -n ${EXCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+        [[ -n ${INCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+    fi
+}
+
+CLEAN_UP() {
+    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 文件过滤路径: ${TASK_PATH}" >> ${CF_LOG_PATH}
+    LOAD_SCRIPT_CONF
+    DELETE_EXCLUDE_FILE
+}
+
+# =============================内容过滤=============================
+
+if [ "$CF" == "true" ]
+then
+  CLEAN_UP
 fi
 
 # =============================判断文件路径、执行移动文件=============================
