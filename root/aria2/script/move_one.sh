@@ -101,6 +101,33 @@ RM_AIRA2() {
     [ -e "${DOT_ARIA2_FILE}" ] && rm -vf "${FILE_PATH}.aria2"
 }
 
+# =============================读取conf文件设置=============================
+
+LOAD_SCRIPT_CONF() {
+    MIN_SIZE="$(grep ^min-size "${SCRIPT_CONF}" | cut -d= -f2-)"
+    INCLUDE_FILE="$(grep ^include-file "${SCRIPT_CONF}" | cut -d= -f2-)"
+    EXCLUDE_FILE="$(grep ^exclude-file "${SCRIPT_CONF}" | cut -d= -f2-)"
+}
+
+DELETE_EXCLUDE_FILE() {
+    if [[ ${FILE_NUM} -gt 1 ]] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} ]]; then
+        echo -e "${INFO} Deleting excluded files ..."
+        [[ -n ${MIN_SIZE} ]] && find "${SOURCE_PATH}" -type f -size -${MIN_SIZE} -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+        [[ -n ${EXCLUDE_FILE} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+        [[ -n ${INCLUDE_FILE} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+    fi
+}
+
+# =============================内容过滤=============================
+
+CLEAN_UP() {
+    if [ "$CF" == "true" ]; then
+        echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 文件过滤路径: ${SOURCE_PATH}" | tee -a ${CF_LOG_PATH}
+        LOAD_SCRIPT_CONF
+        DELETE_EXCLUDE_FILE
+    fi
+}
+
 # ============================================================
 
 if [ -z $2 ]; then
@@ -115,25 +142,18 @@ fi
 
 if [ -e "${FILE_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${FILE_PATH}.aria2"
-    TASK_PATH=${FILE_PATH}
 elif [ -e "${CONTRAST_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_PATH}.aria2"
-    TASK_PATH=${CONTRAST_PATH}
 elif [ -e "${CONTRAST_ANI_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_ANI_PATH}.aria2"
-    TASK_PATH=${CONTRAST_ANI_PATH}
 elif [ -e "${CONTRAST_MOV_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_MOV_PATH}.aria2"
-    TASK_PATH=${CONTRAST_MOV_PATH}
 elif [ -e "${CONTRAST_TVS_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_TVS_PATH}.aria2"
-    TASK_PATH=${CONTRAST_TVS_PATH}
 elif [ -e "${CONTRAST_CUS_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_CUS_PATH}.aria2"
-    TASK_PATH=${CONTRAST_CUS_PATH}
 elif [ -e "${TOP_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${TOP_PATH}.aria2"
-    TASK_PATH=${TOP_PATH}
 fi
 
 # =============================读取conf文件设置=============================
@@ -147,24 +167,21 @@ LOAD_SCRIPT_CONF() {
 DELETE_EXCLUDE_FILE() {
     if [[ ${FILE_NUM} -gt 1 ]] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} ]]; then
         echo -e "${INFO} Deleting excluded files ..."
-        [[ -n ${MIN_SIZE} ]] && find "${TASK_PATH}" -type f -size -${MIN_SIZE} -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
-        [[ -n ${EXCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
-        [[ -n ${INCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+        [[ -n ${MIN_SIZE} ]] && find "${SOURCE_PATH}" -type f -size -${MIN_SIZE} -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+        [[ -n ${EXCLUDE_FILE} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+        [[ -n ${INCLUDE_FILE} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
     fi
-}
-
-CLEAN_UP() {
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 文件过滤路径: ${TASK_PATH}" | tee -a ${CF_LOG_PATH}
-    DELETE_EXCLUDE_FILE
 }
 
 # =============================内容过滤=============================
 
-if [ "$CF" == "true" ]
-then
-    LOAD_SCRIPT_CONF
-    CLEAN_UP
-fi
+CLEAN_UP() {
+    if [ "$CF" == "true" ]; then
+        echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 文件过滤路径: ${SOURCE_PATH}" | tee -a ${CF_LOG_PATH}
+        LOAD_SCRIPT_CONF
+        DELETE_EXCLUDE_FILE
+    fi
+}
 
 # =============================判断文件路径、执行移动文件=============================
 
@@ -175,53 +192,63 @@ if [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文�
 elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 动画片目录中的单文件下载，保留目录结构移动
     SOURCE_PATH="${FILE_PATH}"
     TARGET_PATH="${TARGET_ANI_DIR}"
+    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${MOV_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 电影目录中的单文件下载，保留目录结构移动
     SOURCE_PATH="${FILE_PATH}"
     TARGET_PATH="${TARGET_MOV_DIR}"
+    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${TVS_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 电视剧目录中的单文件下载，保留目录结构移动
     SOURCE_PATH="${FILE_PATH}"
     TARGET_PATH="${TARGET_TVS_DIR}"
+    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${CUS_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 自定义目录中的单文件下载，保留目录结构移动
     SOURCE_PATH="${FILE_PATH}"
     TARGET_PATH="${TARGET_CUS_DIR}"
+    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（动画片文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_ANI_PATH}"
     TARGET_PATH="${TARGET_ANI_DIR}"
+    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${MOV_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（电影文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_MOV_PATH}"
     TARGET_PATH="${TARGET_MOV_DIR}"
+    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${TVS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（电视剧、综艺文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_TVS_PATH}"
     TARGET_PATH="${TARGET_TVS_DIR}"
+    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${CUS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # 自定义路径下载（自定义路径文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_CUS_PATH}"
     TARGET_PATH="${TARGET_CUS_DIR}"
+    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${TOP_PATH}"
     TARGET_PATH_ORIGINAL="${TARGET_DIR}/${RELATIVE_PATH%/*}"
     TARGET_PATH="${TARGET_PATH_ORIGINAL%/*}"
+    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 第三方度盘工具下载（子文件夹或多级目录等情况下的单文件下载）、BT下载（文件夹内文件数等于1），移动文件到设定的文件夹下的相同路径文件夹。
     SOURCE_PATH="${TOP_PATH}"
     TARGET_PATH_ORIGINAL="${TARGET_DIR}/${RELATIVE_PATH%/*}"
     TARGET_PATH="${TARGET_PATH_ORIGINAL%/*}"
+    CLEAN_UP
     MOVE_FILE
     exit 0
 fi
