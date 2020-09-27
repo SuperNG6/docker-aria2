@@ -16,12 +16,14 @@ TARGET_CUS_DIR=${TARGET_DIR}/${CUSDIR}
 
 
 # 日志保存路径。注释或留空为不保存。
+SCRIPT_CONF="/config/文件过滤.conf"
 LOG_PATH='/config/move.log'
+LOG_PATH='/config/文件过滤日志.log'
 
-# ============================================================
+#============================================================
 
 FILE_PATH=$3                                                    # Aria2传递给脚本的文件路径。BT下载有多个文件时该值为文件夹内第一个文件，如/root/Download/a/b/1.mp4
-
+FILE_NUM=$2
 RELATIVE_PATH=${FILE_PATH#${DOWNLOAD_PATH}/}                    # 普通文件路径转换，去掉开头的下载路径。
 RELATIVE_ANI_PATH=${FILE_PATH#${DOWNLOAD_ANI_PATH}/}            # 动画片路径转换，去掉开头的下载路径。
 RELATIVE_MOV_PATH=${FILE_PATH#${DOWNLOAD_MOV_PATH}/}            # 电影路径转换，去掉开头的下载路径。
@@ -64,15 +66,37 @@ ${LIGHT_PURPLE_FONT_PREFIX}Target path:${FONT_COLOR_SUFFIX} ${TARGET_PATH}
 "
 }
 
+# =============================读取conf文件设置=============================
+
+LOAD_SCRIPT_CONF() {
+    MIN_SIZE="$(grep ^min-size "${SCRIPT_CONF}" | cut -d= -f2-)"
+    INCLUDE_FILE="$(grep ^include-file "${SCRIPT_CONF}" | cut -d= -f2-)"
+    EXCLUDE_FILE="$(grep ^exclude-file "${SCRIPT_CONF}" | cut -d= -f2-)"
+}
+
+DELETE_EXCLUDE_FILE() {
+    if [[ ${FILE_NUM} -gt 1 ]] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} ]]; then
+        echo -e "${INFO} Deleting excluded files ..."
+        [[ -n ${MIN_SIZE} ]] && find "${TASK_PATH}" -type f -size -${MIN_SIZE} -print0 | xargs -0 rm -vf | tee -a ${LOG_PATH}
+        [[ -n ${EXCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${LOG_PATH}
+        [[ -n ${INCLUDE_FILE} ]] && find "${TASK_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${LOG_PATH}
+    fi
+}
+
+CLEAN_UP() {
+    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 被移出文件的任务路径: ${TASK_PATH}" >> ${LOG_PATH}
+    LOAD_SCRIPT_CONF
+    DELETE_EXCLUDE_FILE
+}
+
 # =============================内容过滤=============================
 
 if [ "$CF" == "true" ]
 then
-  bash /aria2/script/exclude_files.sh
+  CLEAN_UP
 fi
 
 # =============================移动文件=============================
-
 
 MOVE_FILE() {
     echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Start move files ..."
@@ -105,18 +129,25 @@ fi
 
 if [ -e "${FILE_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${FILE_PATH}.aria2"
+    TASK_PATH=${FILE_PATH}
 elif [ -e "${CONTRAST_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_PATH}.aria2"
+    TASK_PATH=${CONTRAST_PATH}
 elif [ -e "${CONTRAST_ANI_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_ANI_PATH}.aria2"
+    TASK_PATH=${CONTRAST_ANI_PATH}
 elif [ -e "${CONTRAST_MOV_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_MOV_PATH}.aria2"
+    TASK_PATH=${CONTRAST_MOV_PATH}
 elif [ -e "${CONTRAST_TVS_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_TVS_PATH}.aria2"
+    TASK_PATH=${CONTRAST_TVS_PATH}
 elif [ -e "${CONTRAST_CUS_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${CONTRAST_CUS_PATH}.aria2"
+    TASK_PATH=${CONTRAST_CUS_PATH}
 elif [ -e "${TOP_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${TOP_PATH}.aria2"
+    TASK_PATH=${TOP_PATH}
 fi
 
 # =============================判断文件路径、执行移动文件=============================
