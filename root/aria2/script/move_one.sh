@@ -164,25 +164,21 @@ if [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文�
 elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 动画片目录中的单文件下载，保留目录结构移动
     SOURCE_PATH="${FILE_PATH}"
     TARGET_PATH="${TARGET_ANI_DIR}"
-    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${MOV_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 电影目录中的单文件下载，保留目录结构移动
     SOURCE_PATH="${FILE_PATH}"
     TARGET_PATH="${TARGET_MOV_DIR}"
-    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${TVS_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 电视剧目录中的单文件下载，保留目录结构移动
     SOURCE_PATH="${FILE_PATH}"
     TARGET_PATH="${TARGET_TVS_DIR}"
-    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${CUS_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 自定义目录中的单文件下载，保留目录结构移动
     SOURCE_PATH="${FILE_PATH}"
     TARGET_PATH="${TARGET_CUS_DIR}"
-    CLEAN_UP
     MOVE_FILE
     exit 0
 elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（动画片文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
@@ -220,7 +216,6 @@ elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 第三方�
     SOURCE_PATH="${TOP_PATH}"
     TARGET_PATH_ORIGINAL="${TARGET_DIR}/${RELATIVE_PATH%/*}"
     TARGET_PATH="${TARGET_PATH_ORIGINAL%/*}"
-    CLEAN_UP
     MOVE_FILE
     exit 0
 fi
