@@ -122,7 +122,7 @@ DELETE_EXCLUDE_FILE() {
 
 CLEAN_UP() {
     if [ "$CF" == "true" ]; then
-        echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} 文件过滤路径: ${SOURCE_PATH}" | tee -a ${CF_LOG_PATH}
+        echo -e "$(date +"%m/%d %H:%M:%S") 被过滤文件的任务路径: ${SOURCE_PATH}" | tee -a ${CF_LOG_PATH}
         LOAD_SCRIPT_CONF
         DELETE_EXCLUDE_FILE
     fi
@@ -155,33 +155,6 @@ elif [ -e "${CONTRAST_CUS_PATH}.aria2" ]; then
 elif [ -e "${TOP_PATH}.aria2" ]; then
     DOT_ARIA2_FILE="${TOP_PATH}.aria2"
 fi
-
-# =============================读取conf文件设置=============================
-
-LOAD_SCRIPT_CONF() {
-    MIN_SIZE="$(grep ^min-size "${SCRIPT_CONF}" | cut -d= -f2-)"
-    INCLUDE_FILE="$(grep ^include-file "${SCRIPT_CONF}" | cut -d= -f2-)"
-    EXCLUDE_FILE="$(grep ^exclude-file "${SCRIPT_CONF}" | cut -d= -f2-)"
-}
-
-DELETE_EXCLUDE_FILE() {
-    if [[ ${FILE_NUM} -gt 1 ]] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} ]]; then
-        echo -e "${INFO} Deleting excluded files ..."
-        [[ -n ${MIN_SIZE} ]] && find "${SOURCE_PATH}" -type f -size -${MIN_SIZE} -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
-        [[ -n ${EXCLUDE_FILE} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
-        [[ -n ${INCLUDE_FILE} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
-    fi
-}
-
-# =============================内容过滤=============================
-
-CLEAN_UP() {
-    if [ "$CF" == "true" ]; then
-        echo -e "$(date +"%m/%d %H:%M:%S") 被过滤文件的任务路径: ${SOURCE_PATH}" | tee -a ${CF_LOG_PATH}
-        LOAD_SCRIPT_CONF
-        DELETE_EXCLUDE_FILE
-    fi
-}
 
 # =============================判断文件路径、执行移动文件=============================
 
