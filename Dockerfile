@@ -1,6 +1,6 @@
 FROM lsiobase/alpine:3.12 as builder
 # ARIANG_VER
-ARG ARIANG_VER=1.1.6
+ARG ARIANG_VER=1.1.7
 # download static aria2c && AriaNg AllInOne
 RUN apk add --no-cache curl unzip \
 && wget -P /tmp https://github.com/mayswind/AriaNg/releases/download/${ARIANG_VER}/AriaNg-${ARIANG_VER}-AllInOne.zip \
