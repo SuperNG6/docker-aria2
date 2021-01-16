@@ -11,7 +11,7 @@ FROM lsiobase/alpine:3.12
 # set label
 LABEL maintainer="NG6"
 ENV TZ=Asia/Shanghai UT=true SECRET=yourtoken CACHE=128M QUIET=true \
-RECYCLE=false MOVE=false SMD=false FA=falloc CF=false \
+RECYCLE=false MOVE=false SMD=false FA=falloc CF=false DET=true \
 ANIDIR=ani MOVDIR=movies TVDIR=tv \
 CUSDIR=cusdir \
 RUT=true ADDRESS=127.0.0.1 PORT=6800 \

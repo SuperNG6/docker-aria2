@@ -72,6 +72,11 @@ docker pull superng6/aria2:webui-latest
 
 
 # Changelogs
+## 2021/01/16
+
+      1、新增可选项`移动文件前，删除该下载的任务中的空文件夹`--`DET=true`，开启该选项需要同时开启`CF=true`、`MOVE=true`或`MOVE=dmof`
+        本选项隶属于文件过滤的附加选项
+
 ## 2020/09/25
 
       1、新增任务文件过滤，由于aria2自身限制，只能在下载后才能移出文件
@@ -286,6 +291,7 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 | `-e CUSDIR=cusdir` |自定义分类目录名称(支持中文名称)|
 | `-e FA=` |磁盘预分配模式`none`,`falloc`,`trunc`,`prealloc`|
 | `-e CF=true` |文件过滤，在同时开启下载后移动文件选项时生效|
+| `-e DET=true ` |文件过滤，在同时开启下载后移动文件和件过滤选项时生效|
 | `-p 6800:6800` |Aria2 RPC连接端口|
 | `-p 6881:6881` |Aria2 tcp下载端口|
 | `-p 6881:6881/udp` |Aria2 p2p udp下载端口|

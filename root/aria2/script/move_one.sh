@@ -118,6 +118,13 @@ DELETE_EXCLUDE_FILE() {
     fi
 }
 
+DELETE_EMPTY_DIR() {
+    if [[ "${DET}" = "true" ]]; then
+        echo -e "Deleting empty directory ..."
+        find "${SOURCE_PATH}" -depth -type d -empty -exec rm -vrf {} \;
+    fi
+}
+
 # =============================内容过滤=============================
 
 CLEAN_UP() {
@@ -125,6 +132,7 @@ CLEAN_UP() {
         echo -e "$(date +"%m/%d %H:%M:%S") 被过滤文件的任务路径: ${SOURCE_PATH}" | tee -a ${CF_LOG_PATH}
         LOAD_SCRIPT_CONF
         DELETE_EXCLUDE_FILE
+        DELETE_EMPTY_DIR
     fi
 }
 
