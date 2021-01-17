@@ -81,24 +81,28 @@ MOVE_FILE() {
         echo -e "$(date +"%m/%d %H:%M:%S") ${ERROR} Move failed: ${SOURCE_PATH}"
         [ $LOG_PATH ] && echo -e "$(date +"%m/%d %H:%M:%S") [ERROR] Move failed: ${SOURCE_PATH}" >>${LOG_PATH}
     fi
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Clean up extra files ..."
-    [ -e "${DOT_ARIA2_FILE}" ] && rm -vf "${DOT_ARIA2_FILE}"
+    RM_AIRA2
 }
+
+# =============================RM_AIRA2=============================
 
 RM_ARIA_INFO() {
     echo -e "
 -------------------------- [${YELLOW_FONT_PREFIX}RM .ARIA2 INFO${FONT_COLOR_SUFFIX}] --------------------------
 ${LIGHT_PURPLE_FONT_PREFIX}Download path:${FONT_COLOR_SUFFIX} ${DOWNLOAD_PATH}
 ${LIGHT_PURPLE_FONT_PREFIX}File path:${FONT_COLOR_SUFFIX} ${FILE_PATH}
-${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${FILE_PATH}.aria2
+${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}.aria2
 -------------------------- [${YELLOW_FONT_PREFIX}RM .ARIA2 INFO${FONT_COLOR_SUFFIX}] --------------------------
 "
 }
 
 RM_AIRA2() {
     RM_ARIA_INFO
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Clean up extra files ..."
-    [ -e "${DOT_ARIA2_FILE}" ] && rm -vf "${FILE_PATH}.aria2"
+    echo -e "$(date +"%m/%d %H:%M:%S") Clean up extra files ..."
+    if [ -e "${SOURCE_PATH}.aria2" ]; then
+        DOT_ARIA2_FILE="${SOURCE_PATH}.aria2"
+        [ -e "${DOT_ARIA2_FILE}" ] && rm -vf "${SOURCE_PATH}.aria2"
+    fi
 }
 
 # =============================读取conf文件设置=============================
@@ -146,28 +150,11 @@ elif [ $2 -eq 0 ]; then
     exit 0
 fi
 
-# =============================获取.aria2文件路径=============================
-
-if [ -e "${FILE_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${FILE_PATH}.aria2"
-elif [ -e "${CONTRAST_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${CONTRAST_PATH}.aria2"
-elif [ -e "${CONTRAST_ANI_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${CONTRAST_ANI_PATH}.aria2"
-elif [ -e "${CONTRAST_MOV_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${CONTRAST_MOV_PATH}.aria2"
-elif [ -e "${CONTRAST_TVS_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${CONTRAST_TVS_PATH}.aria2"
-elif [ -e "${CONTRAST_CUS_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${CONTRAST_CUS_PATH}.aria2"
-elif [ -e "${TOP_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${TOP_PATH}.aria2"
-fi
-
 # =============================判断文件路径、执行移动文件=============================
 
 
 if [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文件下载，不进行任何移动。
+    SOURCE_PATH="${FILE_PATH}"
     RM_AIRA2
     exit 0
 elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 动画片目录中的单文件下载，保留目录结构移动

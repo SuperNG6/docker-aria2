@@ -51,16 +51,32 @@ TASK_INFO() {
 -------------------------- [${YELLOW_FONT_PREFIX}TASK INFO${FONT_COLOR_SUFFIX}] --------------------------
 ${LIGHT_PURPLE_FONT_PREFIX}Download path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}
 ${LIGHT_PURPLE_FONT_PREFIX}File path:${FONT_COLOR_SUFFIX} ${FILE_PATH}
-${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${DOT_ARIA2_FILE}
+${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}.aria2
 -------------------------- [${YELLOW_FONT_PREFIX}TASK INFO${FONT_COLOR_SUFFIX}] --------------------------
 "
 }
 
-MOVE_FILE() {
-    TASK_INFO
-    echo -e "$(date +"%m/%d %H:%M:%S") ${INFO} Clean up extra files ..."
-    [ -e "${DOT_ARIA2_FILE}" ] && rm -vf "${DOT_ARIA2_FILE}"
+# =============================RM_AIRA2=============================
+
+RM_ARIA_INFO() {
+    echo -e "
+-------------------------- [${YELLOW_FONT_PREFIX}RM .ARIA2 INFO${FONT_COLOR_SUFFIX}] --------------------------
+${LIGHT_PURPLE_FONT_PREFIX}Download path:${FONT_COLOR_SUFFIX} ${DOWNLOAD_PATH}
+${LIGHT_PURPLE_FONT_PREFIX}File path:${FONT_COLOR_SUFFIX} ${FILE_PATH}
+${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}.aria2
+-------------------------- [${YELLOW_FONT_PREFIX}RM .ARIA2 INFO${FONT_COLOR_SUFFIX}] --------------------------
+"
 }
+
+RM_AIRA2() {
+    RM_ARIA_INFO
+    echo -e "$(date +"%m/%d %H:%M:%S") Clean up extra files ..."
+    if [ -e "${SOURCE_PATH}.aria2" ]; then
+        DOT_ARIA2_FILE="${SOURCE_PATH}.aria2"
+        [ -e "${DOT_ARIA2_FILE}" ] && rm -vf "${SOURCE_PATH}.aria2"
+    fi
+}
+
 
 # ============================================================
 
@@ -72,48 +88,31 @@ elif [ $2 -eq 0 ]; then
     exit 0
 fi
 
-# =============================获取.aria2文件路径=============================
-
-if [ -e "${FILE_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${FILE_PATH}.aria2"
-elif [ -e "${CONTRAST_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${CONTRAST_PATH}.aria2"
-elif [ -e "${CONTRAST_ANI_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${CONTRAST_ANI_PATH}.aria2"
-elif [ -e "${CONTRAST_MOV_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${CONTRAST_MOV_PATH}.aria2"
-elif [ -e "${CONTRAST_TVS_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${CONTRAST_TVS_PATH}.aria2"
-elif [ -e "${CONTRAST_CUS_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${CONTRAST_CUS_PATH}.aria2"
-elif [ -e "${TOP_PATH}.aria2" ]; then
-    DOT_ARIA2_FILE="${TOP_PATH}.aria2"
-fi
 # =============================判断文件路径、执行移动文件=============================
 
 if [ -e "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文件下载任务
     SOURCE_PATH="${FILE_PATH}"
-    MOVE_FILE
+    RM_AIRA2
     exit 0
 elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（动画片文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_ANI_PATH}"
-    MOVE_FILE
+    RM_AIRA2
     exit 0
 elif [ "${MOV_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（电影文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_MOV_PATH}"
-    MOVE_FILE
+    RM_AIRA2
     exit 0
 elif [ "${TVS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（电视剧、综艺文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_TVS_PATH}"
-    MOVE_FILE
+    RM_AIRA2
     exit 0
 elif [ "${CUS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # 自定义路径下载（自定义路径文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_CUS_PATH}"
-    MOVE_FILE
+    RM_AIRA2
     exit 0
 elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${TOP_PATH}"
-    MOVE_FILE
+    RM_AIRA2
     exit 0
 fi
 
