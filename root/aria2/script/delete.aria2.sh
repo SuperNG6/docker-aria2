@@ -56,7 +56,7 @@ ${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}.aria2
 "
 }
 
-# =============================RM_AIRA2=============================
+# =============================RM_ARIA2=============================
 
 RM_ARIA_INFO() {
     echo -e "
@@ -68,7 +68,7 @@ ${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}.aria2
 "
 }
 
-RM_AIRA2() {
+RM_ARIA2() {
     RM_ARIA_INFO
     echo -e "$(date +"%m/%d %H:%M:%S") Clean up extra files ..."
     if [ -e "${SOURCE_PATH}.aria2" ]; then
@@ -92,27 +92,27 @@ fi
 
 if [ -e "${FILE_PATH}" ] && [ $2 -eq 1 ]; then # 普通单文件下载任务
     SOURCE_PATH="${FILE_PATH}"
-    RM_AIRA2
+    RM_ARIA2
     exit 0
 elif [ "${ANI_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（动画片文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_ANI_PATH}"
-    RM_AIRA2
+    RM_ARIA2
     exit 0
 elif [ "${MOV_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（电影文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_MOV_PATH}"
-    RM_AIRA2
+    RM_ARIA2
     exit 0
 elif [ "${TVS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（电视剧、综艺文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_TVS_PATH}"
-    RM_AIRA2
+    RM_ARIA2
     exit 0
 elif [ "${CUS_PATH}" = "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # 自定义路径下载（自定义路径文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${CONTRAST_CUS_PATH}"
-    RM_AIRA2
+    RM_ARIA2
     exit 0
 elif [ "${CONTRAST_PATH}" != "${FILE_PATH}" ] && [ $2 -gt 1 ]; then # BT下载（文件夹内文件数大于1），移动整个文件夹到设定的文件夹。
     SOURCE_PATH="${TOP_PATH}"
-    RM_AIRA2
+    RM_ARIA2
     exit 0
 fi
 
