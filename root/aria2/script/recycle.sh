@@ -78,10 +78,10 @@ MOVE_FILE() {
         echo -e "$(date +"%m/%d %H:%M:%S") ${ERROR} Move failed: ${SOURCE_PATH}"
         [ $LOG_PATH ] && echo -e "$(date +"%m/%d %H:%M:%S") [ERROR] Move failed: ${SOURCE_PATH}" >>${LOG_PATH}
     fi
-    RM_AIRA2
+    RM_ARIA2
 }
 
-# =============================RM_AIRA2=============================
+# =============================RM_ARIA2=============================
 
 RM_ARIA_INFO() {
     echo -e "
@@ -93,7 +93,7 @@ ${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}.aria2
 "
 }
 
-RM_AIRA2() {
+RM_ARIA2() {
     RM_ARIA_INFO
     echo -e "$(date +"%m/%d %H:%M:%S") Clean up extra files ..."
     if [ -e "${SOURCE_PATH}.aria2" ]; then
