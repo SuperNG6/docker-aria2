@@ -61,7 +61,7 @@ ${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}.aria2
 RM_ARIA2() {
     if [ -e "${SOURCE_PATH}.aria2" ]; then
         echo -e "$(date +"%m/%d %H:%M:%S") Clean up ${SOURCE_PATH}.aria2"
-        rm -vf "${DOT_ARIA2_FILE}"
+        rm -vf "${SOURCE_PATH}.aria2"
     fi
 }
 
