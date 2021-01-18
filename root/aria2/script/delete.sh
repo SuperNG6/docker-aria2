@@ -76,7 +76,7 @@ MOVE_FILE() {
 RM_ARIA2() {
     if [ -e "${SOURCE_PATH}.aria2" ]; then
         echo -e "$(date +"%m/%d %H:%M:%S") Clean up ${SOURCE_PATH}.aria2"
-        rm -vf "${SOURCE_PATH}"
+        rm -vf "${SOURCE_PATH}.aria2"
     fi
 }
 
