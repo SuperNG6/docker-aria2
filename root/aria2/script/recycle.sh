@@ -83,22 +83,10 @@ MOVE_FILE() {
 
 # =============================RM_ARIA2=============================
 
-RM_ARIA_INFO() {
-    echo -e "
--------------------------- [${YELLOW_FONT_PREFIX}RM .ARIA2 INFO${FONT_COLOR_SUFFIX}] --------------------------
-${LIGHT_PURPLE_FONT_PREFIX}Download path:${FONT_COLOR_SUFFIX} ${DOWNLOAD_PATH}
-${LIGHT_PURPLE_FONT_PREFIX}File path:${FONT_COLOR_SUFFIX} ${FILE_PATH}
-${LIGHT_PURPLE_FONT_PREFIX}.aria2 path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}.aria2
--------------------------- [${YELLOW_FONT_PREFIX}RM .ARIA2 INFO${FONT_COLOR_SUFFIX}] --------------------------
-"
-}
-
 RM_ARIA2() {
-    RM_ARIA_INFO
-    echo -e "$(date +"%m/%d %H:%M:%S") Clean up extra files ..."
     if [ -e "${SOURCE_PATH}.aria2" ]; then
-        DOT_ARIA2_FILE="${SOURCE_PATH}.aria2"
-        [ -e "${DOT_ARIA2_FILE}" ] && rm -vf "${SOURCE_PATH}.aria2"
+        echo -e "$(date +"%m/%d %H:%M:%S") Clean up ${SOURCE_PATH}.aria2"
+        rm -vf "${DOT_ARIA2_FILE}"
     fi
 }
 
