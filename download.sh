@@ -18,5 +18,5 @@ fi
 # Download files
 echo "Downloading binary file: ${ARCH}"
 curl -L "https://github.com/SuperNG6/docker-aria2/releases/download/2021.01.24/${ARCH}" | tar -xz
-
+mv aria2c /usr/local/bin
 echo "Download binary file: ${ARCH} completed"
