@@ -181,20 +181,21 @@ MOVE_RECYCLE() {
 
 # =============================判断文件路径=============================
 
+
 GET_PATH() {
     function findTaskPath () {
         if [ "${SOURCE_PATH}"x == "${DOWNLOAD_PATH}"x -o "${SOURCE_PATH}"x == "/"x ]; then
-            echo -e " Task path lookup failed: ${FILE_PATH} "
+            echo -e " Task path lookup failed: "${FILE_PATH}" "
             return
         fi
         if [ -e "${SOURCE_PATH}.aria2" ]; then
             return
         fi
-        SOURCE_PATH=$(dirname ${SOURCE_PATH})
+        SOURCE_PATH="$(dirname "${SOURCE_PATH}")"
         findTaskPath
     }
-
-    PARENT_PATH=$(dirname ${FILE_PATH})
+    # 路径加""防止被转译
+    PARENT_PATH="$(dirname "${FILE_PATH}")"
 
     # 有些http小文件不会产生.aria2
     if [ "${FILE_NUM}" -eq 1 ] && [ ! -e "${FILE_PATH}.aria2" ]; then
@@ -204,15 +205,14 @@ GET_PATH() {
     elif [ -e "${PARENT_PATH}.aria2" ]; then
         SOURCE_PATH="${PARENT_PATH}"
     else
-        SOURCE_PATH=${DOWNLOAD_PATH}/$(dirname ${RELATIVE_PATH})
+        SOURCE_PATH="${DOWNLOAD_PATH}/$(dirname "${RELATIVE_PATH}")"
         findTaskPath
     fi
 
-    RELATIVE_PATH=${SOURCE_PATH#${DOWNLOAD_PATH}/}
-    TARGET_PATH=${TARGET_DIR}/$(dirname ${RELATIVE_PATH})
-    # /downloads根目录会出现 /.
+    RELATIVE_PATH="${SOURCE_PATH#${DOWNLOAD_PATH}/}"
+    TARGET_PATH="${TARGET_DIR}/$(dirname "${RELATIVE_PATH}")"
+    # /downloads根目录下载会出现 /.
     if [ "${TARGET_PATH}" == "${TARGET_DIR}/." ]; then
         TARGET_PATH="${TARGET_DIR}"
     fi
 }
-
