@@ -1,9 +1,9 @@
 FROM lsiobase/alpine:3.12 as builder
 
+COPY install.sh /qbittorrent/
 # download static aria2c
 RUN apk add --no-cache curl \
-&& curl -fsSL git.io/aria2c.sh | bash
-
+&& curl -fsSL https://raw.githubusercontent.com/SuperNG6/docker-aria2/master/download.sh | bash
 
 # install static aria2c
 FROM lsiobase/alpine:3.12
@@ -16,7 +16,7 @@ PUID=1026 PGID=100
 
 # copy local files && aria2c
 COPY root/ /
-COPY --from=builder  /usr/local/bin/aria2c  /usr/local/bin/aria2c
+COPY --from=builder  /root/aria2c  /usr/local/bin/aria2c
 
 # permissions
 RUN apk add --no-cache curl findutils \
