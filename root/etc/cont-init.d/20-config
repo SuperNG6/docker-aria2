@@ -12,6 +12,11 @@ then
   cp /aria2/conf/aria2.conf.default /config/aria2.conf
 fi
 
+if [[ ! -e /config/setting.conf ]]
+then
+  cp /aria2/conf/setting.conf /config/setting.conf
+fi
+
 if [[ ! -e /config/文件过滤.conf ]]
 then
   cp /aria2/conf/文件过滤.conf /config/文件过滤.conf

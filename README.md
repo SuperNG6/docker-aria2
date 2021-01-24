@@ -30,6 +30,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 做了usermapping，使用你自己的账户权限来运行，这点对于群辉来说尤其重要
 - 纯aria2，没有包含多于的服务
 - 超小镜像体积 10.77 MB
+- 目前唯一一个可以自定义任意二级目录的docker aria2镜像（后处理脚本正确执行，灵感来自zwc456baby提出的递归实现）
 - 开放了BT下载DTH监听端口、BT下载监听端口（TCP/UDP 6881），加快下载速度
 - 默认开启DHT并且创建了DHT文件，加速下载
 - 包含了下载完成后自动删除.aria2文件脚本
@@ -72,6 +73,15 @@ docker pull superng6/aria2:webui-latest
 
 
 # Changelogs
+## 2021/01/24
+- 破坏性更新
+   - 1、重构脚本，减少维护工作量，方便后续扩展功能
+   - 2、核心功能选项单独列出，方便设置
+   - 3、新增`setting.conf`，docker aria2 扩展功能设置
+   - 4、`MOVE`、`内容过滤`、`删除空文件夹`、`回收站`等选项，移至`/config/setting.conf`，建议删除容器重新配置
+
+2、 可以自定义任意二级目录，不用像之前那样手动预设二级目录里（后处理脚本正确运行）
+
 ## 2021/01/16
 
       1、新增可选项`移动文件前，删除该下载的任务中的空文件夹`--`DET=true`，开启该选项需要同时开启`CF=true`、`MOVE=true`或`MOVE=dmof`
@@ -82,6 +92,9 @@ docker pull superng6/aria2:webui-latest
       1、新增任务文件过滤，由于aria2自身限制，只能在下载后才能移出文件
          请在/config/文件过滤.conf中设置
          开关`CF=true`，在同时开启下载后移动文件选项时生效
+
+<details>
+   <summary>Change Log History</summary>
 
 ## 2020/07/27
 
@@ -100,9 +113,6 @@ docker pull superng6/aria2:webui-latest
       1、aria2-with-webui分支添加aria2 webui ariang（真不知道有啥用，但是好多人就是喜欢容器里也有webui）
       2、内置AriaNg-1.1.6-AllInOne，如果想替换为其他webui或其他版本ariang，挂载`/www`，把webui扔进去就可以了
       3、使用darkhttpd，轻量化网页服务器，默认webui端口为`80`
-
-<details>
-   <summary>Change Log History</summary>
 
 ## 2020/05/20
 
@@ -220,11 +230,18 @@ https://hub.docker.com/r/superng6/ariang
 
 ## 挂载路径
 ``/config`` ``/downloads``
-## 默认关闭SSL，如需需要请手动开启
+## 默认关闭SSL，如需要请手动开启
 之所以默认关闭SSL(建议开启)，是因为如果开启，又没有配置证书，会导致aria2启动失败，所以如果需要开启请手动编辑aria2.conf
 证书请放在``/config/ssl``目录下
 删掉24,26,28行的``#``号
 ![IknUvK](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/IknUvK.jpg)
+
+### 如果是使用aria2自带的https链接需要注意以下几点
+1、`ADDRESS=127.0.0.1`请修改地址为你的aria2地址(不是aria2自带https不用改)
+   `PORT=6800`请修改地址为你的aria2 rpc端口(如果修改conf文件里的端口则需要变更，但是应该没有人会改)  
+2、推荐使用nginx反向代理aria2 rpc 实现https，这样可以开启http2和gzip以提升性能
+   并且可以直接使用rpc更新tracker，不需要进行任何的多余设置
+
 ## 修改RPC token
 填写你自己的token,越长越好，建议使用生成的UUID
 ![ByRMgP](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/ByRMgP.jpg)
@@ -281,27 +298,39 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 | `-e CACHE=1024M` |Aria2磁盘缓存配置|
 | `-e UT=true` |启动容器时更新trackers|
 | `-e RUT=true` |每天凌晨3点更新trackers|
-| `-e RECYCLE=true` |启用回收站|
-| `-e MOVE=true` |下载完成文件后移动文件或文件夹|
-| `-e MOVE=dmof` |下载任务为单个文件则不移动，若为文件夹则移动|
 | `-e SMD=true` |保存磁力链接为种子文件|
-| `-e ANIDIR=ani` |动画片分类目录名称(支持中文名称)|
-| `-e MOVDIR=movies` |电影分类目录名称(支持中文名称)|
-| `-e TVDIR=tv` |电视分类目录名称(支持中文名称)|
-| `-e CUSDIR=cusdir` |自定义分类目录名称(支持中文名称)|
 | `-e FA=` |磁盘预分配模式`none`,`falloc`,`trunc`,`prealloc`|
-| `-e CF=true` |文件过滤，在同时开启下载后移动文件选项时生效|
-| `-e DET=true ` |文件过滤，在同时开启下载后移动文件和件过滤选项时生效|
 | `-p 6800:6800` |Aria2 RPC连接端口|
 | `-p 6881:6881` |Aria2 tcp下载端口|
 | `-p 6881:6881/udp` |Aria2 p2p udp下载端口|
 | `--restart unless-stopped` |自动重启容器|
 
-### 如果是使用aria2自带的https链接需要注意以下几点
-1、`ADDRESS=127.0.0.1`请修改地址为你的aria2地址(不是aria2自带https不用改)
-   `PORT=6800`请修改地址为你的aria2 rpc端口(如果修改conf文件里的端口则需要变更，但是应该没有人会改)  
-2、推荐使用nginx反向代理aria2 rpc 实现https，这样可以开启http2和gzip以提升性能
-   并且可以直接使用rpc更新tracker，不需要进行任何的多余设置
+
+### `/config/setting.conf` 配置说明(推荐使用)
+推荐使用`setting.conf`进行本镜像附加功能选项设置
+````
+## docker aria2 功能设置 ##
+# 配置文件为本项目的自定义设置选项
+# 重置配置文件：删除本文件后重启容器
+# 无需重启容器,即刻生效
+
+# 删除任务，`delete`为删除任务后删除文件，`recycle`为删除文件至回收站，`任意字符或留空`为只删除.aria2文件
+remove-task=delete
+
+# 下载完成后执行操作选项，默认`false`
+# `true`，下载完成后保留目录结构移动
+# `dmof`非自定义目录任务，单文件，不执行移动操作。自定义目录、单文件，保留目录结构移动（推荐）
+move=false
+
+# 文件过滤，任务下载完成后删除不需要的文件内容，`false`、`true`
+# 由于aria2自身限制，无法再下载前取消不需要的文件
+content-filter=false
+
+# 删除空文件夹，默认`true`，需要开启文件过滤功能才能生效
+# 开启内容过滤后，可能会产生空文件夹，开启`DET`选项后可以删除当前任务中的空文件夹
+delete-empty-dir=true
+
+````
 
 ## Linux
 
@@ -320,18 +349,12 @@ docker create \
   -e RUT=true \
   -e FA=falloc \
   -e QUIET=true \
-  -e RECYCLE=true \
-  -e MOVE=true \
   -e SMD=false \
-  -e ANIDIR=ani \
-  -e MOVDIR=movies \
-  -e TVDIR=tv \
-  -e CUSDIR=cusdir \
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
-  -v /path/to/appdata/config:/config \
-  -v /path/to/downloads:/downloads \
+  -v $PWD/config:/config \
+  -v $PWD/downloads:/downloads \
   --restart unless-stopped \
   superng6/aria2
   ````
@@ -350,24 +373,16 @@ services:
       - SECRET=yourtoken
       - CACHE=512M
       - UT=true
-      - RUT=true
       - QUIET=true
-      - FA=falloc
-      - RECYCLE=true
-      - MOVE=true
       - SMD=false
-      - ANIDIR=ani
-      - MOVDIR=movies
-      - TVDIR=tv
-      - CUSDIR=cusdir
     volumes:
-      - /path/to/appdata/config:/config
-      - /path/to/downloads:/downloads
+      - $PWD/config:/config
+      - $PWD/downloads:/downloads
     ports:
+      - 6800:6800
       - 6881:6881
       - 6881:6881/udp
-      - 6800:6800
-    restart: unless-stopped   
+    restart: unless-stopped 
 ````
 
 # Preview

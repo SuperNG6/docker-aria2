@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+
+GET_BASE_PATH() {
+    # Aria2下载目录
+    DOWNLOAD_PATH='/downloads'
+    # 日志、配置文件保存路径
+    SCRIPT_CONF="/config/文件过滤.conf"
+    CF_LOG="/config/文件过滤日志.log"
+    MOVE_LOG="/config/move.log"
+    DELETE_LOG="/config/delete.log"
+    RECYCLE_LOG="/config/recycle.log"
+
+    # ============================================================
+
+    RELATIVE_PATH=${FILE_PATH#${DOWNLOAD_PATH}/}                    # 文件路径转换，去掉开头的下载路径。
+    CONTRAST_PATH=${DOWNLOAD_PATH}/${RELATIVE_PATH%%/*}             # 单文件、无文件夹路径对比判断
+}
+
+# ========================GET_TARGET_PATH==============================
+
+
+COMPLETED_PATH() {
+    # 完成任务后转移
+    TARGET_DIR='/downloads/completed'
+}
+
+
+RECYCLE_PATH() {
+    # 回收站
+    TARGET_DIR='/downloads/recycle'
+}
+
+# ============================颜色==============================
+
+RED_FONT_PREFIX="\033[31m"
+LIGHT_GREEN_FONT_PREFIX="\033[1;32m"
+YELLOW_FONT_PREFIX="\033[1;33m"
+LIGHT_PURPLE_FONT_PREFIX="\033[1;35m"
+FONT_COLOR_SUFFIX="\033[0m"
+INFO="[${LIGHT_GREEN_FONT_PREFIX}INFO${FONT_COLOR_SUFFIX}]"
+ERROR="[${RED_FONT_PREFIX}ERROR${FONT_COLOR_SUFFIX}]"
+WARRING="[${YELLOW_FONT_PREFIX}WARRING${FONT_COLOR_SUFFIX}]"
+
+# ============================时间==============================
+
+DATE_TIME() {
+    date +"%Y/%m/%d %H:%M:%S"
+}
+
+# ==========================任务信息===============================
+
+TASK_INFO() {
+    echo -e "
+-------------------------- [${YELLOW_FONT_PREFIX} TASK INFO ${TASK_TYPE} ${FONT_COLOR_SUFFIX}] --------------------------
+${LIGHT_PURPLE_FONT_PREFIX}Download path:${FONT_COLOR_SUFFIX} ${DOWNLOAD_PATH}
+${LIGHT_PURPLE_FONT_PREFIX}File path:${FONT_COLOR_SUFFIX} ${FILE_PATH}
+${LIGHT_PURPLE_FONT_PREFIX}Task path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}
+${LIGHT_PURPLE_FONT_PREFIX}Target path:${FONT_COLOR_SUFFIX} ${TARGET_PATH}
+-------------------------- [${YELLOW_FONT_PREFIX} TASK INFO ${TASK_TYPE} ${FONT_COLOR_SUFFIX}] --------------------------
+"
+}
+
+DELETE_INFO() {
+    echo -e "
+-------------------------- [${YELLOW_FONT_PREFIX} TASK INFO ${TASK_TYPE} ${FONT_COLOR_SUFFIX}] --------------------------
+${LIGHT_PURPLE_FONT_PREFIX}Download path:${FONT_COLOR_SUFFIX} ${DOWNLOAD_PATH}
+${LIGHT_PURPLE_FONT_PREFIX}File path:${FONT_COLOR_SUFFIX} ${FILE_PATH}
+${LIGHT_PURPLE_FONT_PREFIX}Task path:${FONT_COLOR_SUFFIX} ${SOURCE_PATH}
+-------------------------- [${YELLOW_FONT_PREFIX} TASK INFO ${TASK_TYPE} ${FONT_COLOR_SUFFIX}] --------------------------
+"
+}
+
+# =============================读取conf文件设置=============================
+
+LOAD_SCRIPT_CONF() {
+    MIN_SIZE="$(grep ^min-size "${SCRIPT_CONF}" | cut -d= -f2-)"
+    INCLUDE_FILE="$(grep ^include-file "${SCRIPT_CONF}" | cut -d= -f2-)"
+    EXCLUDE_FILE="$(grep ^exclude-file "${SCRIPT_CONF}" | cut -d= -f2-)"
+}
+
+DELETE_EXCLUDE_FILE() {
+    if [[ ${FILE_NUM} -gt 1 ]] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} ]]; then
+        echo -e "$(DATE_TIME) ${INFO} Deleting excluded files ..."
+        [[ -n ${MIN_SIZE} ]] && find "${SOURCE_PATH}" -type f -size -${MIN_SIZE} -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+        [[ -n ${EXCLUDE_FILE} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+        [[ -n ${INCLUDE_FILE} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG_PATH}
+    fi
+}
+
+# =============================删除.ARIA2=============================
+
+RM_ARIA2() {
+    if [ -e "${SOURCE_PATH}.aria2" ]; then
+        rm -f "${SOURCE_PATH}.aria2"
+        echo -e "$(DATE_TIME) ${INFO} deleted ${SOURCE_PATH}.aria2"
+    fi
+}
+
+# =============================删除空文件夹=============================
+
+DELETE_EMPTY_DIR() {
+    if [[ "${DET}" = "true" ]]; then
+        echo -e "$(DATE_TIME) ${INFO} Deleting empty directory ..."
+        find "${SOURCE_PATH}" -depth -type d -empty -exec rm -vrf {} \ ;
+    fi
+}
+
+# =============================内容过滤=============================
+
+CLEAN_UP() {
+    RM_ARIA2
+    if [ "$CF" == "true" ]; then
+        echo -e "$(DATE_TIME) ${INFO} 被过滤文件的任务路径: ${SOURCE_PATH}" | tee -a ${CF_LOG_PATH}
+        LOAD_SCRIPT_CONF
+        DELETE_EXCLUDE_FILE
+        DELETE_EMPTY_DIR
+    fi
+}
+
+# =============================移动文件=============================
+
+MOVE_FILE() {
+    if [ "${MOVE}" = "false" ]; then
+        RM_ARIA2
+        exit 0
+    elif [ "${MOVE}" = "dmof" ] && [ "${CONTRAST_PATH}" = "${FILE_PATH}" ] && [ ${FILE_NUM} -eq 1 ]; then
+        RM_ARIA2
+        exit 0
+    elif [ "${MOVE}" = "true" ] || [ "${MOVE}" = "dmof" ]; then
+        TASK_TYPE=": MOVE"
+        TASK_INFO
+        CLEAN_UP
+        echo -e "$(DATE_TIME) ${INFO} Start move files to the destination folder ..."
+        mkdir -p ${TARGET_PATH}
+        mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
+        MOVE_EXIT_CODE=$?
+        if [ ${MOVE_EXIT_CODE} -eq 0 ]; then
+            echo -e "$(DATE_TIME) ${INFO} Move done: ${SOURCE_PATH} -> ${TARGET_PATH}"
+            [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [INFO] Move done: ${SOURCE_PATH} -> ${TARGET_PATH}" >>${MOVE_LOG}
+        else
+            echo -e "$(DATE_TIME) ${ERROR} Move failed: ${SOURCE_PATH}"
+            [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] Move failed: ${SOURCE_PATH}" >>${MOVE_LOG}
+        fi
+    fi
+}
+
+# =============================删除文件=============================
+
+DELETE_FILE() {
+    TASK_TYPE=": DELETE"
+    DELETE_INFO
+    echo -e "$(DATE_TIME) ${INFO} Download stop, start deleting files..."
+    rm -rf "${SOURCE_PATH}"
+    MOVE_EXIT_CODE=$?
+    if [ ${MOVE_EXIT_CODE} -eq 0 ]; then
+        echo -e "$(DATE_TIME) ${INFO} deleted files: ${SOURCE_PATH}"
+        [ ${DELETE_LOG} ] && echo -e "$(DATE_TIME) [INFO] File deleted successfully: ${SOURCE_PATH}" >>${DELETE_LOG}
+    else
+        echo -e "$(DATE_TIME) ${ERROR} delete failed: ${SOURCE_PATH}"
+        [ ${DELETE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] Failed to delete file: ${SOURCE_PATH}" >>${DELETE_LOG}
+    fi
+}
+
+# =============================回收站=============================
+
+MOVE_RECYCLE() {
+    TASK_TYPE=": RECYCLE"
+    TASK_INFO
+    echo -e "$(DATE_TIME) ${INFO} Start move files to Recycling Bin..."
+    mkdir -p ${TARGET_PATH}
+    mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
+    MOVE_EXIT_CODE=$?
+    if [ ${MOVE_EXIT_CODE} -eq 0 ]; then
+        echo -e "$(DATE_TIME) ${INFO} Move done: ${SOURCE_PATH} -> ${TARGET_PATH}"
+        [ ${RECYCLE_LOG} ] && echo -e "$(DATE_TIME) [INFO] Successfully moved to the Recycle Bin: ${SOURCE_PATH} -> ${TARGET_PATH}" >>${RECYCLE_LOG}
+    else
+        echo -e "$(DATE_TIME) ${ERROR} Move failed: ${SOURCE_PATH}"
+        [ ${RECYCLE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] Failed to move to the Recycle Bin: ${SOURCE_PATH}" >>${RECYCLE_LOG}
+    fi
+}
+
+# =============================判断文件路径=============================
+
+GET_PATH() {
+    function findTaskPath () {
+        if [ "${SOURCE_PATH}"x == "${DOWNLOAD_PATH}"x -o "${SOURCE_PATH}"x == "/"x ]; then
+            echo -e " Task path lookup failed: ${FILE_PATH} "
+            return
+        fi
+        if [ -e "${SOURCE_PATH}.aria2" ]; then
+            return
+        fi
+        SOURCE_PATH=$(dirname ${SOURCE_PATH})
+        findTaskPath
+    }
+
+    PARENT_PATH=$(dirname ${FILE_PATH})
+
+    if [ "${FILE_NUM}" -eq 0 ]; then
+        echo -e " $(DATE_TIME) ${ERROR} Task error "
+        exit 0
+    # 有些http小文件不会产生.aria2
+    elif [ "${FILE_NUM}" -eq 1 ] && [ ! -e "${FILE_PATH}.aria2" ]; then
+        SOURCE_PATH="${FILE_PATH}"
+    elif [ -e "${FILE_PATH}.aria2" ]; then
+        SOURCE_PATH="${FILE_PATH}"
+    elif [ -e "${PARENT_PATH}.aria2" ]; then
+        SOURCE_PATH="${PARENT_PATH}"
+    else
+        SOURCE_PATH=${DOWNLOAD_PATH}/$(dirname ${RELATIVE_PATH})
+        findTaskPath
+    fi
+
+    RELATIVE_PATH=${SOURCE_PATH#${DOWNLOAD_PATH}/}
+    TARGET_PATH=${TARGET_DIR}/$(dirname ${RELATIVE_PATH})
+    # /downloads根目录会出现 /.
+    if [ "${TARGET_PATH}" == "${TARGET_DIR}/." ]; then
+        TARGET_PATH="${TARGET_DIR}"
+    fi
+}
+

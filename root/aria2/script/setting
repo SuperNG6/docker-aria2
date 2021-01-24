@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+SCRIPT_CONF="/config/setting.conf"
+RMTASK="$(grep ^remove-task "${SCRIPT_CONF}" | cut -d= -f2-)"
+MOVE="$(grep ^move "${SCRIPT_CONF}" | cut -d= -f2-)"
+CF="$(grep ^content-filter "${SCRIPT_CONF}" | cut -d= -f2-)"
+DET="$(grep ^delete-empty-dir "${SCRIPT_CONF}" | cut -d= -f2-)"
