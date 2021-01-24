@@ -80,9 +80,9 @@ docker pull superng6/aria2:webui-latest
    - 3、新增`setting.conf`，docker aria2 扩展功能设置
    - 4、`MOVE`、`内容过滤`、`删除空文件夹`、`回收站`等选项，移至`/config/setting.conf`，建议删除容器重新配置
 
-2、可以自定义任意二级目录，不用像之前那样手动预设二级目录里（后处理脚本正确运行）
-3、如果有特殊需要，想使用大改版前到版本，可以使用`table-21-01-23`版，`docker pull superng6/aria2:stable-21-01-23`
-4、增加历史版本，请在docker hub tags中查阅
+2、可以自定义任意二级目录，不用像之前那样手动预设二级目录里（后处理脚本正确运行）  
+3、如果有特殊需要，想使用大改版前到版本，可以使用`table-21-01-23`版，`docker pull superng6/aria2:stable-21-01-23`  
+4、增加历史版本，请在docker hub tags中查阅  
 
 ## 2021/01/16
 
