@@ -42,4 +42,5 @@ jobs:
           push: true
           tags: |
             superng6/aria2:stable-${{ steps.set-version.outputs.version }}
+            superng6/aria2:latest
 
