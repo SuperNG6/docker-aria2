@@ -17,8 +17,6 @@ fi
 
 # Download files
 echo "Downloading binary file: ${ARCH}"
-TAG=$(cat /qbittorrent/ReleaseTag)
-echo "qbittorrent version: ${TAG}"
 curl -L "https://github.com/SuperNG6/docker-aria2/releases/download/2021.01.24/${ARCH}" | tar -xz
 
 echo "Download binary file: ${ARCH} completed"
