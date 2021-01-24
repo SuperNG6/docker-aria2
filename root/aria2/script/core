@@ -194,7 +194,7 @@ GET_PATH() {
         SOURCE_PATH="$(dirname "${SOURCE_PATH}")"
         findTaskPath
     }
-    # 路径加""防止被转译
+    # 路径加""防止转译问题，导致路径出错
     PARENT_PATH="$(dirname "${FILE_PATH}")"
 
     # 有些http小文件不会产生.aria2
