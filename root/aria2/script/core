@@ -196,11 +196,8 @@ GET_PATH() {
 
     PARENT_PATH=$(dirname ${FILE_PATH})
 
-    if [ "${FILE_NUM}" -eq 0 ]; then
-        echo -e " $(DATE_TIME) ${ERROR} Task error "
-        exit 0
     # 有些http小文件不会产生.aria2
-    elif [ "${FILE_NUM}" -eq 1 ] && [ ! -e "${FILE_PATH}.aria2" ]; then
+    if [ "${FILE_NUM}" -eq 1 ] && [ ! -e "${FILE_PATH}.aria2" ]; then
         SOURCE_PATH="${FILE_PATH}"
     elif [ -e "${FILE_PATH}.aria2" ]; then
         SOURCE_PATH="${FILE_PATH}"
