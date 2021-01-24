@@ -187,27 +187,27 @@ MOVE_RECYCLE() {
 GET_PATH() {
     function findTaskPath () {
         if [ "${SOURCE_PATH}"x == "${DOWNLOAD_PATH}"x -o "${SOURCE_PATH}"x == "/"x ]; then
-            echo -e " Task path lookup failed: "${FILE_PATH}" "
+            echo -e " Task path lookup failed: ${FILE_PATH} "
             return
         fi
         if [ -e "${SOURCE_PATH}.aria2" ]; then
             return
         fi
-        SOURCE_PATH="$(dirname "${SOURCE_PATH}")"
+        SOURCE_PATH=$(dirname "${SOURCE_PATH}")
         findTaskPath
     }
     # 路径加""防止转译问题，导致路径出错
-    PARENT_PATH="$(dirname "${FILE_PATH}")"
+    PARENT_PATH=$(dirname "${FILE_PATH}")
 
     # 有些http小文件不会产生.aria2
     if [ "${FILE_NUM}" -eq 1 ] && [ ! -e "${FILE_PATH}.aria2" ]; then
         SOURCE_PATH="${FILE_PATH}"
     elif [ -e "${FILE_PATH}.aria2" ]; then
         SOURCE_PATH="${FILE_PATH}"
-    elif [ -e "${PARENT_PATH}.aria2" ]; then
+    elif [ -e "${PARENT_PATH}.aria2" ] || [ "${FILE_NUM}" -gt 1 ]; then
         SOURCE_PATH="${PARENT_PATH}"
     else
-        SOURCE_PATH="${DOWNLOAD_PATH}/$(dirname "${RELATIVE_PATH}")"
+        SOURCE_PATH=${DOWNLOAD_PATH}/$(dirname "${RELATIVE_PATH}")
         findTaskPath
     fi
 
@@ -218,3 +218,4 @@ GET_PATH() {
         TARGET_PATH="${TARGET_DIR}"
     fi
 }
+ 
