@@ -10,12 +10,18 @@ services:
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
       - CACHE=512M
-      - UT=true
+      - UpdateTracker=true
       - QUIET=true
+      - RECYCLE=true
+      - MOVE=true
       - SMD=false
+      - ANIDIR=ani
+      - MOVDIR=movies
+      - TVDIR=tv
+      - CUSDIR=cusdir
     volumes:
-      - $PWD/config:/config
-      - $PWD/downloads:/downloads
+      - /path/to/appdata/config:/config
+      - /path/to/downloads:/downloads
     ports:
       - 6881:6881
       - 6881:6881/udp
