@@ -1,6 +1,5 @@
 FROM lsiobase/alpine:3.12 as builder
 
-COPY install.sh /qbittorrent/
 # download static aria2c
 RUN apk add --no-cache curl \
 && curl -fsSL https://raw.githubusercontent.com/SuperNG6/docker-aria2/master/download.sh | bash
