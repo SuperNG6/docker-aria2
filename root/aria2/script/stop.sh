@@ -7,7 +7,6 @@ FILE_PATH=$3
 FILE_NUM=$2
 
 if [ "${FILE_NUM}" -eq 0 ]; then
-    echo -e "$(DATE_TIME) Download Magnet OR Download Error"
     exit 0
 else
     if [ "${RMTASK}" = "recycle" ]; then
