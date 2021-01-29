@@ -30,11 +30,12 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 做了usermapping，使用你自己的账户权限来运行，这点对于群辉来说尤其重要
 - 纯aria2，没有包含多于的服务
 - 超小镜像体积 10.77 MB
+- 可以自定义任意二级目录
 - 开放了BT下载DTH监听端口、BT下载监听端口（TCP/UDP 6881），加快下载速度
 - 默认开启DHT并且创建了DHT文件，加速下载
 - 包含了下载完成后自动删除.aria2文件脚本
 - 包含了执行删除正在下载任务事时自动执行删除文件（删除已完成的任务不会删除文件，请放心）和aria2文件的脚本
-- 内置最优的aria2配置文件（来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
+- 内置最优的aria2配置文件（修改自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
 - 内置400多条最新trackers（来自[XIU2 / TrackersListCollection](https://github.com/XIU2/TrackersListCollection)，感谢）
 - 每天自动更新trackers，不需要重启aria2即可生效（来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
 - 默认上海时区 Asia/Shanghai
@@ -71,7 +72,39 @@ docker pull superng6/aria2:webui-latest
 | armhf        | webui-latest         |
 
 
+## 往后所有新增功能设置选项均在`/config/setting.conf`
+
 # Changelogs
+
+## 2021/02/15
+
+      1、新增：任务暂停后移动文件，部分任务下载至百分之99时无法下载，可以启动本选项，具体请查看`/config/setting.conf`中的详细说明
+      2、更新AriaNg 1.2.0(Add dark theme)
+
+## 2021/01/31
+
+      1、文件过滤：新增关键词过滤，具体请参照`/config/文件过滤.conf`
+
+## 2021/01/29
+
+      1、新增检测重复任务功能，若已完成目录有当前任务，则取消下载，并删除任务文件，默认开启
+      2、参考P3TERX大佬的配置文件，检测任务的方式由递归变更为RPC，把aria2的官方文档啃了一遍，收获颇多
+      3、新增种子文件文件备份、重命名功能，具体请查看`/config/setting.conf`中的详细说明
+      4、自动更新新功能至`/config/setting.conf`
+      5、更强的稳定性，绝大部分可能会出现的状况都考虑到了
+      6、更多功能请自行体验
+
+## 2021/01/24
+- **破坏性更新**
+   - 1、重构脚本，减少维护工作量，方便后续扩展功能
+   - 2、核心功能选项单独列出，方便设置
+   - 3、新增`setting.conf`，docker aria2 扩展功能设置
+   - 4、`MOVE`、`内容过滤`、`删除空文件夹`、`回收站`等选项，移至`/config/setting.conf`，建议删除容器重新配置
+
+2、可以自定义任意二级目录，不用像之前那样手动预设二级目录了（后处理脚本正确运行）  
+3、如果有特殊需要，想使用大改版前的版本，可以使用`stable-21-01-23`版，`docker pull superng6/aria2:stable-21-01-23`  
+4、新增历史版本，请在docker hub tags中查阅  
+
 ## 2021/01/16
 
       1、新增可选项`移动文件前，删除该下载的任务中的空文件夹`--`DET=true`，开启该选项需要同时开启`CF=true`、`MOVE=true`或`MOVE=dmof`
@@ -82,6 +115,9 @@ docker pull superng6/aria2:webui-latest
       1、新增任务文件过滤，由于aria2自身限制，只能在下载后才能移出文件
          请在/config/文件过滤.conf中设置
          开关`CF=true`，在同时开启下载后移动文件选项时生效
+
+<details>
+   <summary>Change Log History</summary>
 
 ## 2020/07/27
 
@@ -100,9 +136,6 @@ docker pull superng6/aria2:webui-latest
       1、aria2-with-webui分支添加aria2 webui ariang（真不知道有啥用，但是好多人就是喜欢容器里也有webui）
       2、内置AriaNg-1.1.6-AllInOne，如果想替换为其他webui或其他版本ariang，挂载`/www`，把webui扔进去就可以了
       3、使用darkhttpd，轻量化网页服务器，默认webui端口为`80`
-
-<details>
-   <summary>Change Log History</summary>
 
 ## 2020/05/20
 
@@ -220,41 +253,15 @@ https://hub.docker.com/r/superng6/ariang
 
 ## 挂载路径
 ``/config`` ``/downloads``
-## 默认关闭SSL，如需需要请手动开启
+## 默认关闭SSL，如需要请手动开启
 之所以默认关闭SSL(建议开启)，是因为如果开启，又没有配置证书，会导致aria2启动失败，所以如果需要开启请手动编辑aria2.conf
 证书请放在``/config/ssl``目录下
 删掉24,26,28行的``#``号
 ![IknUvK](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/IknUvK.jpg)
+
 ## 修改RPC token
 填写你自己的token,越长越好，建议使用生成的UUID
 ![ByRMgP](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/ByRMgP.jpg)
-
-<details>
-   <summary>2019.10.11更新日志及用户须知</summary>
-   
-### 2019.10.11日更新静态编译aria2c1.3.5解决报错[WARN] aria2c had to connect to the other side using an unknown T…
-
-~~PS:为什么不在ENV里加入直接修改token?~~
-
-因为我发现直接运行命令``aria2c --rpc-secret=$SECRET``会报很多（在conf文件里写也会报，但是少很多）[WARN] aria2c had to connect to the other side using an unknown T…
-
-> 原因在于``aria2c 1.3.4``不支持TLS1.3，在你的证书是TLS1.3的情况，下会报错，好消息是10.6号会发布``1.3.5``解决这个问题，国庆结束后我会更新``aria2c 1.3.5``解决这个问题
-
-
-https://github.com/aria2/aria2/issues/1464
-
-https://github.com/aria2/aria2/issues/1468
-
-### 使用2019.10.11日前版本的用户，更新时请删除conf文件的第十七行
-token现在不用写在配置文件里了，使用2019.10.11日前版本的用户，请删除第十七行，否则会报错，无法启动
-![](https://github.com/SuperNG6/pic/blob/master/aria2/Xnip2019-10-11_21-44-59.png)
-
-## 关于自动更新trackers
-我个人是不喜欢这个功能的，Aria2的一些机制，导致Aria2重启带来的问题会很多，比如，已移除的文件他会再下一次等等，所以没事还是不要重启Aria2，而且trackerlist大部分tracker是不会变动的，只有极少数会变动，频繁的自动更新tracker带来的收益极其有限，甚至是负收益
-
-~~今后可能会添加这个功能作为可选项，但是默认一定会是关闭~~，之所以打脸，默认开启是因为，我想到一个更巧妙的法子，Aria2需要重启才能够读取到conf文件改变的内容，所以就意味着，为了更新tracker而去重启Aria2，其所带来负面影响，比如导致dht文件失效从新收集信息，任务重新下载等，是不值当的。如果放弃使用定时更新这种形式，改为每次启动容器时更新tracker，那么就一举两得的解决了这个问题，不重启不更新，重启时在Aria2启动前自动更新tracker，做到完全无感知，并且没有任何负面效果，如果能做到这种效果，添加默认自动更新tracker则是值得的
-
-</details>
 
 
 ## 关于群晖
@@ -279,29 +286,79 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 | `-e PGID=100` |Linux用户GID|
 | `-e SECRET=yourtoken` |Aria2 token|
 | `-e CACHE=1024M` |Aria2磁盘缓存配置|
+| `-e PORT=6800` | RPC通讯端口 |
 | `-e UT=true` |启动容器时更新trackers|
 | `-e RUT=true` |每天凌晨3点更新trackers|
-| `-e RECYCLE=true` |启用回收站|
-| `-e MOVE=true` |下载完成文件后移动文件或文件夹|
-| `-e MOVE=dmof` |下载任务为单个文件则不移动，若为文件夹则移动|
 | `-e SMD=true` |保存磁力链接为种子文件|
-| `-e ANIDIR=ani` |动画片分类目录名称(支持中文名称)|
-| `-e MOVDIR=movies` |电影分类目录名称(支持中文名称)|
-| `-e TVDIR=tv` |电视分类目录名称(支持中文名称)|
-| `-e CUSDIR=cusdir` |自定义分类目录名称(支持中文名称)|
 | `-e FA=` |磁盘预分配模式`none`,`falloc`,`trunc`,`prealloc`|
-| `-e CF=true` |文件过滤，在同时开启下载后移动文件选项时生效|
-| `-e DET=true ` |文件过滤，在同时开启下载后移动文件和件过滤选项时生效|
 | `-p 6800:6800` |Aria2 RPC连接端口|
 | `-p 6881:6881` |Aria2 tcp下载端口|
 | `-p 6881:6881/udp` |Aria2 p2p udp下载端口|
 | `--restart unless-stopped` |自动重启容器|
 
-### 如果是使用aria2自带的https链接需要注意以下几点
-1、`ADDRESS=127.0.0.1`请修改地址为你的aria2地址(不是aria2自带https不用改)
-   `PORT=6800`请修改地址为你的aria2 rpc端口(如果修改conf文件里的端口则需要变更，但是应该没有人会改)  
-2、推荐使用nginx反向代理aria2 rpc 实现https，这样可以开启http2和gzip以提升性能
-   并且可以直接使用rpc更新tracker，不需要进行任何的多余设置
+
+### `/config/setting.conf` 配置说明(推荐使用)
+推荐使用`setting.conf`进行本镜像附加功能选项设置
+````
+## docker aria2 功能设置 ##
+# 配置文件为本项目的自定义设置选项
+# 重置配置文件：删除本文件后重启容器
+# 所有设置无需重启容器,即刻生效
+
+# 删除任务，`delete`为删除任务后删除文件，`recycle`为删除文件至回收站，`rmaria`为只删除.aria2文件
+remove-task=rmaria
+
+# 下载完成后执行操作选项，默认`false`
+# `true`，下载完成后保留目录结构移动
+# `dmof`非自定义目录任务，单文件，不执行移动操作。自定义目录、单文件，保留目录结构移动（推荐）
+move-task=false
+
+# 文件过滤，任务下载完成后删除不需要的文件内容，`false`、`true`
+# 由于aria2自身限制，无法在下载前取消不需要的文件（只能在任务完成后删除文件）
+content-filter=false
+
+# 下载完成后删除空文件夹，默认`true`，需要开启文件过滤功能才能生效
+# 开启内容过滤后，可能会产生空文件夹，开启`DET`选项后可以删除当前任务中的空文件夹
+delete-empty-dir=true
+
+# 对磁力链接生成的种子文件进行操作
+# 在开启`SMD`选项后生效，上传的种子无法更名、移动、删除，仅对通过磁力链接保存的种子生效
+# 默认保留`retain`,可选删除`delete`，备份种子文件`backup`、重命名种子文件`rename`，重命名种子文件并备份`backup-rename`
+# 种子备份位于`/config/backup-torrent`
+handle-torrent=rename
+
+# 删除重复任务，检测已完成文件夹，如果有该任务文件，则删除任务，并删除文件，仅针对文件数量大于1的任务生效
+# 默认`true`，可选`false`关闭该功能
+remove-repeat-task=true
+
+# 任务暂停后移动文件，部分任务下载至百分之99时无法下载，可以启动本选项
+# 建议仅在需要时开启该功能，使用完后请记得关闭
+# 默认`false`，可选`true`开启该功能
+move-paused-task=false
+
+````
+
+### `/config/文件过滤.conf` 配置说明
+
+````
+## 文件过滤设置(全局) ##
+
+# 仅 BT 多文件下载时有效，用于过滤无用文件。
+# 可自定义；如需启用请删除对应行的注释 # 
+
+# 排除小文件。低于此大小的文件将在下载完成后被删除。
+#min-size=10M
+
+# 保留文件类型。其它文件类型将在下载完成后被删除。
+#include-file=mp4|mkv|rmvb|mov|avi|srt|ass
+
+# 排除文件类型。排除的文件类型将在下载完成后被删除。
+#exclude-file=html|url|lnk|txt|jpg|png
+
+# 按关键词排除。包含以下关键字的文件将在下载完成后被删除。
+#keyword-file=广告1|广告2|广告3
+
+````
 
 ## Linux
 
@@ -309,29 +366,24 @@ token现在不用写在配置文件里了，使用2019.10.11日前版本的用�
 
 __执行命令__
 ````
-docker create \
+docker run -d \
   --name=aria2 \
   -e PUID=1026 \
   -e PGID=100 \
   -e TZ=Asia/Shanghai \
   -e SECRET=yourtoken \
   -e CACHE=512M \
+  -e PORT=6800 \
   -e UT=true \
   -e RUT=true \
   -e FA=falloc \
   -e QUIET=true \
-  -e RECYCLE=true \
-  -e MOVE=true \
   -e SMD=false \
-  -e ANIDIR=ani \
-  -e MOVDIR=movies \
-  -e TVDIR=tv \
-  -e CUSDIR=cusdir \
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
-  -v /path/to/appdata/config:/config \
-  -v /path/to/downloads:/downloads \
+  -v $PWD/config:/config \
+  -v $PWD/downloads:/downloads \
   --restart unless-stopped \
   superng6/aria2
   ````
@@ -349,20 +401,13 @@ services:
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
       - CACHE=512M
+      - PORT=6800
       - UT=true
-      - RUT=true
       - QUIET=true
-      - FA=falloc
-      - RECYCLE=true
-      - MOVE=true
       - SMD=false
-      - ANIDIR=ani
-      - MOVDIR=movies
-      - TVDIR=tv
-      - CUSDIR=cusdir
     volumes:
-      - /path/to/appdata/config:/config
-      - /path/to/downloads:/downloads
+      - $PWD/config:/config
+      - $PWD/downloads:/downloads
     ports:
       - 6881:6881
       - 6881:6881/udp

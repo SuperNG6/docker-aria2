@@ -3,6 +3,7 @@
 # make folders
 mkdir -p \
 	/config/ssl \
+  /config/backup-torrent \
   /downloads/completed \
   /downloads/recycle
 
@@ -10,6 +11,18 @@ mkdir -p \
 if [[ ! -e /config/aria2.conf ]]
 then
   cp /aria2/conf/aria2.conf.default /config/aria2.conf
+fi
+
+if [[ ! -e /config/setting.conf ]]
+then
+  cp /aria2/conf/setting.conf /config/setting.conf
+fi
+
+# 保留配置、更新修改配置文件
+if [[ -e /config/setting.conf ]]
+then
+  . /aria2/script/setting
+  SED_CONF
 fi
 
 if [[ ! -e /config/文件过滤.conf ]]
