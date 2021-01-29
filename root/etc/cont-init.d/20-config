@@ -3,6 +3,7 @@
 # make folders
 mkdir -p \
 	/config/ssl \
+  /config/backup-torrent \
   /downloads/completed \
   /downloads/recycle
 
@@ -10,6 +11,33 @@ mkdir -p \
 if [[ ! -e /config/aria2.conf ]]
 then
   cp /aria2/conf/aria2.conf.default /config/aria2.conf
+fi
+
+if [[ ! -e /config/setting.conf ]]
+then
+  cp /aria2/conf/setting.conf /config/setting.conf
+fi
+
+# 保留配置、更新修改配置文件
+if [[ -e /config/setting.conf ]]
+then
+  SCRIPT_CONF="/config/setting.conf"
+  RMTASK="$(grep ^remove-task "${SCRIPT_CONF}" | cut -d= -f2-)"
+  MOVE="$(grep ^move "${SCRIPT_CONF}" | cut -d= -f2-)"
+  CF="$(grep ^content-filter "${SCRIPT_CONF}" | cut -d= -f2-)"
+  DET="$(grep ^delete-empty-dir "${SCRIPT_CONF}" | cut -d= -f2-)"
+  TOR="$(grep ^handle-torrent "${SCRIPT_CONF}" | cut -d= -f2-)"
+  RRT="$(grep ^remove-repeat-task "${SCRIPT_CONF}" | cut -d= -f2-)"
+  # 本机构建没有问题，可以调用setting，上传后就死活不行
+  cp /aria2/conf/setting.conf /config/setting.conf.new
+  sed -i "s@^\(remove-task=\).*@\1${RMTASK}@" /config/setting.conf.new
+  sed -i "s@^\(move=\).*@\1${MOVE}@" /config/setting.conf.new
+  sed -i "s@^\(content-filter=\).*@\1${CF}@" /config/setting.conf.new
+  sed -i "s@^\(delete-empty-dir=\).*@\1${DET}@" /config/setting.conf.new
+  sed -i "s@^\(handle-torrent=\).*@\1${TOR}@" /config/setting.conf.new
+  sed -i "s@^\(remove-repeat-task=\).*@\1${RRT}@" /config/setting.conf.new
+  rm -f /config/setting.conf
+  mv /config/setting.conf.new /config/setting.conf
 fi
 
 if [[ ! -e /config/文件过滤.conf ]]

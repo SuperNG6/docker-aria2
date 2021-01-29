@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+RPC_TASK_INFO() {
+    if [[ "${SECRET}" ]]; then
+        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.tellStatus","id":"NG6","params":["token:'${SECRET}'","'${TASK_GID}'"]}'
+    else
+        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.tellStatus","id":"NG6","params":["'${TASK_GID}'"]}'
+    fi
+    curl "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}"
+}
+
+# ==================================RPC删除任务==================================
+REMOVE_REPEAT_TASK() {
+    sleep 3s
+    RPC_ADDRESS="localhost:${PORT}/jsonrpc"
+    if [[ "${SECRET}" ]]; then
+        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.remove","id":"NG6","params":["token:'${SECRET}'","'${TASK_GID}'"]}'
+    else
+        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.remove","id":"NG6","params":["'${TASK_GID}'"]}'
+    fi
+    curl "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}"
+}
+
+GET_RPC_RESULT() {
+    RPC_ADDRESS="localhost:${PORT}/jsonrpc"
+    RPC_RESULT="$(RPC_TASK_INFO)"
+}
+
+# ======================================================================
+
+GET_DOWNLOAD_DIR() {
+    [[ -z ${RPC_RESULT} ]] && {
+        echo -e "$(DATE_TIME) ${ERROR} Aria2 RPC interface error!"
+        exit 1
+    }
+    DOWNLOAD_DIR=$(echo "${RPC_RESULT}" | jq -r '.result.dir')
+    [[ -z "${DOWNLOAD_DIR}" || "${DOWNLOAD_DIR}" = "null" ]] && {
+        echo ${RPC_RESULT} | jq '.result'
+        echo -e "$(DATE_TIME) ${ERROR} Failed to get download directory!"
+        exit 1
+    }
+}
+
+GET_TASK_STATUS() {
+    TASK_STATUS=$(echo "${RPC_RESULT}" | jq -r '.result.status')
+    [[ -z "${TASK_STATUS}" || "${TASK_STATUS}" = "null" ]] && {
+        echo "${RPC_RESULT}" | jq '.result'
+        echo -e "$(DATE_TIME) ${ERROR} Failed to get task status!"
+        exit 1
+    }
+}
+
+GET_INFO_HASH() {
+    INFO_HASH=$(echo "${RPC_RESULT}" | jq -r '.result.infoHash')
+    if [[ -z "${INFO_HASH}" ]]; then
+        echo "${RPC_RESULT}" | jq '.result'
+        echo -e "$(DATE_TIME) ${ERROR} Failed to get Info Hash!"
+        exit 1
+    elif [[ "${INFO_HASH}" = "null" ]]; then
+        return 1
+    else
+        TORRENT_PATH="${DOWNLOAD_DIR}/${INFO_HASH}"
+        TORRENT_FILE="${DOWNLOAD_DIR}/${INFO_HASH}.torrent"
+    fi
+}
+
+
+GET_RPC_INFO() {
+    GET_RPC_RESULT
+    GET_TASK_STATUS
+    GET_DOWNLOAD_DIR
+    GET_INFO_HASH
+}
