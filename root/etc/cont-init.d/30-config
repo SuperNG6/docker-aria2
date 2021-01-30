@@ -3,7 +3,7 @@
 # extra function
 sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/stop.sh@' /config/aria2.conf
 sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/completed.sh@' /config/aria2.conf
-sed -i 's@^\(on-download-start=\).*@\1/aria2/script/start.sh@' /config/aria2.conf
+sed -i "s/.*on-download-start.*/on-download-start=\/aria2\/script\/start.sh/" /config/aria2.conf
 sed -i "s@^\(rpc-listen-port=\).*@\1${PORT}@" /config/aria2.conf
 
 # bt-save-metadata

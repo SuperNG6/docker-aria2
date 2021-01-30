@@ -18,10 +18,11 @@ PUID=1026 PGID=100
 
 # copy local files && aria2c
 COPY root/ /
+COPY darkhttpd/ /etc/cont-init.d/
 COPY --from=builder /tmp/index.html /www/index.html
 COPY --from=builder /usr/local/bin/aria2c /usr/local/bin/aria2c
 # install darkhttpd
-RUN apk add --no-cache darkhttpd curl findutils
+RUN apk add --no-cache darkhttpd curl jq findutils
 # permissions
 RUN chmod a+x /usr/local/bin/aria2c
 # volume
