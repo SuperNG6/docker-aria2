@@ -35,7 +35,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 默认开启DHT并且创建了DHT文件，加速下载
 - 包含了下载完成后自动删除.aria2文件脚本
 - 包含了执行删除正在下载任务事时自动执行删除文件（删除已完成的任务不会删除文件，请放心）和aria2文件的脚本
-- 内置最优的aria2配置文件（来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
+- 内置最优的aria2配置文件（修改自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
 - 内置400多条最新trackers（来自[XIU2 / TrackersListCollection](https://github.com/XIU2/TrackersListCollection)，感谢）
 - 每天自动更新trackers，不需要重启aria2即可生效（来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
 - 默认上海时区 Asia/Shanghai
@@ -76,6 +76,10 @@ docker pull superng6/aria2:webui-latest
 
 # Changelogs
 
+## 2021/01/31
+
+      1、文件过滤：新增关键词过滤，具体请参照`/config/文件过滤.conf`
+
 ## 2021/01/29
 
       1、新增检测重复任务功能，若已完成目录有当前任务，则取消下载，并删除任务文件，默认开启
@@ -92,7 +96,7 @@ docker pull superng6/aria2:webui-latest
    - 3、新增`setting.conf`，docker aria2 扩展功能设置
    - 4、`MOVE`、`内容过滤`、`删除空文件夹`、`回收站`等选项，移至`/config/setting.conf`，建议删除容器重新配置
 
-2、可以自定义任意二级目录，不用像之前那样手动预设二级目录里（后处理脚本正确运行）  
+2、可以自定义任意二级目录，不用像之前那样手动预设二级目录了（后处理脚本正确运行）  
 3、如果有特殊需要，想使用大改版前的版本，可以使用`stable-21-01-23`版，`docker pull superng6/aria2:stable-21-01-23`  
 4、新增历史版本，请在docker hub tags中查阅  
 
@@ -319,6 +323,28 @@ handle-torrent=rename
 # 删除重复任务，检测已完成文件夹，如果有该任务文件，则删除任务，并删除文件，仅针对文件数量大于1的任务
 # 默认`true`，可选`false`关闭该功能
 remove-repeat-task=true
+
+````
+
+### `/config/文件过滤.conf` 配置说明该
+
+````
+## 文件过滤设置(全局) ##
+
+# 仅 BT 多文件下载时有效，用于过滤无用文件。
+# 可自定义；如需启用请删除对应行的注释 # 
+
+# 排除小文件。低于此大小的文件将在下载完成后被删除。
+#min-size=10M
+
+# 保留文件类型。其它文件类型将在下载完成后被删除。
+#include-file=mp4|mkv|rmvb|mov|avi|srt|ass
+
+# 排除文件类型。排除的文件类型将在下载完成后被删除。
+#exclude-file=html|url|lnk|txt|jpg|png
+
+# 按关键词排除。包含以下关键字的文件将在下载完成后被删除。
+#keyword-file=广告1|广告2|广告3
 
 ````
 
