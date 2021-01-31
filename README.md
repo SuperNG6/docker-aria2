@@ -326,7 +326,7 @@ remove-repeat-task=true
 
 ````
 
-### `/config/文件过滤.conf` 配置说明该
+### `/config/文件过滤.conf` 配置说明
 
 ````
 ## 文件过滤设置(全局) ##
