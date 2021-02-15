@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
 
 SCRIPT_CONF="/config/setting.conf"
-RMTASK="$(grep ^remove-task "${SCRIPT_CONF}" | cut -d= -f2-)"
-MOVE="$(grep ^move "${SCRIPT_CONF}" | cut -d= -f2-)"
-CF="$(grep ^content-filter "${SCRIPT_CONF}" | cut -d= -f2-)"
-DET="$(grep ^delete-empty-dir "${SCRIPT_CONF}" | cut -d= -f2-)"
-TOR="$(grep ^handle-torrent "${SCRIPT_CONF}" | cut -d= -f2-)"
-RRT="$(grep ^remove-repeat-task "${SCRIPT_CONF}" | cut -d= -f2-)"
+
+LOAD_CONF() {
+    RMTASK="$(grep ^remove-task "${SCRIPT_CONF}" | cut -d= -f2-)"
+    MOVE="$(grep ^move-task "${SCRIPT_CONF}" | cut -d= -f2-)"
+    CF="$(grep ^content-filter "${SCRIPT_CONF}" | cut -d= -f2-)"
+    DET="$(grep ^delete-empty-dir "${SCRIPT_CONF}" | cut -d= -f2-)"
+    TOR="$(grep ^handle-torrent "${SCRIPT_CONF}" | cut -d= -f2-)"
+    RRT="$(grep ^remove-repeat-task "${SCRIPT_CONF}" | cut -d= -f2-)"
+    MPT="$(grep ^move-paused-task "${SCRIPT_CONF}" | cut -d= -f2-)"
+}
+
+SED_CONF() {
+    cp /aria2/conf/setting.conf /config/setting.conf.new
+    sed -i "s@^\(remove-task=\).*@\1${RMTASK}@" /config/setting.conf.new
+    sed -i "s@^\(move-task=\).*@\1${MOVE}@" /config/setting.conf.new
+    sed -i "s@^\(content-filter=\).*@\1${CF}@" /config/setting.conf.new
+    sed -i "s@^\(delete-empty-dir=\).*@\1${DET}@" /config/setting.conf.new
+    sed -i "s@^\(handle-torrent=\).*@\1${TOR}@" /config/setting.conf.new
+    sed -i "s@^\(remove-repeat-task=\).*@\1${RRT}@" /config/setting.conf.new
+    sed -i "s@^\(move-paused-task=\).*@\1${MPT}@" /config/setting.conf.new
+    rm -f /config/setting.conf
+    mv /config/setting.conf.new /config/setting.conf
+}
+
+LOAD_CONF

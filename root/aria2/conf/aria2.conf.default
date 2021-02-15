@@ -158,7 +158,7 @@ on-download-complete=/aria2/script/completed.sh
 #on-download-error=
 # 下载暂停后执行的命令
 # 显示下载任务信息
-#on-download-pause=/root/.aria2/info.sh
+on-download-pause=/aria2/script/pause.sh
 # 下载开始后执行的命令
 on-download-start=/aria2/script/start.sh
 

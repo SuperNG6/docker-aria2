@@ -76,6 +76,10 @@ docker pull superng6/aria2:webui-latest
 
 # Changelogs
 
+## 2021/02/15
+
+      1、新增：任务暂停后移动文件，部分任务下载至百分之99时无法下载，可以启动本选项，具体请查看`/config/setting.conf`中的详细说明
+
 ## 2021/01/31
 
       1、文件过滤：新增关键词过滤，具体请参照`/config/文件过滤.conf`
@@ -281,6 +285,7 @@ https://hub.docker.com/r/superng6/ariang
 | `-e PGID=100` |Linux用户GID|
 | `-e SECRET=yourtoken` |Aria2 token|
 | `-e CACHE=1024M` |Aria2磁盘缓存配置|
+| `-e PORT=6800` | RPC通讯端口 |
 | `-e UT=true` |启动容器时更新trackers|
 | `-e RUT=true` |每天凌晨3点更新trackers|
 | `-e SMD=true` |保存磁力链接为种子文件|
@@ -305,24 +310,30 @@ remove-task=rmaria
 # 下载完成后执行操作选项，默认`false`
 # `true`，下载完成后保留目录结构移动
 # `dmof`非自定义目录任务，单文件，不执行移动操作。自定义目录、单文件，保留目录结构移动（推荐）
-move=false
+move-task=false
 
 # 文件过滤，任务下载完成后删除不需要的文件内容，`false`、`true`
-# 由于aria2自身限制，无法在下载前取消不需要的文件（取消后也时任务完成删除文件）
+# 由于aria2自身限制，无法在下载前取消不需要的文件（只能在任务完成后删除文件）
 content-filter=false
 
 # 下载完成后删除空文件夹，默认`true`，需要开启文件过滤功能才能生效
 # 开启内容过滤后，可能会产生空文件夹，开启`DET`选项后可以删除当前任务中的空文件夹
 delete-empty-dir=true
 
-# 是否删除种子文件，默认保留`retain`,可选删除`delete`，备份种子文件`backup`、重命名种子文件`rename`，重命名种子文件并备份`backup-rename`
-# 在开启`SMD`选项后生效，上传种子无法更名、移动、删除，仅对通过磁力链接保存的种子生效
+# 对磁力链接生成的种子文件进行操作
+# 在开启`SMD`选项后生效，上传的种子无法更名、移动、删除，仅对通过磁力链接保存的种子生效
+# 默认保留`retain`,可选删除`delete`，备份种子文件`backup`、重命名种子文件`rename`，重命名种子文件并备份`backup-rename`
 # 种子备份位于`/config/backup-torrent`
 handle-torrent=rename
 
-# 删除重复任务，检测已完成文件夹，如果有该任务文件，则删除任务，并删除文件，仅针对文件数量大于1的任务
+# 删除重复任务，检测已完成文件夹，如果有该任务文件，则删除任务，并删除文件，仅针对文件数量大于1的任务生效
 # 默认`true`，可选`false`关闭该功能
 remove-repeat-task=true
+
+# 任务暂停后移动文件，部分任务下载至百分之99时无法下载，可以启动本选项
+# 建议仅在需要时开启该功能，使用完后请记得关闭
+# 默认`false`，可选`true`开启该功能
+move-paused-task=false
 
 ````
 
@@ -354,13 +365,14 @@ remove-repeat-task=true
 
 __执行命令__
 ````
-docker create \
+docker run -d \
   --name=aria2 \
   -e PUID=1026 \
   -e PGID=100 \
   -e TZ=Asia/Shanghai \
   -e SECRET=yourtoken \
   -e CACHE=512M \
+  -e PORT=6800 \
   -e UT=true \
   -e RUT=true \
   -e FA=falloc \
@@ -388,6 +400,7 @@ services:
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
       - CACHE=512M
+      - PORT=6800
       - UT=true
       - QUIET=true
       - SMD=false
@@ -395,10 +408,10 @@ services:
       - $PWD/config:/config
       - $PWD/downloads:/downloads
     ports:
-      - 6800:6800
       - 6881:6881
       - 6881:6881/udp
-    restart: unless-stopped 
+      - 6800:6800
+    restart: unless-stopped   
 ````
 
 # Preview

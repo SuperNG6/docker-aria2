@@ -10,6 +10,7 @@ services:
       - TZ=Asia/Shanghai
       - SECRET=yourtoken
       - CACHE=512M
+      - PORT=6800
       - UT=true
       - QUIET=true
       - SMD=false
