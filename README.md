@@ -79,6 +79,7 @@ docker pull superng6/aria2:webui-latest
 ## 2021/02/15
 
       1、新增：任务暂停后移动文件，部分任务下载至百分之99时无法下载，可以启动本选项，具体请查看`/config/setting.conf`中的详细说明
+      2、更新AriaNg 1.2.0(Add dark theme)
 
 ## 2021/01/31
 

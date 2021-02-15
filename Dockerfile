@@ -2,7 +2,7 @@ FROM lsiobase/alpine:3.13 as builder
 
 # download static aria2c
 RUN apk add --no-cache curl \
-&& curl -fsSL https://raw.githubusercontent.com/SuperNG6/docker-aria2/master/install.sh | bash
+&& curl -fsSL https://git.io/docker-aria2c.sh | bash
 
 # install static aria2c
 FROM lsiobase/alpine:3.13
