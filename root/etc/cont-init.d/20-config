@@ -3,6 +3,7 @@
 # make folders
 mkdir -p \
 	/config/ssl \
+  /config/logs \
   /config/backup-torrent \
   /downloads/completed \
   /downloads/recycle
@@ -40,22 +41,29 @@ then
   touch /config/dht.dat
 fi
 
-if [[ ! -e /config/move.log ]]
+# 2021.03.15 变更：日志文件地址变更为`/config/logs`
+if [[ -e /config/move.log || -e /config/recycle.log || -e /config/delete.log || -e /config/文件过滤日志.log ]]
 then
-  touch /config/move.log
+  mv /config/*.log /config/logs/
 fi
 
-if [[ ! -e /config/recycle.log ]]
+# 创建日志文件
+if [[ ! -e /config/logs/move.log ]]
 then
-  touch /config/recycle.log
+  touch /config/logs/move.log
 fi
 
-if [[ ! -e /config/delete.log ]]
+if [[ ! -e /config/logs/recycle.log ]]
 then
-  touch /config/delete.log
+  touch /config/logs/recycle.log
 fi
 
-if [[ ! -e /config/文件过滤日志.log ]]
+if [[ ! -e /config/logs/delete.log ]]
 then
-  touch /config/文件过滤日志.log
+  touch /config/logs/delete.log
+fi
+
+if [[ ! -e /config/logs/文件过滤日志.log ]]
+then
+  touch /config/logs/文件过滤日志.log
 fi

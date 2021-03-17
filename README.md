@@ -75,6 +75,12 @@ docker pull superng6/aria2:webui-latest
 ## 往后所有新增功能设置选项均在`/config/setting.conf`
 
 # Changelogs
+## 2021/03/17
+
+      1、变更：日志文件地址变更为`/config/logs`
+      2、修复：任务类型为文件夹内的单文件BT下载任务会出现移动文件后文件夹保留的情况
+      3、修复：修复部分磁力链接保存为种子文件并重命名失败的情况
+      4、更新：更新webui至AriaNg v1.2.1
 
 ## 2021/02/15
 
