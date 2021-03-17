@@ -6,11 +6,11 @@ GET_BASE_PATH() {
     # 种子备份目录
     BAK_TORRENT_DIR="/config/backup-torrent"
     # 日志、配置文件保存路径
-    SCRIPT_CONF="/config/文件过滤.conf"
-    CF_LOG="/config/文件过滤日志.log"
-    MOVE_LOG="/config/move.log"
-    DELETE_LOG="/config/delete.log"
-    RECYCLE_LOG="/config/recycle.log"
+    SCRIPT_CONF="/config/logs/文件过滤.conf"
+    CF_LOG="/config/logs/文件过滤日志.log"
+    MOVE_LOG="/config/logs/move.log"
+    DELETE_LOG="/config/logs/delete.log"
+    RECYCLE_LOG="/config/logs/recycle.log"
 }
 
 # ========================GET_TARGET_PATH==============================
@@ -213,12 +213,12 @@ CHECK_TORRENT() {
 GET_TARGET_PATH() {
     RELATIVE_PATH="${SOURCE_PATH#${DOWNLOAD_PATH}/}"
     TARGET_PATH="${TARGET_DIR}/$(dirname "${RELATIVE_PATH}")"
+    # 出现 // 说明路径获取失败，为防止后续操作继续执行返回 error
     if [ "${TARGET_PATH}" == "${TARGET_DIR}//" ]; then
-        # 出现 // 说明路径获取失败，为防止后续操作继续执行返回 error
         GET_PATH_INFO="error"
         return
+    # /downloads根目录下载会出现 /.
     elif [ "${TARGET_PATH}" = "${TARGET_DIR}/." ]; then
-        # /downloads根目录下载会出现 /.
         TARGET_PATH="${TARGET_DIR}"
     fi
 }
@@ -226,16 +226,19 @@ GET_TARGET_PATH() {
 GET_FINAL_PATH() { 
     if [ -z "${FILE_PATH}" ]; then
         return
-    elif [ "${FILE_NUM}" -eq 1 ]; then
-        SOURCE_PATH="${FILE_PATH}"
-        RELATIVE_PATH="${FILE_PATH#${DOWNLOAD_DIR}/}"
-        TASK_PATH="${RELATIVE_PATH%.*}"
-        GET_TARGET_PATH
-    elif [ "${FILE_NUM}" -gt 1 ]; then
+    # 判断是否为在文件夹内的单文件BT下载任务（会出现移动文件后文件夹保留的情况），如果是则降级到目录
+    elif [ "${FILE_NUM}" -gt 1 ] || [ -e "$(dirname "${FILE_PATH}").aria2" ]; then
         RELATIVE_PATH="${FILE_PATH#${DOWNLOAD_DIR}/}"
         TASK_PATH="${RELATIVE_PATH%%/*}"
         SOURCE_PATH="${DOWNLOAD_DIR}/${TASK_PATH}"
         GET_TARGET_PATH
         COMPLETED_DIR="${TARGET_PATH}/${TASK_PATH}"
+        return
+    elif [ "${FILE_NUM}" -eq 1 ]; then
+        SOURCE_PATH="${FILE_PATH}"
+        RELATIVE_PATH="${FILE_PATH#${DOWNLOAD_DIR}/}"
+        TASK_PATH="${RELATIVE_PATH%.*}"
+        GET_TARGET_PATH
+        return
     fi
 }
