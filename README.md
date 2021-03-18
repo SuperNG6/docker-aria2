@@ -75,6 +75,11 @@ docker pull superng6/aria2:webui-latest
 ## 往后所有新增功能设置选项均在`/config/setting.conf`
 
 # Changelogs
+## 2021/03/18
+
+      1、控制台任务信息显示支持中文
+      2、默认开启保存磁力链接为种子文件，并开启重命名备份，种子备份位于`/config/backup-torrent`
+
 ## 2021/03/17
 
       1、变更：日志文件地址变更为`/config/logs`
@@ -384,7 +389,7 @@ docker run -d \
   -e RUT=true \
   -e FA=falloc \
   -e QUIET=true \
-  -e SMD=false \
+  -e SMD=true \
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
@@ -410,7 +415,7 @@ services:
       - PORT=6800
       - UT=true
       - QUIET=true
-      - SMD=false
+      - SMD=true
     volumes:
       - $PWD/config:/config
       - $PWD/downloads:/downloads
