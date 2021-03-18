@@ -192,13 +192,13 @@ HANDLE_TORRENT() {
         return
     elif [ "${TOR}" = "rename" ]; then
         echo -e "$(DATE_TIME) ${INFO} deleted ${TORRENT_FILE}"
-        mv -f "${TORRENT_FILE}" "${TASK_PATH}.torrent"
+        mv -f "${TORRENT_FILE}" "${TASK_NAME}.torrent"
     elif [ "${TOR}" = "backup" ]; then
         echo -e "$(DATE_TIME) ${INFO} backup ${TORRENT_FILE}"
         mv -vf "${TORRENT_FILE}" "${BAK_TORRENT_DIR}"
     elif [ "${TOR}" = "backup-rename" ]; then
-        echo -e "$(DATE_TIME) ${INFO} backup ${BAK_TORRENT_DIR}/${TASK_PATH}.torrent"
-        mv -f "${TORRENT_FILE}" "${BAK_TORRENT_DIR}/${TASK_PATH}.torrent"
+        echo -e "$(DATE_TIME) ${INFO} backup ${BAK_TORRENT_DIR}/${TASK_NAME}.torrent"
+        mv -f "${TORRENT_FILE}" "${BAK_TORRENT_DIR}/${TASK_NAME}.torrent"
     fi
 }
 
@@ -227,17 +227,18 @@ GET_FINAL_PATH() {
     if [ -z "${FILE_PATH}" ]; then
         return
     # 判断是否为在文件夹内的单文件BT下载任务（会出现移动文件后文件夹保留的情况），如果是则降级到目录
-    elif [ "${FILE_NUM}" -gt 1 ] || [ -e "$(dirname "${FILE_PATH}").aria2" ]; then
+    elif [ "${FILE_NUM}" -gt 1 ] || [ -d "${$(dirname "${FILE_PATH}")#${DOWNLOAD_DIR}/}" ]; then
         RELATIVE_PATH="${FILE_PATH#${DOWNLOAD_DIR}/}"
-        TASK_PATH="${RELATIVE_PATH%%/*}"
-        SOURCE_PATH="${DOWNLOAD_DIR}/${TASK_PATH}"
+        TASK_NAME="${RELATIVE_PATH%%/*}"
+        SOURCE_PATH="${DOWNLOAD_DIR}/${TASK_NAME}"
         GET_TARGET_PATH
-        COMPLETED_DIR="${TARGET_PATH}/${TASK_PATH}"
+        COMPLETED_DIR="${TARGET_PATH}/${TASK_NAME}"
         return
     elif [ "${FILE_NUM}" -eq 1 ]; then
         SOURCE_PATH="${FILE_PATH}"
         RELATIVE_PATH="${FILE_PATH#${DOWNLOAD_DIR}/}"
-        TASK_PATH="${RELATIVE_PATH%.*}"
+        # 单文件，去除.
+        TASK_NAME="${RELATIVE_PATH%.*}"
         GET_TARGET_PATH
         return
     fi
