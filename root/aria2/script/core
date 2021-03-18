@@ -227,7 +227,8 @@ GET_FINAL_PATH() {
     if [ -z "${FILE_PATH}" ]; then
         return
     # 判断是否为在文件夹内的单文件BT下载任务（会出现移动文件后文件夹保留的情况），如果是则降级到目录
-    elif [ "${FILE_NUM}" -gt 1 ] || [ "${$(dirname "${FILE_PATH}")}" != "${DOWNLOAD_DIR}" ]; then
+    # 修复Mac下能够正常运行，Linux下失败的问题
+    elif [ "${FILE_NUM}" -gt 1 ] || [ "$(dirname "${FILE_PATH}")" != "${DOWNLOAD_DIR}" ]; then
         RELATIVE_PATH="${FILE_PATH#${DOWNLOAD_DIR}/}"
         TASK_NAME="${RELATIVE_PATH%%/*}"
         SOURCE_PATH="${DOWNLOAD_DIR}/${TASK_NAME}"
