@@ -13,7 +13,7 @@ services:
       - PORT=6800
       - UT=true
       - QUIET=true
-      - SMD=false
+      - SMD=true
     volumes:
       - $PWD/config:/config
       - $PWD/downloads:/downloads
