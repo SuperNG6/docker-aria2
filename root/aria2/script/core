@@ -6,7 +6,7 @@ GET_BASE_PATH() {
     # 种子备份目录
     BAK_TORRENT_DIR="/config/backup-torrent"
     # 日志、配置文件保存路径
-    SCRIPT_CONF="/config/logs/文件过滤.conf"
+    SCRIPT_CONF="/config/文件过滤.conf"
     CF_LOG="/config/logs/文件过滤日志.log"
     MOVE_LOG="/config/logs/move.log"
     DELETE_LOG="/config/logs/delete.log"
