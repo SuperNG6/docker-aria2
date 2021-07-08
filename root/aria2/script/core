@@ -74,15 +74,19 @@ LOAD_SCRIPT_CONF() {
     INCLUDE_FILE="$(grep ^include-file "${SCRIPT_CONF}" | cut -d= -f2-)"
     EXCLUDE_FILE="$(grep ^exclude-file "${SCRIPT_CONF}" | cut -d= -f2-)"
     KEYWORD_FILE="$(grep ^keyword-file "${SCRIPT_CONF}" | cut -d= -f2-)"
+    INCLUDE_FILE_REGEX="$(grep ^include-file-regex "${SCRIPT_CONF}" | cut -d= -f2-)"
+    EXCLUDE_FILE_REGEX="$(grep ^exclude-file-regex "${SCRIPT_CONF}" | cut -d= -f2-)"
 }
 
 DELETE_EXCLUDE_FILE() {
-    if [[ ${FILE_NUM} -gt 1 ]] && [ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} || -n ${KEYWORD_FILE} ]]; then
+    if [[ ${FILE_NUM} -gt 1 ]] && [ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} || -n ${KEYWORD_FILE} || -n ${EXCLUDE_FILE_REGEX} || -n ${INCLUDE_FILE_REGEX} ]]; then
         echo -e "$(DATE_TIME) ${INFO} 删除不需要的文件..."
         [[ -n ${MIN_SIZE} ]] && find "${SOURCE_PATH}" -type f -size -${MIN_SIZE} -print0 | xargs -0 rm -vf | tee -a ${CF_LOG}
         [[ -n ${EXCLUDE_FILE} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG}
         [[ -n ${KEYWORD_FILE} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*(${KEYWORD_FILE}).*" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG}
         [[ -n ${INCLUDE_FILE} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG}
+        [[ -n ${EXCLUDE_FILE_REGEX} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex "${EXCLUDE_FILE_REGEX}" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG}
+        [[ -n ${INCLUDE_FILE_REGEX} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex "${INCLUDE_FILE_REGEX}" -print0 | xargs -0 rm -vf | tee -a ${CF_LOG}
     fi
 }
 
@@ -211,7 +215,7 @@ CHECK_TORRENT() {
 # =============================判断文件路径=============================
 
 GET_TARGET_PATH() {
-    RELATIVE_PATH="${SOURCE_PATH#${DOWNLOAD_PATH}/}"
+    RELATIVE_PATH="${SOURCE_PATH#"${DOWNLOAD_PATH}/"}"
     TARGET_PATH="${TARGET_DIR}/$(dirname "${RELATIVE_PATH}")"
     # 出现 // 说明路径获取失败，为防止后续操作继续执行返回 error
     if [ "${TARGET_PATH}" == "${TARGET_DIR}//" ]; then
@@ -229,7 +233,7 @@ GET_FINAL_PATH() {
     # 判断是否为在文件夹内的单文件BT下载任务（会出现移动文件后文件夹保留的情况），如果是则降级到目录
     # 修复Mac下能够正常运行，Linux下失败的问题
     elif [ "${FILE_NUM}" -gt 1 ] || [ "$(dirname "${FILE_PATH}")" != "${DOWNLOAD_DIR}" ]; then
-        RELATIVE_PATH="${FILE_PATH#${DOWNLOAD_DIR}/}"
+        RELATIVE_PATH="${FILE_PATH#"${DOWNLOAD_DIR}/"}"
         TASK_NAME="${RELATIVE_PATH%%/*}"
         SOURCE_PATH="${DOWNLOAD_DIR}/${TASK_NAME}"
         GET_TARGET_PATH
@@ -237,7 +241,7 @@ GET_FINAL_PATH() {
         return
     elif [ "${FILE_NUM}" -eq 1 ]; then
         SOURCE_PATH="${FILE_PATH}"
-        RELATIVE_PATH="${FILE_PATH#${DOWNLOAD_DIR}/}"
+        RELATIVE_PATH="${FILE_PATH#"${DOWNLOAD_DIR}/"}"
         # 单文件，去除.
         TASK_NAME="${RELATIVE_PATH%.*}"
         GET_TARGET_PATH
