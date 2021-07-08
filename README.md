@@ -77,10 +77,10 @@ docker pull superng6/aria2:webui-latest
 # Changelogs
 ## 2021/07/08
 
-      1、更新P3TERX Aria2脚本
-      2、新增 正则表达式文件过滤功能。感谢 @hereisderek
-      3、新增 支持自定义多个 tracker 列表 感谢 @hereisderek；ENV：CUSTOM_TRACKER_URL=
-      4、更新webui-AriaNg 1.2.2
+      1、更新：P3TERX Aria2脚本
+      2、更新：webui-AriaNg 1.2.2
+      3、新增：正则表达式文件过滤功能。感谢 @hereisderek
+      4、新增：支持自定义多个 tracker 列表 感谢 @hereisderek；ENV：CUSTOM_TRACKER_URL=
 
 ## 2021/03/18
 
