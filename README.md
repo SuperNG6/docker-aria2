@@ -75,6 +75,13 @@ docker pull superng6/aria2:webui-latest
 ## 往后所有新增功能设置选项均在`/config/setting.conf`
 
 # Changelogs
+## 2021/07/08
+
+      1、更新P3TERX Aria2脚本
+      2、新增 正则表达式文件过滤功能。感谢 @hereisderek
+      3、新增 支持自定义多个 tracker 列表 感谢 @hereisderek
+      4、ENV：CUSTOM_TRACKER_URL=
+
 ## 2021/03/18
 
       1、控制台任务信息显示支持中文
@@ -368,6 +375,13 @@ move-paused-task=false
 
 # 按关键词排除。包含以下关键字的文件将在下载完成后被删除。
 #keyword-file=广告1|广告2|广告3
+
+# 保留文件(正则表达式)。其它文件类型将在下载完成后被删除。
+#include-file-regex=
+
+# 排除文件(正则表达式)。排除的文件类型将在下载完成后被删除。
+# 示例为排除比特彗星的 padding file
+#exclude-file-regex="(.*/)_+(padding)(_*)(file)(.*)(_+)"
 
 ````
 

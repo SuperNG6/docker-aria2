@@ -147,6 +147,10 @@ bt-remove-unselected-file=true
 # 保存上传的种子，默认:true
 #rpc-save-upload-metadata=false
 
+# 是否发送 Want-Digest HTTP 标头。默认：false (不发送)
+# 部分网站会把此标头作为特征来检测和屏蔽 Aria2
+#http-want-digest=false
+
 ## 执行额外命令 ##
 
 # 下载停止后执行的命令（下载停止包含下载错误和下载完成这两个状态，如果没有单独设置，则执行此项命令。）
