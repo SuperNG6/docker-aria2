@@ -75,12 +75,24 @@ docker pull superng6/aria2:webui-latest
 ## 往后所有新增功能设置选项均在`/config/setting.conf`
 
 # Changelogs
+## 2021/08/14
+
+      1、添加WEBUI_PORT设置，默认`WEBUI_PORT=8080`
+
+## 2021/07/28
+
+      1、自定义tracker地址变更至`/config/setting.conf`
+         现在无需重启容器也能方便修改自定义tracker了
+
+<details>
+   <summary>Change Log History</summary>
+
 ## 2021/07/08
 
-      1、更新P3TERX Aria2脚本
-      2、新增 正则表达式文件过滤功能。感谢 @hereisderek
-      3、新增 支持自定义多个 tracker 列表 感谢 @hereisderek
-      4、ENV：CUSTOM_TRACKER_URL=
+      1、更新：P3TERX Aria2脚本
+      2、更新：webui-AriaNg 1.2.2
+      3、新增：正则表达式文件过滤功能。感谢 @hereisderek
+      4、新增：支持自定义多个 tracker 列表 感谢 @hereisderek；ENV：CUSTOM_TRACKER_URL=
 
 ## 2021/03/18
 
@@ -133,9 +145,6 @@ docker pull superng6/aria2:webui-latest
       1、新增任务文件过滤，由于aria2自身限制，只能在下载后才能移出文件
          请在/config/文件过滤.conf中设置
          开关`CF=true`，在同时开启下载后移动文件选项时生效
-
-<details>
-   <summary>Change Log History</summary>
 
 ## 2020/07/27
 
@@ -323,6 +332,9 @@ https://hub.docker.com/r/superng6/ariang
 # 重置配置文件：删除本文件后重启容器
 # 所有设置无需重启容器,即刻生效
 
+# 自定义tracker地址
+custom-tracker-url="https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/best_aria2.txt"
+
 # 删除任务，`delete`为删除任务后删除文件，`recycle`为删除文件至回收站，`rmaria`为只删除.aria2文件
 remove-task=rmaria
 
@@ -343,7 +355,7 @@ delete-empty-dir=true
 # 在开启`SMD`选项后生效，上传的种子无法更名、移动、删除，仅对通过磁力链接保存的种子生效
 # 默认保留`retain`,可选删除`delete`，备份种子文件`backup`、重命名种子文件`rename`，重命名种子文件并备份`backup-rename`
 # 种子备份位于`/config/backup-torrent`
-handle-torrent=rename
+handle-torrent=backup-rename
 
 # 删除重复任务，检测已完成文件夹，如果有该任务文件，则删除任务，并删除文件，仅针对文件数量大于1的任务生效
 # 默认`true`，可选`false`关闭该功能
@@ -390,7 +402,7 @@ move-paused-task=false
 输入 ``id 你的用户id`` 获取到你的UID和GID，替换命令中的PUID、PGID
 
 __执行命令__
-````
+```bash
 docker run -d \
   --name=aria2 \
   -e PUID=1026 \
@@ -399,6 +411,7 @@ docker run -d \
   -e SECRET=yourtoken \
   -e CACHE=512M \
   -e PORT=6800 \
+  -e WEBUI_PORT=8080 \
   -e UT=true \
   -e RUT=true \
   -e FA=falloc \
@@ -407,18 +420,19 @@ docker run -d \
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
+  -p 8080:8080 \
   -v $PWD/config:/config \
   -v $PWD/downloads:/downloads \
   --restart unless-stopped \
-  superng6/aria2
-  ````
+  superng6/aria2:webui-latest
+  ```
 docker-compose  
-  ````
+  ```yml
 version: "3"
 
 services:
   aria2:
-    image: superng6/aria2
+    image: superng6/aria2:webui-latest
     container_name: aria2
     environment:
       - PUID=1026
@@ -437,8 +451,9 @@ services:
       - 6881:6881
       - 6881:6881/udp
       - 6800:6800
+      - 8080:8080
     restart: unless-stopped   
-````
+```
 
 # Preview
 ![N94s7q](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/N94s7q.jpg)

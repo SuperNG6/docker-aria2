@@ -3,6 +3,7 @@
 SCRIPT_CONF="/config/setting.conf"
 
 LOAD_CONF() {
+    CTU="$(grep ^custom-tracker-url "${SCRIPT_CONF}" | cut -d= -f2-)"
     RMTASK="$(grep ^remove-task "${SCRIPT_CONF}" | cut -d= -f2-)"
     MOVE="$(grep ^move-task "${SCRIPT_CONF}" | cut -d= -f2-)"
     CF="$(grep ^content-filter "${SCRIPT_CONF}" | cut -d= -f2-)"
@@ -14,6 +15,7 @@ LOAD_CONF() {
 
 SED_CONF() {
     cp /aria2/conf/setting.conf /config/setting.conf.new
+    sed -i "s@^\(custom-tracker-url=\).*@\1${CTU}@" /config/setting.conf.new
     sed -i "s@^\(remove-task=\).*@\1${RMTASK}@" /config/setting.conf.new
     sed -i "s@^\(move-task=\).*@\1${MOVE}@" /config/setting.conf.new
     sed -i "s@^\(content-filter=\).*@\1${CF}@" /config/setting.conf.new
