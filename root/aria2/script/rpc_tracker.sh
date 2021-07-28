@@ -10,6 +10,7 @@ INFO="[${GREEN_FONT_PREFIX}INFO${FONT_COLOR_SUFFIX}]"
 ERROR="[${RED_FONT_PREFIX}ERROR${FONT_COLOR_SUFFIX}]"
 ARIA2_CONF=${1:-aria2.conf}
 DOWNLOADER="curl -fsSL --connect-timeout 3 --max-time 3 --retry 2"
+SCRIPT_CONF="/config/setting.conf"
 NL=$'\n'
 
 DATE_TIME() {
@@ -17,6 +18,7 @@ DATE_TIME() {
 }
 
 GET_TRACKERS() {
+    CUSTOM_TRACKER_URL="$(grep ^custom-tracker-url "${SCRIPT_CONF}" | cut -d= -f2-)"
     if [[ -z "${CUSTOM_TRACKER_URL}" ]]; then
         echo && echo -e "$(DATE_TIME) ${INFO} Get BT trackers..."
         TRACKER=$(

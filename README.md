@@ -75,6 +75,11 @@ docker pull superng6/aria2:webui-latest
 ## 往后所有新增功能设置选项均在`/config/setting.conf`
 
 # Changelogs
+## 2021/07/28
+
+      1、自定义tracker地址变更至`/config/setting.conf`
+         现在无需重启容器也能方便修改自定义tracker了
+         
 ## 2021/07/08
 
       1、更新：P3TERX Aria2脚本
@@ -323,6 +328,9 @@ https://hub.docker.com/r/superng6/ariang
 # 重置配置文件：删除本文件后重启容器
 # 所有设置无需重启容器,即刻生效
 
+# 自定义tracker地址
+custom-tracker-url="https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/best_aria2.txt"
+
 # 删除任务，`delete`为删除任务后删除文件，`recycle`为删除文件至回收站，`rmaria`为只删除.aria2文件
 remove-task=rmaria
 
@@ -343,7 +351,7 @@ delete-empty-dir=true
 # 在开启`SMD`选项后生效，上传的种子无法更名、移动、删除，仅对通过磁力链接保存的种子生效
 # 默认保留`retain`,可选删除`delete`，备份种子文件`backup`、重命名种子文件`rename`，重命名种子文件并备份`backup-rename`
 # 种子备份位于`/config/backup-torrent`
-handle-torrent=rename
+handle-torrent=backup-rename
 
 # 删除重复任务，检测已完成文件夹，如果有该任务文件，则删除任务，并删除文件，仅针对文件数量大于1的任务生效
 # 默认`true`，可选`false`关闭该功能
