@@ -83,7 +83,10 @@ docker pull superng6/aria2:webui-latest
 
       1、自定义tracker地址变更至`/config/setting.conf`
          现在无需重启容器也能方便修改自定义tracker了
-         
+
+<details>
+   <summary>Change Log History</summary>
+
 ## 2021/07/08
 
       1、更新：P3TERX Aria2脚本
@@ -142,9 +145,6 @@ docker pull superng6/aria2:webui-latest
       1、新增任务文件过滤，由于aria2自身限制，只能在下载后才能移出文件
          请在/config/文件过滤.conf中设置
          开关`CF=true`，在同时开启下载后移动文件选项时生效
-
-<details>
-   <summary>Change Log History</summary>
 
 ## 2020/07/27
 
@@ -402,7 +402,7 @@ move-paused-task=false
 输入 ``id 你的用户id`` 获取到你的UID和GID，替换命令中的PUID、PGID
 
 __执行命令__
-````
+```bash
 docker run -d \
   --name=aria2 \
   -e PUID=1026 \
@@ -411,6 +411,7 @@ docker run -d \
   -e SECRET=yourtoken \
   -e CACHE=512M \
   -e PORT=6800 \
+  -e WEBUI_PORT=8080 \
   -e UT=true \
   -e RUT=true \
   -e FA=falloc \
@@ -419,18 +420,19 @@ docker run -d \
   -p 6881:6881 \
   -p 6881:6881/udp \
   -p 6800:6800 \
+  -p 8080:8080 \
   -v $PWD/config:/config \
   -v $PWD/downloads:/downloads \
   --restart unless-stopped \
-  superng6/aria2
-  ````
+  superng6/aria2:webui-latest
+  ```
 docker-compose  
-  ````
+  ```yml
 version: "3"
 
 services:
   aria2:
-    image: superng6/aria2
+    image: superng6/aria2:webui-latest
     container_name: aria2
     environment:
       - PUID=1026
@@ -449,8 +451,9 @@ services:
       - 6881:6881
       - 6881:6881/udp
       - 6800:6800
+      - 8080:8080
     restart: unless-stopped   
-````
+```
 
 # Preview
 ![N94s7q](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/N94s7q.jpg)
