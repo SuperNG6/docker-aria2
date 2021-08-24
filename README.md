@@ -75,6 +75,10 @@ docker pull superng6/aria2:webui-latest
 ## 往后所有新增功能设置选项均在`/config/setting.conf`
 
 # Changelogs
+## 2021/08/24
+
+      1、更新 aria2 1.36.0
+      
 ## 2021/08/14
 
       1、添加WEBUI_PORT设置，默认`WEBUI_PORT=8080`
