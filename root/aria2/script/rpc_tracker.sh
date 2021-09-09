@@ -18,8 +18,7 @@ DATE_TIME() {
 }
 
 GET_TRACKERS() {
-    CUSTOM_TRACKER_URL="$(grep ^custom-tracker-url "${SCRIPT_CONF}" | cut -d= -f2-)"
-    if [[ -z "${CUSTOM_TRACKER_URL}" ]]; then
+    if [[ -z "${CTU}" ]]; then
         echo && echo -e "$(DATE_TIME) ${INFO} Get BT trackers..."
         TRACKER=$(
             ${DOWNLOADER} https://trackerslist.com/all_aria2.txt ||
@@ -27,8 +26,8 @@ GET_TRACKERS() {
                 ${DOWNLOADER} https://trackers.p3terx.com/all_aria2.txt
         )
     else
-        echo && echo -e "$(DATE_TIME) ${INFO} Get BT trackers from url(s):${CUSTOM_TRACKER_URL} ..."
-        URLS=$(echo ${CUSTOM_TRACKER_URL} | tr "," "$NL")
+        echo && echo -e "$(DATE_TIME) ${INFO} Get BT trackers from url(s):${CTU} ..."
+        URLS=$(echo ${CTU} | tr "," "$NL")
         for URL in $URLS; do
             TRACKER+="$(${DOWNLOADER} ${URL} | tr "," "\n")$NL"
         done

@@ -1,9 +1,9 @@
-version: "3"
-
+version: "3.1"
 services:
   aria2:
-    image: superng6/aria2
+    image: superng6/aria2:webui-latest
     container_name: aria2
+    network_mode: host
     environment:
       - PUID=1026
       - PGID=100
@@ -11,15 +11,12 @@ services:
       - SECRET=yourtoken
       - CACHE=512M
       - PORT=6800
+      - WEBUI_PORT=8080
+      - DLPORT=32516
       - UT=true
       - QUIET=true
       - SMD=true
     volumes:
       - $PWD/config:/config
       - $PWD/downloads:/downloads
-    ports:
-      - 6881:6881
-      - 6881:6881/udp
-      - 6800:6800
     restart: unless-stopped   
-    

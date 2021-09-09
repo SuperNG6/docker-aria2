@@ -3,7 +3,6 @@
 SCRIPT_CONF="/config/setting.conf"
 
 LOAD_CONF() {
-    CTU="$(grep ^custom-tracker-url "${SCRIPT_CONF}" | cut -d= -f2-)"
     RMTASK="$(grep ^remove-task "${SCRIPT_CONF}" | cut -d= -f2-)"
     MOVE="$(grep ^move-task "${SCRIPT_CONF}" | cut -d= -f2-)"
     CF="$(grep ^content-filter "${SCRIPT_CONF}" | cut -d= -f2-)"
@@ -16,17 +15,7 @@ LOAD_CONF() {
 SED_CONF() {
     # 复制用户配置文件
     cp /aria2/conf/setting.conf /config/setting.conf.new
-    # 保留参数
-    CTU="$(grep ^custom-tracker-url "${SCRIPT_CONF}" | cut -d= -f2-)"
-    RMTASK="$(grep ^remove-task "${SCRIPT_CONF}" | cut -d= -f2-)"
-    MOVE="$(grep ^move-task "${SCRIPT_CONF}" | cut -d= -f2-)"
-    CF="$(grep ^content-filter "${SCRIPT_CONF}" | cut -d= -f2-)"
-    DET="$(grep ^delete-empty-dir "${SCRIPT_CONF}" | cut -d= -f2-)"
-    TOR="$(grep ^handle-torrent "${SCRIPT_CONF}" | cut -d= -f2-)"
-    RRT="$(grep ^remove-repeat-task "${SCRIPT_CONF}" | cut -d= -f2-)"
-    MPT="$(grep ^move-paused-task "${SCRIPT_CONF}" | cut -d= -f2-)"
     # 复原用户配置文件参数
-    sed -i "s@^\(custom-tracker-url=\).*@\1${CTU}@" /config/setting.conf.new
     sed -i "s@^\(remove-task=\).*@\1${RMTASK}@" /config/setting.conf.new
     sed -i "s@^\(move-task=\).*@\1${MOVE}@" /config/setting.conf.new
     sed -i "s@^\(content-filter=\).*@\1${CF}@" /config/setting.conf.new
@@ -35,9 +24,7 @@ SED_CONF() {
     sed -i "s@^\(remove-repeat-task=\).*@\1${RRT}@" /config/setting.conf.new
     sed -i "s@^\(move-paused-task=\).*@\1${MPT}@" /config/setting.conf.new
     # 如某项参数不存在，则使用默认参数，防止程序运行出错
-    if [[ -z "${CTU}" ]]; then
-        # 无所谓
-    elif [[ -z "${RMTASK}" ]]; then
+    if [[ -z "${RMTASK}" ]]; then
         sed -i "s@^\(remove-task=\).*@\1rmaria@" /config/setting.conf.new
     elif [[ -z "${MOVE}" ]]; then
         sed -i "s@^\(move-task=\).*@\1false@" /config/setting.conf.new

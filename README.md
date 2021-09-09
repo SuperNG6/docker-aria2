@@ -14,17 +14,16 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
    
 - 没有配置UID和GID
   > 这关系到你下载的文件的权限问题，默认是root权限，很难管理
-- 掺杂了不必要的东西
-   > 大量aria2 images都包含了webui，我觉得根本没有必要
-   > 随便找一个在线的aria2控制台即可
-   > 一个容器最好只跑一个服务
  - 端口不全
    > 绝大多数的aria2 images 都只开放了6800端口
    > 下载速度息息相关的BT下载DTH监听端口、BT下载监听端口，需要expose出来
+   > 支持修改`DHT网络监听端口`和`BT监听端口`，部分网络6881端口已被封禁，建议修改
  - 没有自动删除.aria2文件的自动执行脚本
    > aria2建立下载任务后会自动生成.aria2文件，aria2自身提供了api可以触发执行脚本
  - 没有回收站
    > 不小心删除文件后无法找回，现在有了回收站，再也不用担心误删了
+ - 没有任务转移功能
+   > NAS下载，建议使用SSD盘，减少硬盘噪音，下载完成后自动保留目录结构转移到HDD硬盘中
 # 本镜像的一些优点
 - 全平台架构`x86-64`、`arm64`、`armhf`,统一latest tag
 - 做了usermapping，使用你自己的账户权限来运行，这点对于群辉来说尤其重要
@@ -73,6 +72,11 @@ docker pull superng6/aria2:webui-latest
 
 
 ## 往后所有新增功能设置选项均在`/config/setting.conf`
+### 额外补充文章  
+群晖 DS918+扩展 – M.2 NVMe SSD 缓存变储存空间  
+https://sleele.com/2021/09/04/synology-nas-m2nvme-ssd-cache-change-to-storage-pool/  
+NAS SSD临时下载盘，Aria2+qbittorrent配置教程  
+https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
 ## 2021/09/09
@@ -81,6 +85,7 @@ docker pull superng6/aria2:webui-latest
       2、增强程序健壮性，"/config/setting.conf"的参数误删除也会使用默认参数
       3、下个版本可能会合并webui版和普通版，二者资源占用上几乎没有区别，不想再多维护一个版本了
       4、docker-compose 事例说明中加入host模式写法，推荐使用host模式，性能更好
+      5、"/config/setting.conf"的`自定义tracker地址`功能，变更至docker环境变量中,| `-e CTU=` |启动容器时更新自定义trackes地址中的trackes|
 
 ## 2021/08/24
 
@@ -325,8 +330,10 @@ https://hub.docker.com/r/superng6/ariang
 | `-e SECRET=yourtoken` |Aria2 token|
 | `-e CACHE=1024M` |Aria2磁盘缓存配置|
 | `-e PORT=6800` | RPC通讯端口 |
+| `-e WEBUI_PORT=8080` | WEBUI端口 |
 | `-e DLPORT=32516` | DHT和BT监听端口 |
 | `-e UT=true` |启动容器时更新trackers|
+| `-e CTU=` |启动容器时更新自定义trackes地址|
 | `-e RUT=true` |每天凌晨3点更新trackers|
 | `-e SMD=true` |保存磁力链接为种子文件|
 | `-e FA=` |磁盘预分配模式`none`,`falloc`,`trunc`,`prealloc`|
@@ -335,6 +342,8 @@ https://hub.docker.com/r/superng6/ariang
 | `-p 6881:6881/udp` |Aria2 p2p udp下载端口|
 | `--restart unless-stopped` |自动重启容器|
 
+### 自定义tracker地址
+CTU="https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/best_aria2.txt"
 
 ### `/config/setting.conf` 配置说明(推荐使用)
 推荐使用`setting.conf`进行本镜像附加功能选项设置
@@ -343,9 +352,6 @@ https://hub.docker.com/r/superng6/ariang
 # 配置文件为本项目的自定义设置选项
 # 重置配置文件：删除本文件后重启容器
 # 所有设置无需重启容器,即刻生效
-
-# 自定义tracker地址
-custom-tracker-url="https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/best_aria2.txt"
 
 # 删除任务，`delete`为删除任务后删除文件，`recycle`为删除文件至回收站，`rmaria`为只删除.aria2文件
 remove-task=rmaria
@@ -441,8 +447,7 @@ docker run -d \
   ```
 docker-compose  
   ```yml
-version: "3"
-
+version: "3.1"
 services:
   aria2:
     image: superng6/aria2:webui-latest
