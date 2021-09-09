@@ -5,7 +5,10 @@ sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/stop.sh@' /config/aria2.conf
 sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/completed.sh@' /config/aria2.conf
 sed -i "s/.*on-download-pause.*/on-download-pause=\/aria2\/script\/pause.sh/" /config/aria2.conf
 sed -i "s/.*on-download-start.*/on-download-start=\/aria2\/script\/start.sh/" /config/aria2.conf
+# port
 sed -i "s@^\(rpc-listen-port=\).*@\1${PORT}@" /config/aria2.conf
+sed -i "s@^\(dht-listen-port=\).*@\1${DLPORT}@" /config/aria2.conf
+sed -i "s@^\(listen-port=\).*@\1${DLPORT}@" /config/aria2.conf
 
 # bt-save-metadata
 if [[ "$SMD" = "true" ]]

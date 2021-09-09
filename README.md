@@ -75,6 +75,13 @@ docker pull superng6/aria2:webui-latest
 ## 往后所有新增功能设置选项均在`/config/setting.conf`
 
 # Changelogs
+## 2021/09/09
+
+      1、支持修改`BT监听端口`和`DHT网络监听端口`，默认`DLPORT=32516`
+      2、增强程序健壮性，"/config/setting.conf"的参数误删除也会使用默认参数
+      3、下个版本可能会合并webui版和普通版，二者资源占用上几乎没有区别，不想再多维护一个版本了
+      4、docker-compose 事例说明中加入host模式写法，推荐使用host模式，性能更好
+
 ## 2021/08/24
 
       1、更新 aria2 1.36.0
@@ -318,6 +325,7 @@ https://hub.docker.com/r/superng6/ariang
 | `-e SECRET=yourtoken` |Aria2 token|
 | `-e CACHE=1024M` |Aria2磁盘缓存配置|
 | `-e PORT=6800` | RPC通讯端口 |
+| `-e DLPORT=32516` | DHT和BT监听端口 |
 | `-e UT=true` |启动容器时更新trackers|
 | `-e RUT=true` |每天凌晨3点更新trackers|
 | `-e SMD=true` |保存磁力链接为种子文件|
@@ -415,6 +423,7 @@ docker run -d \
   -e SECRET=yourtoken \
   -e CACHE=512M \
   -e PORT=6800 \
+  -e DLPORT=32516 \
   -e WEBUI_PORT=8080 \
   -e UT=true \
   -e RUT=true \
@@ -438,6 +447,7 @@ services:
   aria2:
     image: superng6/aria2:webui-latest
     container_name: aria2
+    network_mode: host
     environment:
       - PUID=1026
       - PGID=100
@@ -445,17 +455,14 @@ services:
       - SECRET=yourtoken
       - CACHE=512M
       - PORT=6800
+      - WEBUI_PORT=8080
+      - DLPORT=32516
       - UT=true
       - QUIET=true
       - SMD=true
     volumes:
       - $PWD/config:/config
       - $PWD/downloads:/downloads
-    ports:
-      - 6881:6881
-      - 6881:6881/udp
-      - 6800:6800
-      - 8080:8080
     restart: unless-stopped   
 ```
 
