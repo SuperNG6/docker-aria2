@@ -47,7 +47,7 @@ jobs:
         if: steps.set-version.outputs.status == 'success'
         uses: docker/build-push-action@v2
         with:
-          file: ./Dockerfile-webui
+          file: ./Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: true
           tags: |

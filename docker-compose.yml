@@ -11,6 +11,7 @@ services:
       - SECRET=yourtoken
       - CACHE=512M
       - PORT=6800
+      - WEBUI=true
       - WEBUI_PORT=8080
       - BTPORT=32516
       - UT=true

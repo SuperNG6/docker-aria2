@@ -82,6 +82,7 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 ## 2021/09/10
 
       1、增加启动容器时显示正在运行的docker-aria2版本提示
+      2、合并普通版和WEBUI版，增加选项`是否启用WEBUI` `-e WEBUI=true`,默认启用，端口8080
 
 ## 2021/09/09
 
@@ -334,6 +335,7 @@ https://hub.docker.com/r/superng6/ariang
 | `-e SECRET=yourtoken` |Aria2 token|
 | `-e CACHE=1024M` |Aria2磁盘缓存配置|
 | `-e PORT=6800` | RPC通讯端口 |
+| `-e WEBUI=true` | 启用WEBUI |
 | `-e WEBUI_PORT=8080` | WEBUI端口 |
 | `-e BTPORT=32516` | DHT和BT监听端口 |
 | `-e UT=true` |启动容器时更新trackers|
@@ -434,14 +436,15 @@ docker run -d \
   -e CACHE=512M \
   -e PORT=6800 \
   -e BTPORT=32516 \
+  -e WEBUI=true \
   -e WEBUI_PORT=8080 \
   -e UT=true \
   -e RUT=true \
   -e FA=falloc \
   -e QUIET=true \
   -e SMD=true \
-  -p 6881:6881 \
-  -p 6881:6881/udp \
+  -p 32516:32516 \
+  -p 32516:32516/udp \
   -p 6800:6800 \
   -p 8080:8080 \
   -v $PWD/config:/config \
@@ -464,6 +467,7 @@ services:
       - SECRET=yourtoken
       - CACHE=512M
       - PORT=6800
+      - WEBUI=true
       - WEBUI_PORT=8080
       - BTPORT=32516
       - UT=true
