@@ -79,9 +79,13 @@ NAS SSD临时下载盘，Aria2+qbittorrent配置教程
 https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
+## 2021/09/10
+
+      1、增加启动容器时显示正在运行的docker-aria2版本提示
+
 ## 2021/09/09
 
-      1、支持修改`BT监听端口`和`DHT网络监听端口`，默认`DLPORT=32516`
+      1、支持修改`BT监听端口`和`DHT网络监听端口`，默认`BTPORT=32516`
       2、增强程序健壮性，"/config/setting.conf"的参数误删除也会使用默认参数
       3、下个版本可能会合并webui版和普通版，二者资源占用上几乎没有区别，不想再多维护一个版本了
       4、docker-compose 事例说明中加入host模式写法，推荐使用host模式，性能更好
@@ -331,7 +335,7 @@ https://hub.docker.com/r/superng6/ariang
 | `-e CACHE=1024M` |Aria2磁盘缓存配置|
 | `-e PORT=6800` | RPC通讯端口 |
 | `-e WEBUI_PORT=8080` | WEBUI端口 |
-| `-e DLPORT=32516` | DHT和BT监听端口 |
+| `-e BTPORT=32516` | DHT和BT监听端口 |
 | `-e UT=true` |启动容器时更新trackers|
 | `-e CTU=` |启动容器时更新自定义trackes地址|
 | `-e RUT=true` |每天凌晨3点更新trackers|
@@ -429,7 +433,7 @@ docker run -d \
   -e SECRET=yourtoken \
   -e CACHE=512M \
   -e PORT=6800 \
-  -e DLPORT=32516 \
+  -e BTPORT=32516 \
   -e WEBUI_PORT=8080 \
   -e UT=true \
   -e RUT=true \
@@ -461,7 +465,7 @@ services:
       - CACHE=512M
       - PORT=6800
       - WEBUI_PORT=8080
-      - DLPORT=32516
+      - BTPORT=32516
       - UT=true
       - QUIET=true
       - SMD=true

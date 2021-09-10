@@ -12,7 +12,7 @@ services:
       - CACHE=512M
       - PORT=6800
       - WEBUI_PORT=8080
-      - DLPORT=32516
+      - BTPORT=32516
       - UT=true
       - QUIET=true
       - SMD=true

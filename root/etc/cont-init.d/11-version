@@ -1,0 +1,16 @@
+#!/usr/bin/with-contenv bash
+
+echo "
+-------------------------------------
+
+当前正在运行Docker-Aria2版本为：
+$(cat /aria2/build-date | head -n1)
+
+Aria2c版本为：
+1.36.0
+
+更新内容请见：
+https://github.com/SuperNG6/docker-aria2
+https://sleele.com/2019/09/27/docker-aria2的最佳实践
+
+-------------------------------------"

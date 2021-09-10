@@ -10,7 +10,7 @@ FROM lsiobase/alpine:3.13
 # set label
 LABEL maintainer="NG6"
 ENV TZ=Asia/Shanghai UT=true SECRET=yourtoken CACHE=128M QUIET=true \
-SMD=true RUT=true PORT=6800 DLPORT=32516 \
+SMD=true RUT=true PORT=6800 BTPORT=32516 \
 PUID=1026 PGID=100
 
 # copy local files && aria2c
@@ -20,6 +20,7 @@ COPY --from=builder /usr/local/bin/aria2c /usr/local/bin/aria2c
 # permissions
 RUN apk add --no-cache curl jq findutils \
 && chmod a+x /usr/local/bin/aria2c \
+&& echo "docker-aria2-$(date +"%Y-%m-%d")" > /aria2/build-date \
 && rm -rf /var/cache/apk/* /tmp/*
 
 VOLUME /config /downloads
