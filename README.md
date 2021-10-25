@@ -87,6 +87,10 @@ NAS SSD临时下载盘，Aria2+qbittorrent配置教程
 https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
+## 2021/10/25
+
+      1、更新ariang v1.2.3
+
 ## 2021/09/10
 
       1、增加启动容器时显示正在运行的docker-aria2版本提示

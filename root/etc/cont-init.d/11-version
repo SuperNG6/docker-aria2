@@ -3,8 +3,8 @@
 echo "
 -------------------------------------
 
-当前正在运行Docker-Aria2版本为：
-$(cat /aria2/build-date | head -n1)
+当前正在运行Docker-Aria2 & AriaNg版本为：
+$(cat /aria2/build-date)
 
 Aria2c版本为：
 1.36.0

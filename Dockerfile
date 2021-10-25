@@ -25,7 +25,9 @@ COPY --from=builder /usr/local/bin/aria2c /usr/local/bin/aria2c
 # install
 RUN apk add --no-cache darkhttpd curl jq findutils \
     && chmod a+x /usr/local/bin/aria2c \
+    && ARIANG_VER=$(wget -qO- https://api.github.com/repos/mayswind/AriaNg/tags | grep 'name' | cut -d\" -f4 | head -1 ) \
     && echo "docker-aria2-$(date +"%Y-%m-%d")" > /aria2/build-date \
+    && echo "docker-ariang-$ARIANG_VER" >> /aria2/build-date \
     && rm -rf /var/cache/apk/* /tmp/*
 
 # volume
