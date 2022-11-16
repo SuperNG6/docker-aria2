@@ -87,6 +87,10 @@ NAS SSD临时下载盘，Aria2+qbittorrent配置教程
 https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
+## 2022/11/16
+
+      1、没写更新日志，但是ariang一直在更新，且保持在最新版本
+
 ## 2022/5/15
 
       1、更新ariang v1.2.4
