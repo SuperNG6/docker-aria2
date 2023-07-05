@@ -1,9 +1,13 @@
 #!/usr/bin/with-contenv bash
 
+if [[ ! -z $SECRET ]];then
+  SECRET_TOKEN="rpc-secret=${SECRET}"
+fi
+
 exec \
 	s6-setuidgid abc aria2c \
     --conf-path=/config/aria2.conf \
-    --rpc-secret=$SECRET \
+    $SECRET_TOKEN \
     --disk-cache=$CACHE \
     --quiet=$QUIET
   > /dev/stdout \
