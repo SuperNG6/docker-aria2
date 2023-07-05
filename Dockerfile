@@ -1,4 +1,4 @@
-FROM lsiobase/alpine:3.17 as builder
+FROM lsiobase/alpine:3.17-69ac1933-ls26 as builder
 
 # download static aria2c && AriaNg AllInOne
 RUN apk add --no-cache curl unzip \
@@ -8,7 +8,7 @@ RUN apk add --no-cache curl unzip \
     && curl -fsSL https://git.io/docker-aria2c.sh | bash
 
 # install static aria2c
-FROM lsiobase/alpine:3.17
+FROM lsiobase/alpine:3.17-69ac1933-ls26
 
 # set label
 LABEL maintainer="NG6"
