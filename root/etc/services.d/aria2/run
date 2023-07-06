@@ -1,7 +1,7 @@
 #!/usr/bin/with-contenv bash
 
 if [[ ! -z $SECRET ]];then
-  SECRET_TOKEN="rpc-secret=${SECRET}"
+  SECRET_TOKEN="--rpc-secret=${SECRET}"
 fi
 
 exec \
