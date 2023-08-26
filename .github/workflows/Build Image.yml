@@ -2,6 +2,7 @@ name: Build Docker Image
 
 on:
   push:
+  workflow_dispatch:
 
 jobs:
   buildx:

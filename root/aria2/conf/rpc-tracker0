@@ -1,6 +1,5 @@
 # do daily/weekly/monthly maintenance
 # min   hour    day     month   weekday command
-0       */2     *       *       *       ps -ef | grep aria2b | grep -v grep | awk '{print $2}' | xargs kill -9
 0       *       *       *       *       run-parts /etc/periodic/hourly
 0       2       *       *       *       run-parts /etc/periodic/daily
 0       3       *       *       6       run-parts /etc/periodic/weekly
