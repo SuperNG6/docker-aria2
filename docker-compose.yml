@@ -1,9 +1,11 @@
-version: "3.1"
+version: "3.6"
 services:
   aria2:
-    image: superng6/aria2:webui-latest
+    image: superng6/aria2:a2b-latest
     container_name: aria2
     network_mode: host
+    cap_add:
+      - NET_ADMIN
     environment:
       - PUID=1026
       - PGID=100
@@ -17,7 +19,10 @@ services:
       - UT=true
       - QUIET=true
       - SMD=true
+      - A2B=true
+      - CRA2B=2h
     volumes:
       - $PWD/config:/config
       - $PWD/downloads:/downloads
+      - /lib/modules:/lib/modules
     restart: unless-stopped   

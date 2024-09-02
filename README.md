@@ -32,10 +32,12 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
  - 不能够暂停任务后结束/移动文件
    > BT任务有个特点，就说很容易卡在一个进度就不动了，如果主要文件已下载完成可以执行其他操作就好了
    > 本镜像支持暂停任务后清理垃圾文件，并移动到已完成目录，并结束该任务
+ - 可屏蔽迅雷等吸血客户端
+   > 集成自@makeding/aria2b 项目，感谢
 # 本镜像的一些优点
 - 全平台架构`x86-64`、`arm64`、`armhf`,统一latest tag
 - 做了usermapping，使用你自己的账户权限来运行，这点对于群辉来说尤其重要
-- 可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端`A2B=true`(集成自makeding/aria2b，感谢)
+- (a2b-latest镜像）可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端`A2B=true`(集成自[@makeding/aria2b](https://github.com/makeding/aria2b)，感谢)
 - 纯aria2，没有包含多于的服务
 - 超小镜像体积 10.77 MB
 - 可以自定义任意二级目录
@@ -79,6 +81,14 @@ docker pull superng6/aria2:webui-latest
 | arm64        | webui-latest         |
 | armhf        | webui-latest         |
 
+#### a2b-latest (屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端 [@makeding](https://github.com/makeding/aria2b) )
+docker pull superng6/aria2:a2b-latest  
+
+| Architecture | Tag            |
+| ------------ | -------------- |
+| x86-64       | a2b-latest         |
+| arm64        | a2b-latest         |
+| armhf        | a2b-latest         |
 
 ## 往后所有新增功能设置选项均在`/config/setting.conf`
 ### 额外补充文章  
@@ -88,6 +98,19 @@ NAS SSD临时下载盘，Aria2+qbittorrent配置教程
 https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
+## 2023/08/27
+
+      1、`superng6/aria2:a2b-latest` 镜像可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端`A2B=true`(集成自makeding/aria2b，感谢)
+         具体使用方法请翻到最下面，查看docker-compose
+         需要开启`cap_add:- NET_ADMIN` 和挂载 `/lib/modules:/lib/modules`
+      2、添加ENV `CRA2B=2h`,默认为2小时重启一次aria2b。可设置为1h到24h，CRA2B=false则为禁用自动重启aria2b
+
+## 2023/08/26
+
+      1、`superng6/aria2:a2b-latest` 镜像可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端`A2B=true`(集成自makeding/aria2b，感谢)
+         具体使用方法请翻到最下面，查看docker-compose
+         需要开启`cap_add:- NET_ADMIN` 和挂载 `/lib/modules:/lib/modules`
+
 ## 2022/11/16
 
       1、没写更新日志，但是ariang一直在更新，且保持在最新版本
@@ -499,8 +522,41 @@ services:
       - $PWD/downloads:/downloads
     restart: unless-stopped   
 ```
+- `superng6/aria2:a2b-latest` 镜像可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端`A2B=true`(集成自makeding/aria2b，感谢)
+```yml
+version: "3.1"
+services:
+  aria2:
+    image: superng6/aria2:a2b-latest
+    container_name: aria2
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=1026
+      - PGID=100
+      - TZ=Asia/Shanghai
+      - SECRET=yourtoken
+      - CACHE=512M
+      - PORT=6800
+      - WEBUI=true
+      - WEBUI_PORT=8080
+      - BTPORT=32516
+      - UT=true
+      - QUIET=true
+      - SMD=true
+      - A2B=true
+      - CRA2B=2h
+    volumes:
+      - $PWD/config:/config
+      - $PWD/downloads:/downloads
+      - /lib/modules:/lib/modules
+    restart: unless-stopped   
+```
+
 
 # Preview
 ![N94s7q](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/N94s7q.jpg)
 ![Hq0pXW](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/Hq0pXW.jpg)
+![ZnN4jk](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/ZnN4jk.png)
 ![Xnip2020-05-11_15-43-56](https://cdn.jsdelivr.net/gh/SuperNG6/pic@master/uPic/Xnip2020-05-11_15-43-56.png)
