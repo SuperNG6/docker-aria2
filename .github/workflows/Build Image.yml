@@ -43,15 +43,3 @@ jobs:
             superng6/aria2:webui-stable-${{ steps.set-version.outputs.version }}
             superng6/aria2:webui-latest  
             superng6/aria2:latest
-
-
-      - name: Build dockerfile A2B
-        if: steps.set-version.outputs.status == 'success'
-        uses: docker/build-push-action@v2
-        with:
-          file: ./DockerfileA2B
-          platforms: linux/amd64,linux/arm/v7,linux/arm64
-          push: true
-          tags: |
-            superng6/aria2:a2b-stable-${{ steps.set-version.outputs.version }}
-            superng6/aria2:a2b-latest  

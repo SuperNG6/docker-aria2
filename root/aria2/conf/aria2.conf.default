@@ -120,10 +120,10 @@ enable-peer-exchange=true
 # 期望下载速度，Aria2会临时提高连接数以提高下载速度，单位K或M。默认:50K
 bt-request-peer-speed-limit=10M
 # 客户端伪装, PT需要保持user-agent和peer-agent两个参数一致
-user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3602.2 Safari/537.36
-#user-agent=qBittorrent v4.1.9
-peer-agent=qBittorrent v4.1.9
-peer-id-prefix=-qB4190-
+user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36
+#user-agent=qBittorrent v4.6.6
+peer-agent=qBittorrent v4.6.6
+peer-id-prefix=-qB4660-
 #peer-agent=uTorrentMac/1870(43796)
 #peer-id-prefix=-UM1870-
 #peer-agent=Deluge 1.3.15
