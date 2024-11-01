@@ -98,6 +98,12 @@ NAS SSD临时下载盘，Aria2+qbittorrent配置教程
 https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
+## 2024/11/01
+
+      1、更新 ariang 1.3.7
+      2、更新 baseimage-alpine 3.20
+      3、更新 http 服务器 darkhttpd/1.16
+
 ## 2023/08/27
 
       1、`superng6/aria2:a2b-latest` 镜像可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端`A2B=true`(集成自makeding/aria2b，感谢)
