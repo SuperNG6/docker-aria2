@@ -1,16 +1,16 @@
-FROM lsiobase/alpine:3.17-69ac1933-ls26 as builder
+FROM superng6/alpine:3.20 AS builder
 
 # download static aria2c && AriaNg AllInOne
-RUN apk add --no-cache wget unzip \
+RUN apk add --no-cache wget unzip curl \
     && wget -qO- https://api.github.com/repos/mayswind/AriaNg/releases/latest \
     | grep '"tag_name":' \
     | cut -d'"' -f4 \
     | xargs -I {} wget -P /tmp https://github.com/mayswind/AriaNg/releases/download/{}/AriaNg-{}-AllInOne.zip \
     && unzip /tmp/AriaNg-*-AllInOne.zip -d /tmp \
-    && curl -fsSL https://git.io/docker-aria2c.sh | bash
+    && curl -fsSL https://raw.githubusercontent.com/SuperNG6/docker-aria2/refs/heads/master/install.sh | bash
 
 # install static aria2c
-FROM lsiobase/alpine:3.17-69ac1933-ls26
+FROM superng6/alpine:3.20
 
 # set label
 LABEL maintainer="NG6"
