@@ -2,10 +2,7 @@ FROM superng6/alpine:3.20 AS builder
 
 # download static aria2c && AriaNg AllInOne
 RUN apk add --no-cache wget unzip curl \
-    && wget -qO- https://api.github.com/repos/mayswind/AriaNg/releases/latest \
-    | grep '"tag_name":' \
-    | cut -d'"' -f4 \
-    | xargs -I {} wget -P /tmp https://github.com/mayswind/AriaNg/releases/download/{}/AriaNg-{}-AllInOne.zip \
+    && wget -P /tmp https://github.com/mayswind/AriaNg/releases/download/1.3.7/AriaNg-1.3.7-AllInOne.zip \
     && unzip /tmp/AriaNg-*-AllInOne.zip -d /tmp \
     && A2B_VER=$(wget -qO- https://api.github.com/repos/makeding/aria2b/tags | grep 'name' | cut -d\" -f4 | head -1 ) \
     && wget -P /tmp https://github.com/makeding/aria2b/releases/download/${A2B_VER}/aria2b \
