@@ -3,6 +3,7 @@
 # permissions
 chown -R abc:abc \
     /config \
+    /www \
     /downloads
   
 chmod a+x \
