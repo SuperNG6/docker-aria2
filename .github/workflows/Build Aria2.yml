@@ -1,0 +1,25 @@
+name: Build Aria2
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y build-essential libssl-dev libxml2-dev libz-dev libsqlite3-dev pkg-config automake autotools-dev
+
+      - name: Clone Aria2 Repository
+        run: |
+          git clone https://github.com/aria2/aria2.git
+          cd aria2
+
+      - name: Build Aria2
+        run: |
+          cd aria2
+          autoreconf -i
+          ./configure --enable-static=yes --enable-shared=no
+          make
