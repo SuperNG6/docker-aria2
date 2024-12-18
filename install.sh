@@ -2,7 +2,7 @@
 
 # Check CPU architecture
 ARCH=$(uname -m)
-ARIAC=1.36.0
+ARIAC=1.37.0
 echo -e "${INFO} Check CPU architecture ..."
 if [[ ${ARCH} == "x86_64" ]]; then
     ARCH="aria2-${ARIAC}-static-linux-amd64.tar.gz"
@@ -17,6 +17,6 @@ fi
 
 # Download files
 echo "Downloading binary file: ${ARCH}"
-curl -L "https://github.com/SuperNG6/docker-aria2/releases/download/2021.08.24/${ARCH}" | tar -xz
+curl -L "https://github.com/SuperNG6/docker-aria2/releases/download/2024.12.18/${ARCH}" | tar -xz
 mv aria2c /usr/local/bin
 echo "Download binary file: ${ARCH} completed"
