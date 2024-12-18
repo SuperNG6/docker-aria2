@@ -100,6 +100,11 @@ NAS SSD临时下载盘，Aria2+qbittorrent配置教程
 https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
+## 2024/12/18
+
+      1、更新 aria2c v1.3.8
+      2、更新 ariang v1.3.7
+
 ## 2024/11/01
 
       1、更新 aria2c1.3.7
