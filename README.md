@@ -11,7 +11,9 @@ GitHub：https://www.github.com/SuperNG6/docker-aria2
 
 # 之所以构建这个镜像的原因
 __当前的镜像或多或少都有以下几点不符合的我的需求__
-   
+
+- 没有办法屏蔽迅雷等只下载不上传的P2P下载工具
+  > (a2b-latest镜像）可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端
 - 没有配置UID和GID
   > 这关系到你下载的文件的权限问题，默认是root权限，很难管理
  - 端口不全
@@ -50,7 +52,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 - 每天自动更新trackers，不需要重启aria2即可生效（来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
 - 默认上海时区 Asia/Shanghai
 - 直接设置token，不需要在配置文件里修改
-- 最新静态编译版的aria2c1.3.5（来自[P3TERX/aria2-builder](https://github.com/P3TERX/aria2-builder)，感谢）
+- 最新静态编译版的aria2c1.3.7（来自[P3TERX/aria2-builder](https://github.com/SuperNG6/Aria2-Pro-Core)，感谢）
 - 解除aria2c下载线程限制
 - 支持自动更新tracker，每次启动容器时会自动更新tracker
 - 手动设置磁盘缓存`CACHE`，默认参数`128M`
@@ -98,6 +100,11 @@ NAS SSD临时下载盘，Aria2+qbittorrent配置教程
 https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
+## 2024/12/18
+
+      1、更新 aria2c v1.3.7
+      2、更新 ariang v1.3.8
+
 ## 2024/11/01
 
       1、更新 ariang 1.3.7
