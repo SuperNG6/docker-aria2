@@ -140,10 +140,24 @@ MOVE_FILE() {
         MOVE_EXIT_CODE=$?
         if [ ${MOVE_EXIT_CODE} -eq 0 ]; then
             echo -e "$(DATE_TIME) ${INFO} 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
-            [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [INFO] 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}" >>${MOVE_LOG}
+            [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [INFO] 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}" >>"${MOVE_LOG}"
         else
             echo -e "$(DATE_TIME) ${ERROR} 文件移动失败: ${SOURCE_PATH}"
-            [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] 文件移动失败: ${SOURCE_PATH}" >>${MOVE_LOG}
+            [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] 文件移动失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
+            
+            # ============== NEW FEATURE: 移动失败后，转移至 /downloads/move-failed ==============
+            FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
+            mkdir -p "${FAIL_DIR}"
+            mv -f "${SOURCE_PATH}" "${FAIL_DIR}"
+            MOVE_FAIL_EXIT_CODE=$?
+            if [ ${MOVE_FAIL_EXIT_CODE} -eq 0 ]; then
+                echo -e "$(DATE_TIME) ${INFO} 已将文件移动至备用文件夹: ${SOURCE_PATH} -> ${FAIL_DIR}"
+                [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [INFO] 已将文件移动至备用文件夹: ${SOURCE_PATH} -> ${FAIL_DIR}" >>"${MOVE_LOG}"
+            else
+                echo -e "$(DATE_TIME) ${ERROR} 移动到备用文件夹依然失败: ${SOURCE_PATH}"
+                [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] 移动到备用文件夹依然失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
+            fi
+            # ============== NEW FEATURE END ==============
         fi
     fi
 }
