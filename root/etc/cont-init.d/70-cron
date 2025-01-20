@@ -1,0 +1,36 @@
+#!/usr/bin/with-contenv bash
+#====================================================================
+# 70-cron
+# 配置定时任务
+#====================================================================
+
+# 加载公共函数
+source /root/aria2/scripts/core/common.sh
+
+# 配置aria2b重启
+setup_aria2b_restart() {
+    log_info "配置aria2b重启任务..."
+
+    # 运行配置脚本
+    run_cmd "bash /root/aria2/scripts/actions/cron-restart-a2b.sh" "配置aria2b重启任务" || {
+        log_error "配置aria2b重启任务失败"
+        return 1
+    }
+}
+
+main() {
+    log_info "开始配置定时任务..."
+    local failed=0
+
+    # 配置aria2b重启
+    setup_aria2b_restart || failed=1
+
+    if ((failed)); then
+        log_error "定时任务配置过程中发生错误"
+        exit 1
+    fi
+
+    log_success "定时任务配置完成"
+}
+
+main "$@"

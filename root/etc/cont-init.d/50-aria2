@@ -1,0 +1,125 @@
+#!/usr/bin/with-contenv bash
+#====================================================================
+# 50-aria2
+# 配置aria2核心功能
+#====================================================================
+
+# 加载公共函数
+source /root/aria2/scripts/core/common.sh
+
+# 配置回调脚本
+setup_callbacks() {
+    log_info "配置aria2回调脚本..."
+    local aria2_conf="${CONFIG_FILES[ARIA2_CONF]}"
+    local failed=0
+
+    # 更新回调配置
+    local -A callbacks=(
+        ["on-download-stop"]="/aria2/script/actions/stop.sh"
+        ["on-download-complete"]="/aria2/script/actions/completed.sh"
+        ["on-download-pause"]="/aria2/script/actions/pause.sh"
+        ["on-download-start"]="/aria2/script/actions/start.sh"
+    )
+
+    for key in "${!callbacks[@]}"; do
+        update_conf_value "$aria2_conf" "$key" "${callbacks[$key]}" || {
+            log_error "更新回调配置失败: $key"
+            failed=1
+        }
+    done
+
+    return "$failed"
+}
+
+# 配置端口
+setup_ports() {
+    log_info "配置aria2端口..."
+    local aria2_conf="${CONFIG_FILES[ARIA2_CONF]}"
+    local failed=0
+
+    # 检查必需的环境变量
+    for var in PORT BTPORT; do
+        check_env "$var" || failed=1
+    done
+    
+    if ((failed)); then
+        return 1
+    fi
+
+    # 更新端口配置
+    local -A ports=(
+        ["rpc-listen-port"]="$PORT"
+        ["dht-listen-port"]="$BTPORT"
+        ["listen-port"]="$BTPORT"
+    )
+
+    for key in "${!ports[@]}"; do
+        update_conf_value "$aria2_conf" "$key" "${ports[$key]}" || {
+            log_error "更新端口配置失败: $key"
+            failed=1
+        }
+    done
+
+    return "$failed"
+}
+
+# 配置BT设置
+setup_bt() {
+    log_info "配置BT设置..."
+    local aria2_conf="${CONFIG_FILES[ARIA2_CONF]}"
+    local bt_value="false"
+
+    # 根据环境变量设置BT配置
+    if [[ "$SMD" == "true" ]]; then
+        bt_value="true"
+    fi
+
+    update_conf_value "$aria2_conf" "bt-save-metadata" "$bt_value" || {
+        log_error "更新BT配置失败"
+        return 1
+    }
+}
+
+# 配置文件分配方式
+setup_file_allocation() {
+    log_info "配置文件分配方式..."
+    local aria2_conf="${CONFIG_FILES[ARIA2_CONF]}"
+    local alloc_value="none"
+
+    case "$FA" in
+        "falloc"|"trunc"|"prealloc")
+            alloc_value="$FA"
+            ;;
+    esac
+
+    update_conf_value "$aria2_conf" "file-allocation" "$alloc_value" || {
+        log_error "更新文件分配配置失败"
+        return 1
+    }
+}
+
+main() {
+    log_info "开始配置aria2..."
+    local failed=0
+
+    # 设置回调脚本
+    setup_callbacks || failed=1
+
+    # 设置端口
+    setup_ports || failed=1
+
+    # 设置BT配置
+    setup_bt || failed=1
+
+    # 设置文件分配方式
+    setup_file_allocation || failed=1
+
+    if ((failed)); then
+        log_error "aria2配置过程中发生错误"
+        exit 1
+    fi
+
+    log_success "aria2配置完成"
+}
+
+main "$@"

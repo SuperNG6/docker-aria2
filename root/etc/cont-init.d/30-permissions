@@ -1,0 +1,66 @@
+#!/usr/bin/with-contenv bash
+#====================================================================
+# 30-permissions
+# 设置文件和目录权限
+#====================================================================
+
+# 加载公共函数
+source /root/aria2/scripts/core/common.sh
+
+# 检查环境变量
+check_required_vars() {
+    local failed=0
+    
+    # 检查必需的环境变量
+    for var in PUID PGID; do
+        check_env "$var" || failed=1
+    done
+    
+    return "$failed"
+}
+
+# 设置主要目录权限
+set_directory_permissions() {
+    local failed=0
+    
+    # 设置主要目录权限
+    for dir in "${SYSTEM_DIRS[@]}"; do
+        set_owner "$dir" "abc" "abc" "755" || failed=1
+    done
+    
+    return "$failed"
+}
+
+# 设置脚本权限
+set_script_permissions() {
+    log_info "设置脚本执行权限..."
+    
+    # 设置所有脚本可执行
+    run_cmd "chmod -R a+x /aria2/script/*" "设置脚本执行权限"
+}
+
+main() {
+    log_info "开始设置系统权限..."
+    local failed=0
+
+    # 检查环境变量
+    check_required_vars || {
+        log_error "环境变量检查失败"
+        exit 1
+    }
+
+    # 设置目录权限
+    set_directory_permissions || failed=1
+
+    # 设置脚本权限
+    set_script_permissions || failed=1
+
+    if ((failed)); then
+        log_error "权限设置过程中发生错误"
+        exit 1
+    fi
+
+    log_success "系统权限设置完成"
+}
+
+main "$@"

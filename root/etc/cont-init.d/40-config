@@ -1,13 +1,90 @@
 #!/usr/bin/with-contenv bash
+#====================================================================
+# 40-config
+# 处理配置文件初始化
+#====================================================================
 
-# permissions
-chown -R abc:abc \
-    /config \
-    /www \
-    /downloads
-  
-chmod a+x \
-  /aria2/script/*
+# 加载公共函数
+source /root/aria2/scripts/core/common.sh
 
-# set cron-restart-a2b
-bash /aria2/script/cron-restart-a2b.sh
+# 初始化配置文件
+init_config_files() {
+    local failed=0
+    
+    # 复制所有配置文件
+    for config_name in "${!CONFIG_FILES[@]}"; do
+        local dest="${CONFIG_FILES[$config_name]}"
+        local src="${CONFIG_FILES[$config_name]}_DEFAULT"
+        
+        # 如果目标文件不存在，则从默认配置复制
+        if [[ ! -f "$dest" && -n "${!src}" ]]; then
+            copy_config "${!src}" "$dest" || failed=1
+        fi
+    done
+    
+    return "$failed"
+}
+
+# 初始化会话文件
+init_session_files() {
+    local files=(
+        "/config/aria2.session"
+        "/config/dht.dat"
+    )
+    
+    local failed=0
+    for file in "${files[@]}"; do
+        touch_file "$file" || failed=1
+    done
+    
+    return "$failed"
+}
+
+# 设置日志文件
+setup_logs() {
+    local failed=0
+    local log_dir="${SYSTEM_DIRS[CONFIG_LOGS]}"
+    
+    # 确保日志目录存在
+    create_dir "$log_dir" || return 1
+    
+    # 创建所有日志文件
+    for log_file in "${LOG_FILES[@]}"; do
+        touch_file "${log_dir}/${log_file}" || failed=1
+    done
+    
+    # 处理旧的日志文件
+    local old_logs=("/config/"*.log)
+    if [[ ${#old_logs[@]} -gt 0 ]]; then
+        log_info "移动旧的日志文件到新位置..."
+        mv "/config/"*.log "$log_dir/" || {
+            log_error "移动旧日志文件失败"
+            failed=1
+        }
+    fi
+    
+    return "$failed"
+}
+
+main() {
+    log_info "开始初始化配置文件..."
+    local failed=0
+
+    # 初始化配置文件
+    init_config_files || failed=1
+
+    # 初始化会话文件
+    init_session_files || failed=1
+
+    # 设置日志文件
+    setup_logs || failed=1
+
+    if ((failed)); then
+        log_error "配置文件初始化过程中发生错误"
+        exit 1
+    fi
+
+    log_success "配置文件初始化完成"
+}
+
+main "$@"

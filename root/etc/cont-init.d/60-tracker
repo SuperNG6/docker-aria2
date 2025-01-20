@@ -1,0 +1,61 @@
+#!/usr/bin/with-contenv bash
+#====================================================================
+# 60-tracker
+# 配置BT Tracker
+#====================================================================
+
+# 加载公共函数
+source /root/aria2/scripts/core/common.sh
+
+# 更新tracker
+update_tracker() {
+    log_info "更新BT Tracker..."
+
+    if [[ "$UT" == "true" ]]; then
+        run_cmd "bash /aria2/scripts/tracker/tracker.sh" "更新Tracker" || return 1
+    else
+        log_info "自动更新Tracker已禁用"
+    fi
+}
+
+# 配置定时更新
+setup_tracker_cron() {
+    log_info "配置Tracker定时更新..."
+    local cron_file
+
+    if [[ "$RUT" == "true" ]]; then
+        cron_file="/aria2/conf/rpc-tracker1"
+        log_info "启用Tracker定时更新"
+    else
+        cron_file="/aria2/conf/rpc-tracker0"
+        log_info "禁用Tracker定时更新"
+    fi
+
+    # 复制cron配置
+    copy_config "$cron_file" "/etc/crontabs/root" || return 1
+
+    # 如果启用了定时更新，启动crond服务
+    if [[ "$RUT" == "true" ]]; then
+        run_cmd "/usr/sbin/crond" "启动crond服务" || return 1
+    fi
+}
+
+main() {
+    log_info "开始配置Tracker..."
+    local failed=0
+
+    # 更新tracker
+    update_tracker || failed=1
+
+    # 设置定时更新
+    setup_tracker_cron || failed=1
+
+    if ((failed)); then
+        log_error "Tracker配置过程中发生错误"
+        exit 1
+    fi
+
+    log_success "Tracker配置完成"
+}
+
+main "$@"

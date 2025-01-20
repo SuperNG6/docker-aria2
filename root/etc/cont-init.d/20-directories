@@ -1,0 +1,33 @@
+#!/usr/bin/with-contenv bash
+#====================================================================
+# 20-directories
+# 创建必要的目录结构
+#====================================================================
+
+# 加载公共函数
+source /root/aria2/scripts/core/common.sh
+
+main() {
+    log_info "开始创建系统目录..."
+    local failed=0
+
+    # 创建所有必要的系统目录
+    for dir_name in "${!SYSTEM_DIRS[@]}"; do
+        dir_path="${SYSTEM_DIRS[$dir_name]}"
+        
+        create_dir "$dir_path" || {
+            log_error "创建 ${dir_name} 目录失败"
+            failed=1
+            continue
+        }
+    done
+
+    if ((failed)); then
+        log_error "部分目录创建失败"
+        exit 1
+    fi
+
+    log_success "所有系统目录创建完成"
+}
+
+main "$@"
