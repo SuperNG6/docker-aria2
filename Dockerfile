@@ -21,13 +21,13 @@ ENV TZ=Asia/Shanghai UT=true SECRET=yourtoken CACHE=128M QUIET=true \
 
 # copy local files && aria2c
 COPY root/ /
-COPY darkhttpd/ /etc/cont-init.d/
+COPY caddy/ /etc/cont-init.d/
 COPY --from=builder /tmp/index.html /www/index.html
 COPY --from=builder /usr/local/bin/aria2c /usr/local/bin/aria2c
 COPY --from=builder /tmp/aria2b /usr/local/bin/aria2b
 
 # install
-RUN apk add --no-cache darkhttpd curl jq findutils iptables ip6tables ipset nodejs \
+RUN apk add --no-cache caddy curl jq findutils iptables ip6tables ipset nodejs \
     && chmod a+x /usr/local/bin/aria2c \
     && chmod a+x /usr/local/bin/aria2b \
     && A2B_VER=$(wget -qO- https://api.github.com/repos/makeding/aria2b/tags | grep 'name' | cut -d\" -f4 | head -1 ) \

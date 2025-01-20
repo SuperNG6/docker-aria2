@@ -1,0 +1,5 @@
+#!/usr/bin/with-contenv bash
+
+if [ "$WEBUI" = "true" ]; then
+    caddy file-server --root /www --listen :${WEBUI_PORT}
+fi
