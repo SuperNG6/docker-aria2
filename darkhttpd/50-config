@@ -1,0 +1,6 @@
+#!/usr/bin/with-contenv bash
+
+if [ "$WEBUI" == "true" ]
+then
+  darkhttpd /www --index index.html --port ${WEBUI_PORT} --daemon
+fi
