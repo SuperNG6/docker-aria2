@@ -1,45 +1,73 @@
-name: Build Docker Image
+# 工作流名称
+name: 构建 Docker 镜像 (手动触发)
 
+# 工作流触发条件
 on:
-  workflow_dispatch:
+  workflow_dispatch: # 仅允许手动从 GitHub Actions UI 触发
 
+# 定义作业
 jobs:
   buildx:
+    # 作业运行环境
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+    # 此工作流仅手动触发且推送到 Docker Hub，通常不需要特殊权限
+    # permissions:
+    #   contents: read # 如果需要显式设置，读取权限足够
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
+    # 作业步骤
+    steps:
+      # 步骤 1: 检出代码仓库
+      - name: 检出代码
+        uses: actions/checkout@v4 # 更新到 v4
+
+      # 步骤 2: 设置 QEMU (用于多平台构建)
+      - name: 设置 QEMU
+        uses: docker/setup-qemu-action@v3 # 更新到 v3
+
+      # 步骤 3: 设置 Docker Buildx (增强的 Docker 构建工具)
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3 # 更新到 v3
+        with:
+          install: true # 确保 Buildx 实例被创建或重用
+
+      # 步骤 4: 登录到 Docker Hub
+      - name: 登录到 Docker Hub
+        uses: docker/login-action@v3 # 更新到 v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          
-      # ReleaseTag
-      - name: Set Version
-        id: set-version
-        run: |
-          echo "::set-output name=version::$(date +"%y-%m-%d")"
-          echo $(date +"%y-%m-%d")
-          echo "::set-output name=status::success"
+          password: ${{ secrets.DOCKERHUB_TOKEN }} # 推荐使用 Access Token
 
-      # Build and push
-      - name: Build dockerfile
+      # 步骤 5: 设置版本标签 (使用日期)
+      - name: 设置版本标签
+        id: set-version # 设置步骤 ID，以便后续引用其输出
+        run: |
+          # 生成 YY-MM-DD 格式的日期标签
+          VERSION_TAG=$(date +"%y-%m-%d")
+
+          # 将输出变量写入 $GITHUB_OUTPUT 文件 (替代已弃用的 ::set-output)
+          echo "version=${VERSION_TAG}" >> $GITHUB_OUTPUT
+          echo "status=success" >> $GITHUB_OUTPUT # 假设总是成功设置
+
+          # 在日志中打印生成的标签，方便查看
+          echo "生成的版本标签: ${VERSION_TAG}"
+        shell: bash # 明确指定使用 bash shell
+
+      # 步骤 6: 构建并推送 Docker 镜像
+      - name: 构建并推送镜像
+        # 使用上一步输出的状态作为条件 (虽然这里总是 true)
         if: steps.set-version.outputs.status == 'success'
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6 # 更新到 v6
         with:
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm/v7,linux/arm64
-          push: true
+          context: . # Docker 构建上下文路径 (当前目录)
+          file: ./Dockerfile # Dockerfile 文件路径
+          platforms: linux/amd64,linux/arm/v7,linux/arm64 # 需要构建的平台架构
+          push: true # 推送构建好的镜像
+          # 为镜像打上标签
           tags: |
             superng6/aria2:stable-${{ steps.set-version.outputs.version }}
             superng6/aria2:webui-stable-${{ steps.set-version.outputs.version }}
-            superng6/aria2:webui-latest  
+            superng6/aria2:webui-latest
             superng6/aria2:latest
+          # 启用 BuildKit 缓存，利用 GitHub Actions 缓存加速后续构建
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
