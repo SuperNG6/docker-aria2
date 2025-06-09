@@ -123,7 +123,7 @@ CLEAN_UP() {
 # =============================移动文件=============================
 
 MOVE_FILE() {
-    # DOWNLOAD_DIR = DOWNLOAD_PATH，说明为在根目录下载的单文件，`dmof时不进行移动
+    # DOWNLOAD_DIR = DOWNLOAD_PATH，说明为在根目录下载的单文件，`dmof`时不进行移动
     if [ "${MOVE}" = "false" ]; then
         RM_ARIA2
         return
@@ -136,28 +136,72 @@ MOVE_FILE() {
         CLEAN_UP
         echo -e "$(DATE_TIME) ${INFO} 开始移动该任务文件到: ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
         mkdir -p "${TARGET_PATH}"
+
+        # === 新增功能：移动前检查磁盘空间 开始 ===
+        # 说明: stat -c %d 获取文件所在设备的ID号。此命令适用于Linux系统（Docker环境通常是Linux）。
+        SOURCE_DEVICE=$(stat -c %d "${SOURCE_PATH}")
+        TARGET_DEVICE=$(stat -c %d "${TARGET_PATH}")
+
+        # 当源和目标的设备号不同时，说明是跨磁盘移动，需要检查空间
+        if [ "${SOURCE_DEVICE}" != "${TARGET_DEVICE}" ]; then
+            echo -e "$(DATE_TIME) ${INFO} 检测到跨磁盘移动，正在检查目标磁盘空间..."
+            # 获取源文件/目录所需的空间大小（单位: 字节）
+            REQUIRED_SPACE=$(du -sb "${SOURCE_PATH}" | awk '{print $1}')
+            # 获取目标路径的可用空间大小（单位: 字节）。使用 --output 提高兼容性
+            AVAILABLE_SPACE=$(df --output=avail -B1 "${TARGET_PATH}" | sed '1d')
+
+            if (( AVAILABLE_SPACE < REQUIRED_SPACE )); then
+                # 为了日志和输出更可读，转换为GB
+                REQUIRED_GB=$(awk "BEGIN {printf \"%.2f\", ${REQUIRED_SPACE}/1024/1024/1024}")
+                AVAILABLE_GB=$(awk "BEGIN {printf \"%.2f\", ${AVAILABLE_SPACE}/1024/1024/1024}")
+                echo -e "$(DATE_TIME) ${ERROR} 目标磁盘空间不足！无法移动文件。"
+                echo -e "$(DATE_TIME) ${ERROR} 所需空间: ${REQUIRED_GB} GB, 目标可用空间: ${AVAILABLE_GB} GB."
+                [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [ERROR] 目标磁盘空间不足，移动失败。所需空间:${REQUIRED_GB} GB, 可用空间:${AVAILABLE_GB} GB. 源:${SOURCE_PATH} -> 目标:${TARGET_PATH}" >>"${MOVE_LOG}"
+                
+                # 空间不足，直接将任务移动到失败文件夹
+                FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
+                echo -e "$(DATE_TIME) ${WARRING} 尝试将任务移动到: ${FAIL_DIR}"
+                mkdir -p "${FAIL_DIR}"
+                mv -f "${SOURCE_PATH}" "${FAIL_DIR}"
+                MOVE_FAIL_EXIT_CODE=$?
+                if [ ${MOVE_FAIL_EXIT_CODE} -eq 0 ]; then
+                    echo -e "$(DATE_TIME) ${INFO} 因目标磁盘空间不足，已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
+                    [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [INFO] 因目标磁盘空间不足，已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}" >>"${MOVE_LOG}"
+                else
+                    echo -e "$(DATE_TIME) ${ERROR} 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
+                    [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [ERROR] 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
+                fi
+                
+                # 终止后续的正常移动流程
+                return 1
+            fi
+            echo -e "$(DATE_TIME) ${INFO} 目标磁盘空间充足。"
+        else
+            echo -e "$(DATE_TIME) ${INFO} 检测为同磁盘移动，无需检查空间。"
+        fi
+        # === 新增功能：移动前检查磁盘空间 结束 ===
+
         mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
         MOVE_EXIT_CODE=$?
         if [ ${MOVE_EXIT_CODE} -eq 0 ]; then
             echo -e "$(DATE_TIME) ${INFO} 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
-            [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [INFO] 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}" >>"${MOVE_LOG}"
+            [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [INFO] 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}" >>"${MOVE_LOG}"
         else
             echo -e "$(DATE_TIME) ${ERROR} 文件移动失败: ${SOURCE_PATH}"
-            [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] 文件移动失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
+            [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [ERROR] 文件移动失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
             
-            # ============== NEW FEATURE: 移动失败后，转移至 /downloads/move-failed ==============
+            # 移动失败后（非空间不足原因），转移至 /downloads/move-failed
             FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
             mkdir -p "${FAIL_DIR}"
             mv -f "${SOURCE_PATH}" "${FAIL_DIR}"
             MOVE_FAIL_EXIT_CODE=$?
             if [ ${MOVE_FAIL_EXIT_CODE} -eq 0 ]; then
-                echo -e "$(DATE_TIME) ${INFO} 已将文件移动至备用文件夹: ${SOURCE_PATH} -> ${FAIL_DIR}"
-                [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [INFO] 已将文件移动至备用文件夹: ${SOURCE_PATH} -> ${FAIL_DIR}" >>"${MOVE_LOG}"
+                echo -e "$(DATE_TIME) ${INFO} 已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
+                [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [INFO] 已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}" >>"${MOVE_LOG}"
             else
-                echo -e "$(DATE_TIME) ${ERROR} 移动到备用文件夹依然失败: ${SOURCE_PATH}"
-                [ ${MOVE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] 移动到备用文件夹依然失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
+                echo -e "$(DATE_TIME) ${ERROR} 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
+                [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [ERROR] 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
             fi
-            # ============== NEW FEATURE END ==============
         fi
     fi
 }
