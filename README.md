@@ -101,6 +101,10 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
 
+## 2025/06/09
+
+      1、新增移动文件前判断磁盘空间是否足够功能
+      
 ## 2025/02/18
 
       1、更新 AriaNg 1.3.10
