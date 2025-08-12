@@ -101,6 +101,11 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
 
+## 2025/08/12
+
+      1、更新 baseimage-alpine 3.22
+      2、a2b镜像增加开关aria2b日志功能`A2B_DISABLE_LOG=true`
+
 ## 2025/06/09
 
       1、新增移动文件前判断磁盘空间是否足够功能
