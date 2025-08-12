@@ -1,4 +1,4 @@
-FROM superng6/alpine:3.21 AS builder
+FROM superng6/alpine:3.22 AS builder
 
 # download static aria2c && AriaNg AllInOne
 RUN apk add --no-cache curl wget unzip \
@@ -10,7 +10,7 @@ RUN apk add --no-cache curl wget unzip \
     && curl -fsSL https://git.io/docker-aria2c.sh | bash
 
 # install static aria2c
-FROM superng6/alpine:3.21
+FROM superng6/alpine:3.22
 
 # set label
 LABEL maintainer="NG6"
