@@ -65,7 +65,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 # Architecture
 ### 全平台镜像统一Tag
 
-#### latest (default none webui)
+#### latest (default aria2 with webui ariang)
 docker pull superng6/aria2:latest  
 
 | Architecture | Tag            |
@@ -74,14 +74,6 @@ docker pull superng6/aria2:latest
 | arm64        | latest         |
 | armhf        | latest         |
 
-#### webui-latest (default aria2 with webui ariang)
-docker pull superng6/aria2:webui-latest  
-
-| Architecture | Tag            |
-| ------------ | -------------- |
-| x86-64       | webui-latest         |
-| arm64        | webui-latest         |
-| armhf        | webui-latest         |
 
 #### a2b-latest (屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端 [@makeding](https://github.com/makeding/aria2b) )
 docker pull superng6/aria2:a2b-latest  
@@ -105,6 +97,7 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
       1、更新 baseimage-alpine 3.22
       2、a2b镜像增加开关aria2b日志功能`A2B_DISABLE_LOG=true`
+      3、增加ghcr.io渠道:`ghcr.io/superng6/aria2`
 
 ## 2025/06/09
 
@@ -573,6 +566,7 @@ services:
       - QUIET=true
       - SMD=true
       - A2B=true
+      - A2B_DISABLE_LOG=false
       - CRA2B=2h
     volumes:
       - $PWD/config:/config
