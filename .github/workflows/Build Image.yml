@@ -78,6 +78,9 @@ jobs:
   merge:
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      contents: read
+      packages: write
     steps:
       # 设置版本标签
       - name: 设置版本标签
