@@ -1,0 +1,31 @@
+#!/usr/bin/with-contenv bash
+
+if [ "${A2B}" == "true" ]; then
+
+  echo "信息：Aria2B 功能已启用。"
+  echo "信息：等待10秒，以确保 Aria2c 主程序完全启动..."
+  sleep 10
+
+  # 接下来，在已启用的前提下，检查是否要屏蔽日志
+  if [ "${A2B_DISABLE_LOG}" == "true" ]; then
+    # 分支一：启用 Aria2B，但屏蔽日志
+    echo "信息：检测到 A2B_DISABLE_LOG=true，将屏蔽日志并启动 Aria2B。"
+    exec aria2b \
+      -c "/config/aria2.conf" \
+      -u "http://127.0.0.1:${PORT}/jsonrpc" \
+      -s "${SECRET}" > /dev/null 2>&1
+  else
+    # 分支二：启用 Aria2B，并显示日志（默认行为）
+    echo "信息：将启动 Aria2B 并显示其运行日志。"
+    echo "信息：(如需屏蔽日志，请设置环境变量 A2B_DISABLE_LOG=true)"
+    exec aria2b \
+      -c "/config/aria2.conf" \
+      -u "http://127.0.0.1:${PORT}/jsonrpc" \
+      -s "${SECRET}"
+  fi
+
+else
+  # --- Aria2B 未启用或环境变量未设置，执行这里的逻辑 ---
+  echo "信息：Aria2B 功能未启用。"
+  echo "信息：(如需启用，请在环境中设置变量 A2B=true)"
+fi

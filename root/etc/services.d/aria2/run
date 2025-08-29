@@ -1,16 +1,15 @@
 #!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+# 启动 aria2 服务
+set -euo pipefail
 
-if [[ ! -z $SECRET ]];then
-  SECRET_TOKEN="--rpc-secret=${SECRET}"
+if [[ -n "${SECRET:-}" ]]; then
+	SECRET_TOKEN="--rpc-secret=${SECRET}"
 fi
 
 exec \
 	s6-setuidgid abc aria2c \
-    --conf-path=/config/aria2.conf \
-    $SECRET_TOKEN \
-    --disk-cache=$CACHE \
-    --quiet=$QUIET
-  > /dev/stdout \
-  2 > /dev/stderr
-
-echo 'Exiting aria2'
+	--conf-path=/config/aria2.conf \
+	${SECRET_TOKEN:+"${SECRET_TOKEN}"} \
+	--disk-cache="${CACHE:-128M}" \
+	--quiet="${QUIET:-true}"

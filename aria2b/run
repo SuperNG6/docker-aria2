@@ -1,0 +1,32 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+set -euo pipefail
+. /aria2/scripts/lib/logger.sh
+
+if [[ "${A2B:-false}" != "true" ]]; then
+	log_i "aria2b 未启用（A2B!=true），跳过启动。"
+	exit 0
+fi
+
+command -v aria2b >/dev/null 2>&1 || {
+	log_e "未找到 aria2b 可执行文件"
+	exit 1
+}
+
+log_i "aria2b 功能已启用，等待 10 秒以确保 aria2c 已就绪 ..."
+sleep 10
+
+RPC_URL="http://127.0.0.1:${PORT:-6800}/jsonrpc"
+ARGS=(
+	-c "/config/aria2.conf"
+	-u "${RPC_URL}"
+	-s "${SECRET:-}"
+)
+
+if [[ "${A2B_DISABLE_LOG:-false}" == "true" ]]; then
+	log_i "A2B_DISABLE_LOG=true，将静默以 root 运行 aria2b。"
+	exec aria2b "${ARGS[@]}" >/dev/null 2>&1
+else
+	log_i "aria2b 已启动（输出日志）。如需静默，请设置 A2B_DISABLE_LOG=true。"
+	exec aria2b "${ARGS[@]}"
+fi

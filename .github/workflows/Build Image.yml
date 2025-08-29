@@ -4,133 +4,94 @@ on:
   workflow_dispatch:
 
 env:
-  # Docker Hub 镜像名称
-  DOCKER_IMAGE: superng6/aria2
-  # GitHub Container Registry (ghcr.io) 镜像名称
-  GHCR_IMAGE: ghcr.io/superng6/aria2
+  REGISTRY_DOCKER: docker.io
+  REGISTRY_GHCR: ghcr.io
+  IMAGE_NAME: superng6/aria2
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
-        platform:
-          - linux/amd64
-          - linux/arm/v7
-          - linux/arm64
+        include:
+          - flavor: webui
+            dockerfile: ./Dockerfile
+            platforms: linux/amd64,linux/arm/v7,linux/arm64
+          - flavor: aria2b
+            dockerfile: ./DockerfileA2B
+            platforms: linux/amd64,linux/arm/v7,linux/arm64
+    
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 设置 QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: 设置 Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 登录 Docker Hub
       - name: 登录到 Docker Hub
         uses: docker/login-action@v3
         with:
+          registry: ${{ env.REGISTRY_DOCKER }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 登录 GitHub Container Registry
       - name: 登录到 GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          registry: ${{ env.REGISTRY_GHCR }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 构建并推送单架构镜像（by digest），同时推送到 Docker Hub 和 GHCR
-      - name: 构建并推送单架构镜像（by digest）
+      - name: 提取元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}
+            ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=dev-${{ matrix.flavor }}
+
+      - name: 构建并推送 Docker 镜像
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./Dockerfile
-          platforms: ${{ matrix.platform }}
-          tags: |-
-            ${{ env.DOCKER_IMAGE }}
-            ${{ env.GHCR_IMAGE }}
-          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=buildx-${{ matrix.flavor }}
+          cache-to: type=gha,mode=max,scope=buildx-${{ matrix.flavor }}
 
-      # 导出 digest
-      - name: 导出 digest
+      - name: 检查双仓库的最终镜像
+        if: always()
         run: |
-          mkdir -p /tmp/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
-          echo "PLATFORM_PAIR=$(echo ${{ matrix.platform }} | tr '/' '-')" >> $GITHUB_ENV
-
-      # 上传 digest 供后续合并 
-      - name: 上传 digest
-        uses: actions/upload-artifact@v4
-        with:
-          name: digests-${{ env.PLATFORM_PAIR }}
-          path: /tmp/digests/*
-          retention-days: 1
-
-  merge:
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      # 设置版本标签
-      - name: 设置版本标签
-        id: set-version
+          docker buildx imagetools inspect ${{ env.REGISTRY_DOCKER }}/${{ env.IMAGE_NAME }}:dev-${{ matrix.flavor }}
+          docker buildx imagetools inspect ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}:dev-${{ matrix.flavor }}
+          
+      - name: 生成构建摘要
         run: |
-          VERSION_TAG=$(date +"%y-%m-%d")
-          echo "version=${VERSION_TAG}" >> $GITHUB_OUTPUT
-
-      # 下载所有 digest
-      - name: 下载 digests
-        uses: actions/download-artifact@v4
-        with:
-          path: /tmp/digests
-          pattern: digests-*
-          merge-multiple: true
-
-      # 设置 Buildx
-      - name: 设置 Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # 登录 Docker Hub
-      - name: 登录到 Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      # 登录 GHCR
-      - name: 登录到 GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # 合并 manifest 并推送到 Docker Hub 和 GHCR
-      - name: 合并 manifest 并推送
-        working-directory: /tmp/digests
-        run: |
-          docker buildx imagetools create \
-            -t "${{ env.DOCKER_IMAGE }}:${{ steps.set-version.outputs.version }}" \
-            -t "${{ env.DOCKER_IMAGE }}:latest" \
-            -t "${{ env.GHCR_IMAGE }}:${{ steps.set-version.outputs.version }}" \
-            -t "${{ env.GHCR_IMAGE }}:latest" \
-            $(printf '${{ env.DOCKER_IMAGE }}@sha256:%s ' *)
-
-      # 检查镜像 manifest
-      - name: 检查镜像
-        run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:${{ steps.set-version.outputs.version }}
-          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:latest
-          docker buildx imagetools inspect ${{ env.GHCR_IMAGE }}:${{ steps.set-version.outputs.version }}
-          docker buildx imagetools inspect ${{ env.GHCR_IMAGE }}:latest
+          echo "## 🐳 Docker 镜像构建完成 - ${{ matrix.flavor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 构建信息" >> $GITHUB_STEP_SUMMARY
+          echo "| 项目 | 详情 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **镜像变体** | \`${{ matrix.flavor }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Dockerfile** | \`${{ matrix.dockerfile }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **支持架构** | \`${{ matrix.platforms }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **镜像标签** | \`dev-${{ matrix.flavor }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **镜像摘要** | \`${{ steps.build.outputs.digest }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 开发者信息" >> $GITHUB_STEP_SUMMARY
+          echo "- **构建时间**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Git 提交**: [\`${GITHUB_SHA:0:7}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **分支**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **触发方式**: \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY

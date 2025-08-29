@@ -1,0 +1,3 @@
+# do daily/weekly/monthly maintenance
+# min   hour    day     month   weekday command
+0       5       *       *       *       bash /aria2/script/rpc_tracker.sh

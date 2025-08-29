@@ -1,0 +1,22 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+# shellcheck disable=SC1091
+# tracker 初始化与定时任务（容器启动时更新 + RPC 定时）
+set -euo pipefail
+. /aria2/scripts/lib/logger.sh
+
+if [[ "${UT:-true}" = "true" ]]; then
+	log_i "容器启动：更新 bt-tracker 至 aria2.conf"
+	bash /aria2/scripts/utils/tracker.sh || log_w "tracker 本地更新失败（忽略继续）"
+else
+	log_i "容器启动：跳过本地 tracker 更新（UT=false）"
+fi
+
+if [[ "${RUT:-true}" = "true" ]]; then
+	cp /aria2/conf/rpc-tracker1 /etc/crontabs/root
+	/usr/sbin/crond
+	log_i "已启用每日 05:00 RPC 更新 bt-tracker（RUT=true）"
+else
+	cp /aria2/conf/rpc-tracker0 /etc/crontabs/root
+	log_i "已禁用 RPC 定时更新（RUT=false）"
+fi

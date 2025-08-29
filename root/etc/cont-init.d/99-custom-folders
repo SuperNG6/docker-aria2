@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bash
 # shellcheck shell=bash
-# 预留：执行自定义脚本（用户可通过挂载覆盖本脚本）
+# 预留：创建自定义目录（用户可通过挂载覆盖本脚本）
 set -euo pipefail
 exit 0

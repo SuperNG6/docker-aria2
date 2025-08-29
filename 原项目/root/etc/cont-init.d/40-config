@@ -3,7 +3,11 @@
 # permissions
 chown -R abc:abc \
     /config \
+    /www \
     /downloads
   
 chmod a+x \
   /aria2/script/*
+
+# set cron-restart-a2b
+bash /aria2/script/cron-restart-a2b.sh

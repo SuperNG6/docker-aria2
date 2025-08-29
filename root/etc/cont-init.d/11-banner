@@ -1,0 +1,50 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+# shellcheck disable=SC1091,SC2312
+# 显示启动看板（仅在容器启动时显示一次）
+set -euo pipefail
+. /aria2/scripts/lib/logger.sh
+
+build=$(sed -n '1p' /aria2/build-date 2>/dev/null)
+ver=${build:-docker-aria2}
+arch=$(uname -m)
+base="Alpine Linux $(cat /etc/alpine-release 2>/dev/null)"
+tz=${TZ:-Asia/Shanghai}
+
+echo "==============================================================================="
+echo "                    🚀 Docker-Aria2 容器启动成功 🚀"
+echo "==============================================================================="
+echo
+echo "📦 镜像信息:"
+echo "   版本信息: ${ver}"
+echo "   AriaNg版本: $(sed -n '2p' /aria2/build-date 2>/dev/null | sed 's/docker-ariang-//')"
+echo "   Aria2版本: 1.36.0 (静态编译, 解除线程限制)"
+echo "   平台架构: ${arch}"
+echo "   基础镜像: ${base}"
+echo "   时区设置: ${tz}"
+echo
+echo "🌐 服务端口:"
+echo "   RPC端口: ${PORT:-6800}"
+if [[ "${WEBUI:-true}" = "true" ]]; then echo "   WebUI端口: ${WEBUI_PORT:-8080} [启用]"; else echo "   WebUI端口: ${WEBUI_PORT:-8080} [停用]"; fi
+echo "   BT监听端口: ${BTPORT:-32516} (TCP/UDP)"
+echo
+echo "⚙️  核心配置:"
+echo "   磁盘缓存: ${CACHE:-128M}"
+echo "   静默模式: [${QUIET:-true}]"
+echo "   用户权限: PUID=${PUID:-0}, PGID=${PGID:-0}"
+echo
+echo "🎯 功能特性:"
+echo "   启动更新Tracker: [${UT:-true}]"
+echo "   定时更新Tracker: [${RUT:-true}]"
+echo "   Tracker 输出: 默认仅显示数量；设 TRACKER_SHOW=list 或 DEBUG=1 显示完整列表"
+echo "   保存磁力为种子: [${SMD:-true}]"
+echo "   屏蔽吸血客户端: $([[ "${A2B:-false}" = "true" && -f /usr/local/bin/aria2b ]] && echo "[启用]" || echo "[禁用]")"
+echo
+echo "📚 帮助链接:"
+echo "   项目地址: https://github.com/SuperNG6/docker-aria2"
+echo "   使用教程: https://sleele.com/2019/09/27/docker-aria2的最佳实践"
+echo "   Docker Hub: https://hub.docker.com/r/superng6/aria2"
+echo
+echo "==============================================================================="
+echo "                      🎉 启动完成 🎉"
+echo "==============================================================================="

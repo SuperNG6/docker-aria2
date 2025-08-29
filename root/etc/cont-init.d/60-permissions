@@ -1,0 +1,7 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+# 权限设置：最后执行
+set -euo pipefail
+
+chown -R abc:abc /config /downloads || true
+chmod a+x /aria2/scripts/lib/* /aria2/scripts/handlers/* /aria2/scripts/utils/* 2>/dev/null || true

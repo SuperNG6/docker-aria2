@@ -1,0 +1,69 @@
+#!/usr/bin/with-contenv bash
+
+# make folders
+mkdir -p \
+	/config/ssl \
+  /config/logs \
+  /config/backup-torrent \
+  /downloads/completed \
+  /downloads/recycle
+
+# copy files
+if [[ ! -e /config/aria2.conf ]]
+then
+  cp /aria2/conf/aria2.conf.default /config/aria2.conf
+fi
+
+if [[ ! -e /config/setting.conf ]]
+then
+  cp /aria2/conf/setting.conf /config/setting.conf
+fi
+
+# 保留配置、更新修改配置文件
+if [[ -e /config/setting.conf ]]
+then
+  . /aria2/script/setting
+  SED_CONF
+fi
+
+if [[ ! -e /config/文件过滤.conf ]]
+then
+  cp /aria2/conf/文件过滤.conf /config/文件过滤.conf
+fi
+
+if [[ ! -e /config/aria2.session ]]
+then
+  touch /config/aria2.session
+fi
+
+if [[ ! -e /config/dht.dat ]]
+then
+  touch /config/dht.dat
+fi
+
+# 2021.03.15 变更：日志文件地址变更为`/config/logs`
+if [[ -e /config/move.log || -e /config/recycle.log || -e /config/delete.log || -e /config/文件过滤日志.log ]]
+then
+  mv /config/*.log /config/logs/
+fi
+
+# 创建日志文件
+if [[ ! -e /config/logs/move.log ]]
+then
+  touch /config/logs/move.log
+fi
+
+if [[ ! -e /config/logs/recycle.log ]]
+then
+  touch /config/logs/recycle.log
+fi
+
+if [[ ! -e /config/logs/delete.log ]]
+then
+  touch /config/logs/delete.log
+fi
+
+if [[ ! -e /config/logs/文件过滤日志.log ]]
+then
+  touch /config/logs/文件过滤日志.log
+fi

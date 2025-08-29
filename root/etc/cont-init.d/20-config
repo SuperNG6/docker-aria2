@@ -1,69 +1,34 @@
 #!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+# shellcheck disable=SC1091
+# 初始化目录、配置与日志文件（仅在容器启动）
+set -euo pipefail
+. /aria2/scripts/lib/logger.sh
+# 供 config_apply_setting_defaults 使用的依赖
+. /aria2/scripts/lib/common.sh
+. /aria2/scripts/lib/config.sh
 
-# make folders
-mkdir -p \
-	/config/ssl \
-  /config/logs \
-  /config/backup-torrent \
-  /downloads/completed \
-  /downloads/recycle
+# 此处不再手工定义路径，统一由 path.sh/config.sh 内的 get_base_paths 提供
 
-# copy files
-if [[ ! -e /config/aria2.conf ]]
-then
-  cp /aria2/conf/aria2.conf.default /config/aria2.conf
-fi
+# 目录
+mkdir -p "${CONFIG_DIR}/ssl" "${LOG_DIR}" "${BAK_TORRENT_DIR}" "${DOWNLOAD_PATH}/completed" "${DOWNLOAD_PATH}/recycle"
 
-if [[ ! -e /config/setting.conf ]]
-then
-  cp /aria2/conf/setting.conf /config/setting.conf
-fi
+# 配置文件按模板初始化
+[[ -f "${ARIA2_CONF}" ]] || cp /aria2/conf/aria2.conf.default "${ARIA2_CONF}"
+[[ -f "${SETTING_FILE}" ]] || cp /aria2/conf/setting.conf "${SETTING_FILE}"
+[[ -f "${FILTER_FILE}" ]] || cp /aria2/conf/文件过滤.conf "${FILTER_FILE}"
 
-# 保留配置、更新修改配置文件
-if [[ -e /config/setting.conf ]]
-then
-  . /aria2/script/setting
-  SED_CONF
-fi
+# 必需空文件
+[[ -f "${SESSION_FILE}" ]] || : > "${SESSION_FILE}"
+[[ -f "${DHT_FILE}" ]] || : > "${DHT_FILE}"
 
-if [[ ! -e /config/文件过滤.conf ]]
-then
-  cp /aria2/conf/文件过滤.conf /config/文件过滤.conf
-fi
+# 日志文件
+[[ -f "${MOVE_LOG}" ]] || : > "${MOVE_LOG}"
+[[ -f "${RECYCLE_LOG}" ]] || : > "${RECYCLE_LOG}"
+[[ -f "${DELETE_LOG}" ]] || : > "${DELETE_LOG}"
+[[ -f "${CF_LOG}" ]] || : > "${CF_LOG}"
 
-if [[ ! -e /config/aria2.session ]]
-then
-  touch /config/aria2.session
-fi
-
-if [[ ! -e /config/dht.dat ]]
-then
-  touch /config/dht.dat
-fi
-
-# 2021.03.15 变更：日志文件地址变更为`/config/logs`
-if [[ -e /config/move.log || -e /config/recycle.log || -e /config/delete.log || -e /config/文件过滤日志.log ]]
-then
-  mv /config/*.log /config/logs/
-fi
-
-# 创建日志文件
-if [[ ! -e /config/logs/move.log ]]
-then
-  touch /config/logs/move.log
-fi
-
-if [[ ! -e /config/logs/recycle.log ]]
-then
-  touch /config/logs/recycle.log
-fi
-
-if [[ ! -e /config/logs/delete.log ]]
-then
-  touch /config/logs/delete.log
-fi
-
-if [[ ! -e /config/logs/文件过滤日志.log ]]
-then
-  touch /config/logs/文件过滤日志.log
-fi
+# setting.conf 缺省回填/容错回写：
+# 将模板复制为临时文件 → 覆盖用户现有值 → 为缺失键填默认值 → 原子替换回 setting.conf
+config_load_setting || true
+config_apply_setting_defaults || true

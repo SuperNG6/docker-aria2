@@ -1,0 +1,41 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+# shellcheck disable=SC1091
+# 根据环境变量动态更新 /config/aria2.conf（仅在容器启动）
+set -euo pipefail
+. /aria2/scripts/lib/logger.sh
+. /aria2/scripts/lib/kvconf.sh
+. /aria2/scripts/lib/config.sh
+
+# 路径集中化：由 path.sh/config.sh 初始化的 ARIA2_CONF
+
+# 统一写入回调路径
+conf_upsert_kv "${ARIA2_CONF}" on-download-stop "/aria2/scripts/handlers/on_stop.sh"
+conf_upsert_kv "${ARIA2_CONF}" on-download-complete "/aria2/scripts/handlers/on_complete.sh"
+conf_upsert_kv "${ARIA2_CONF}" on-download-pause "/aria2/scripts/handlers/on_pause.sh"
+conf_upsert_kv "${ARIA2_CONF}" on-download-start "/aria2/scripts/handlers/on_start.sh"
+
+# 端口配置
+conf_upsert_kv "${ARIA2_CONF}" rpc-listen-port "${PORT:-6800}"
+conf_upsert_kv "${ARIA2_CONF}" dht-listen-port "${BTPORT:-32516}"
+conf_upsert_kv "${ARIA2_CONF}" listen-port "${BTPORT:-32516}"
+
+# bt-save-metadata
+if [[ "${SMD:-true}" = "true" ]]; then
+	conf_upsert_kv "${ARIA2_CONF}" bt-save-metadata true
+else
+	conf_upsert_kv "${ARIA2_CONF}" bt-save-metadata false
+fi
+
+# file-allocation（先解析成有效值，避免未绑定变量）
+FA_EFF="${FA:-falloc}"
+case "${FA_EFF}" in
+	falloc|trunc|prealloc|none) FA_VAL="${FA_EFF}" ;;
+	*) FA_VAL="falloc" ;;
+esac
+conf_upsert_kv "${ARIA2_CONF}" file-allocation "${FA_VAL}"
+
+# set cron-restart-a2b
+bash /aria2/scripts/utils/cron-restart-a2b.sh
+
+
