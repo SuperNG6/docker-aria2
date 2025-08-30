@@ -49,92 +49,18 @@ clean_up() {
 	rm_aria2
 	if [[ "${CF}" = "true" ]] && [[ ${FILE_NUM} -gt 1 ]] && [[ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ]]; then
 		echo -e "$(now) ${INFO} 被过滤文件的任务路径: ${SOURCE_PATH}" | tee -a "${CF_LOG}"
-		log_i "删除不需要的文件..."
 		_filter_load
-
-		# 删除函数：逐个删除并输出文件名
-		_del_and_log() {
-			local file="$1"
-			if rm -f "${file}"; then
-				echo "removed '${file}'" | tee -a "${CF_LOG}"
-			fi
-		}
-
-		# 文件过滤判断函数：判断文件是否应该被删除
-		_should_delete() {
-			local file="$1"
-			local delete_by_size=false
-			local delete_by_exclude=false
-			local delete_by_keyword=false
-			local delete_by_include=false
-			local delete_by_exclude_regex=false
-			local delete_by_include_regex=false
-
-			# 1. 检查文件大小 (小于指定大小的删除)
-			if [[ -n "${MIN_SIZE}" ]]; then
-				local file_size
-				file_size=$(stat -c%s "${file}" 2>/dev/null || echo "0")
-				local min_bytes
-				case "${MIN_SIZE}" in
-				*K | *k) min_bytes=$((${MIN_SIZE%[Kk]} * 1024)) ;;
-				*M | *m) min_bytes=$((${MIN_SIZE%[Mm]} * 1024 * 1024)) ;;
-				*G | *g) min_bytes=$((${MIN_SIZE%[Gg]} * 1024 * 1024 * 1024)) ;;
-				*) min_bytes="${MIN_SIZE}" ;;
-				esac
-				[[ "${file_size}" -lt "${min_bytes}" ]] && delete_by_size=true
-			fi
-
-			# 2. 检查排除文件类型 (匹配的删除)
-			if [[ -n "${EXCLUDE_FILE}" ]]; then
-				if [[ "${file}" =~ \.(${EXCLUDE_FILE})$ ]]; then
-					delete_by_exclude=true
-				fi
-			fi
-
-			# 3. 检查关键词 (包含关键词的删除)
-			if [[ -n "${KEYWORD_FILE}" ]]; then
-				if [[ "${file}" =~ (${KEYWORD_FILE}) ]]; then
-					delete_by_keyword=true
-				fi
-			fi
-
-			# 4. 检查保留文件类型 (不匹配的删除)
-			if [[ -n "${INCLUDE_FILE}" ]]; then
-				if [[ ! "${file}" =~ \.(${INCLUDE_FILE})$ ]]; then
-					delete_by_include=true
-				fi
-			fi
-
-			# 5. 检查排除文件正则 (匹配的删除)
-			if [[ -n "${EXCLUDE_FILE_REGEX}" ]]; then
-				if [[ "${file}" =~ ${EXCLUDE_FILE_REGEX} ]]; then
-					delete_by_exclude_regex=true
-				fi
-			fi
-
-			# 6. 检查保留文件正则 (不匹配的删除)
-			if [[ -n "${INCLUDE_FILE_REGEX}" ]]; then
-				if [[ ! "${file}" =~ ${INCLUDE_FILE_REGEX} ]]; then
-					delete_by_include_regex=true
-				fi
-			fi
-
-			# 任何一个条件满足就删除
-			if [[ "${delete_by_size}" = true ]] || [[ "${delete_by_exclude}" = true ]] ||
-				[[ "${delete_by_keyword}" = true ]] || [[ "${delete_by_include}" = true ]] ||
-				[[ "${delete_by_exclude_regex}" = true ]] || [[ "${delete_by_include_regex}" = true ]]; then
-				return 0 # 应该删除
-			else
-				return 1 # 不应该删除
-			fi
-		}
-
-		# 单次遍历所有文件
-		while IFS= read -r -d '' file; do
-			if _should_delete "${file}"; then
-				_del_and_log "${file}"
-			fi
-		done < <(find "${SOURCE_PATH}" -type f -print0)
+		
+		# 与原项目完全一致的实现：只有在有规则时才执行
+		if [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} || -n ${KEYWORD_FILE} || -n ${EXCLUDE_FILE_REGEX} || -n ${INCLUDE_FILE_REGEX} ]]; then
+			log_i "删除不需要的文件..."
+			[[ -n "${MIN_SIZE}" ]] && find "${SOURCE_PATH}" -type f -size -"${MIN_SIZE}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+			[[ -n "${EXCLUDE_FILE}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+			[[ -n "${KEYWORD_FILE}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*(${KEYWORD_FILE}).*" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+			[[ -n "${INCLUDE_FILE}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+			[[ -n "${EXCLUDE_FILE_REGEX}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex "${EXCLUDE_FILE_REGEX}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+			[[ -n "${INCLUDE_FILE_REGEX}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex "${INCLUDE_FILE_REGEX}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+		fi
 
 		delete_empty_dir
 	fi
