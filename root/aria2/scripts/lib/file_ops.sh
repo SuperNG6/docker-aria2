@@ -11,6 +11,30 @@ _ARIA2_LIB_FILE_OPS_SH_LOADED=1
 . /aria2/scripts/lib/common.sh
 . /aria2/scripts/lib/path.sh
 
+# 任务信息显示函数
+print_task_info() {
+	echo -e "
+-------------------------- [${LOG_YELLOW} 任务信息 ${TASK_TYPE} ${LOG_NC}] --------------------------
+${LOG_PURPLE}根下载路径:${LOG_NC} ${DOWNLOAD_PATH}
+${LOG_PURPLE}任务位置:${LOG_NC} ${SOURCE_PATH}
+${LOG_PURPLE}首个文件位置:${LOG_NC} ${FILE_PATH}
+${LOG_PURPLE}任务文件数量:${LOG_NC} ${FILE_NUM}
+${LOG_PURPLE}移动至目标文件夹:${LOG_NC} ${TARGET_PATH}
+-----------------------------------------------------------------------------------------------------------------------
+"
+}
+
+print_delete_info() {
+	echo -e "
+-------------------------- [${LOG_YELLOW} 任务信息 ${TASK_TYPE} ${LOG_NC}] --------------------------
+${LOG_PURPLE}根下载路径:${LOG_NC} ${DOWNLOAD_PATH}
+${LOG_PURPLE}任务位置:${LOG_NC} ${SOURCE_PATH}
+${LOG_PURPLE}首个文件位置:${LOG_NC} ${FILE_PATH}
+${LOG_PURPLE}任务文件数量:${LOG_NC} ${FILE_NUM}
+-----------------------------------------------------------------------------------------------------------------------
+"
+}
+
 # 读取过滤配置
 # 描述：从 /config/文件过滤.conf 中加载一组过滤键，用于内容清理。
 # 输出：设置 MIN_SIZE/INCLUDE_FILE/EXCLUDE_FILE/KEYWORD_FILE/INCLUDE_FILE_REGEX/EXCLUDE_FILE_REGEX 六个变量
@@ -29,7 +53,7 @@ _filter_load() {
 rm_aria2() {
 	if [[ -e "${SOURCE_PATH}.aria2" ]]; then
 		rm -f "${SOURCE_PATH}.aria2"
-		log_i "已删除文件: ${SOURCE_PATH}.aria2"
+		echo -e "$(now) ${INFO} 已删除文件: ${SOURCE_PATH}.aria2"
 	fi
 }
 
@@ -37,7 +61,7 @@ rm_aria2() {
 # 前提：DET=true 时启用；通常在内容清理后调用以抹掉空层级。
 delete_empty_dir() {
 	if [[ "${DET}" = "true" ]]; then
-		log_i "删除任务中空的文件夹 ..."
+		echo -e "$(now) ${INFO} 删除任务中空的文件夹 ..."
 		find "${SOURCE_PATH}" -depth -type d -empty -exec rm -vrf {} \;
 	fi
 }
@@ -53,7 +77,7 @@ clean_up() {
 		
 		# 与原项目完全一致的实现：只有在有规则时才执行
 		if [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} || -n ${KEYWORD_FILE} || -n ${EXCLUDE_FILE_REGEX} || -n ${INCLUDE_FILE_REGEX} ]]; then
-			log_i "删除不需要的文件..."
+			echo -e "$(now) ${INFO} 删除不需要的文件..." | tee -a "${CF_LOG}"
 			[[ -n "${MIN_SIZE}" ]] && find "${SOURCE_PATH}" -type f -size -"${MIN_SIZE}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
 			[[ -n "${EXCLUDE_FILE}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
 			[[ -n "${KEYWORD_FILE}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*(${KEYWORD_FILE}).*" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
@@ -84,7 +108,7 @@ move_file() {
 		TASK_TYPE=": 移动任务文件"
 		print_task_info
 		clean_up
-		log_i "开始移动该任务文件到: ${LOG_GREEN}${TARGET_PATH}${LOG_NC}"
+		echo -e "$(now) ${INFO} 开始移动该任务文件到: ${LOG_GREEN}${TARGET_PATH}${LOG_NC}"
 		mkdir -p "${TARGET_PATH}"
 
 		if ! check_space_before_move "${SOURCE_PATH}" "${TARGET_PATH}"; then
@@ -98,23 +122,23 @@ move_file() {
 			local FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
 			local SOURCE_NAME
 			SOURCE_NAME=$(basename "${SOURCE_PATH}")
-			log_w "目标磁盘空间不足，尝试将任务移动到: ${FAIL_DIR}"
+			echo -e "$(now) ${WARN} 目标磁盘空间不足，尝试将任务移动到: ${FAIL_DIR}"
 			mkdir -p "${FAIL_DIR}"
 			if mv -f "${SOURCE_PATH}" "${FAIL_DIR}"; then
-				log_i "因目标磁盘空间不足，已将文件移动至: ${FAIL_DIR}/${SOURCE_NAME}"
+				echo -e "$(now) ${INFO} 因目标磁盘空间不足，已将文件移动至: ${FAIL_DIR}/${SOURCE_NAME}"
 				echo -e "$(now) [INFO] 因目标磁盘空间不足，已将文件移动至: ${FAIL_DIR}/${SOURCE_NAME}" >>"${MOVE_LOG}"
 			else
-				log_e "移动到 ${FAIL_DIR} 失败: ${SOURCE_PATH}"
+				echo -e "$(now) ${ERROR} 移动到 ${FAIL_DIR} 失败: ${SOURCE_PATH}"
 				echo -e "$(now) [ERROR] 移动到 ${FAIL_DIR} 失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
 			fi
 			return 1
 		fi
 
 		if mv -f "${SOURCE_PATH}" "${TARGET_PATH}"; then
-			log_i "已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
+			echo -e "$(now) ${INFO} 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
 			echo -e "$(now) [INFO] 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}" >>"${MOVE_LOG}"
 		else
-			log_e "文件移动失败: ${SOURCE_PATH}"
+			echo -e "$(now) ${ERROR} 文件移动失败: ${SOURCE_PATH}"
 			echo -e "$(now) [ERROR] 文件移动失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
 			local FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
 			local SOURCE_NAME
@@ -122,13 +146,13 @@ move_file() {
 			mkdir -p "${FAIL_DIR}"
 			# Docker环境下的基础检查：确保文件仍然存在
 			if [[ ! -e "${SOURCE_PATH}" ]]; then
-				log_w "源文件不存在，无法移动: ${SOURCE_PATH}"
+				echo -e "$(now) ${WARN} 源文件不存在，无法移动: ${SOURCE_PATH}"
 				echo -e "$(now) [WARN] 源文件不存在，无法移动: ${SOURCE_PATH}" >>"${MOVE_LOG}"
 			elif mv -f "${SOURCE_PATH}" "${FAIL_DIR}"; then
-				log_i "已将文件移动至: ${FAIL_DIR}/${SOURCE_NAME}"
+				echo -e "$(now) ${INFO} 已将文件移动至: ${FAIL_DIR}/${SOURCE_NAME}"
 				echo -e "$(now) [INFO] 已将文件移动至: ${FAIL_DIR}/${SOURCE_NAME}" >>"${MOVE_LOG}"
 			else
-				log_e "移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
+				echo -e "$(now) ${ERROR} 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
 				echo -e "$(now) [ERROR] 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
 			fi
 		fi
@@ -140,12 +164,12 @@ move_file() {
 delete_file() {
 	TASK_TYPE=": 删除任务文件"
 	print_delete_info
-	log_i "下载已停止，开始删除文件..."
+	echo -e "$(now) ${INFO} 下载已停止，开始删除文件..."
 	if rm -rf "${SOURCE_PATH}"; then
-		log_i "已删除文件: ${SOURCE_PATH}"
+		echo -e "$(now) ${INFO} 已删除文件: ${SOURCE_PATH}"
 		echo -e "$(now) [INFO] 文件删除成功: ${SOURCE_PATH}" >>"${DELETE_LOG}"
 	else
-		log_e "文件删除失败: ${SOURCE_PATH}"
+		echo -e "$(now) ${ERROR} 文件删除失败: ${SOURCE_PATH}"
 		echo -e "$(now) [ERROR] 文件删除失败: ${SOURCE_PATH}" >>"${DELETE_LOG}"
 	fi
 }
@@ -155,13 +179,13 @@ delete_file() {
 move_recycle() {
 	TASK_TYPE=": 移动任务文件至回收站"
 	print_task_info
-	log_i "开始移动至回收站: ${LOG_GREEN}${TARGET_PATH}${LOG_NC}"
+	echo -e "$(now) ${INFO} 开始移动至回收站: ${LOG_GREEN}${TARGET_PATH}${LOG_NC}"
 	mkdir -p "${TARGET_PATH}"
 	if mv -f "${SOURCE_PATH}" "${TARGET_PATH}"; then
-		log_i "已移至回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
+		echo -e "$(now) ${INFO} 已移至回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
 		echo -e "$(now) [INFO] 成功移动文件到回收站: ${SOURCE_PATH} -> ${TARGET_PATH}" >>"${RECYCLE_LOG}"
 	else
-		log_e "移动文件到回收站失败，改为直接删除: ${SOURCE_PATH}"
+		echo -e "$(now) ${ERROR} 移动文件到回收站失败，改为直接删除: ${SOURCE_PATH}"
 		rm -rf "${SOURCE_PATH}" || true
 		echo -e "$(now) [ERROR] 移动文件到回收站失败: ${SOURCE_PATH}" >>"${RECYCLE_LOG}"
 	fi
