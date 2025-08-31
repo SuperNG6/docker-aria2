@@ -8,6 +8,8 @@ if [[ -n "${_ARIA2_LIB_PATH_SH_LOADED:-}" ]]; then
 fi
 _ARIA2_LIB_PATH_SH_LOADED=1
 
+# 引入依赖库
+# common.sh 已引入 logger.sh
 . /aria2/scripts/lib/common.sh
 
 # 基础路径
@@ -86,27 +88,6 @@ completed_path() { TARGET_DIR="${DOWNLOAD_PATH}/completed"; }
 # 描述：设置目标根目录为 /downloads/recycle（回收站目标基准）。
 recycle_path() { TARGET_DIR="${DOWNLOAD_PATH}/recycle"; }
 
-# 打印任务信息
-# 描述：任务信息输出。
-print_task_info() {
-	echo -e "\n-------------------------- [${LOG_YELLOW} 任务信息 ${TASK_TYPE:-} ${LOG_NC}] --------------------------"
-	echo -e "${LOG_PURPLE}根下载路径:${LOG_NC} ${DOWNLOAD_PATH}"
-	echo -e "${LOG_PURPLE}任务位置:${LOG_NC} ${SOURCE_PATH}"
-	echo -e "${LOG_PURPLE}首个文件位置:${LOG_NC} ${FILE_PATH}"
-	echo -e "${LOG_PURPLE}任务文件数量:${LOG_NC} ${FILE_NUM}"
-	[[ -n "${TARGET_PATH:-}" ]] && echo -e "${LOG_PURPLE}移动至目标文件夹:${LOG_NC} ${TARGET_PATH}"
-	echo -e "------------------------------------------------------------------------------\n"
-}
-
-print_delete_info() {
-	# 描述：仅用于删除场景的信息输出，省略目标目录展示。
-	echo -e "\n-------------------------- [${LOG_YELLOW} 任务信息 ${TASK_TYPE:-} ${LOG_NC}] --------------------------"
-	echo -e "${LOG_PURPLE}根下载路径:${LOG_NC} ${DOWNLOAD_PATH}"
-	echo -e "${LOG_PURPLE}任务位置:${LOG_NC} ${SOURCE_PATH}"
-	echo -e "${LOG_PURPLE}首个文件位置:${LOG_NC} ${FILE_PATH}"
-	echo -e "${LOG_PURPLE}任务文件数量:${LOG_NC} ${FILE_NUM}"
-	echo -e "------------------------------------------------------------------------------\n"
-}
 
 # 解析最终路径（兼容原逻辑）
 # 输入依赖：FILE_NUM、FILE_PATH、DOWNLOAD_DIR、DOWNLOAD_PATH、目标根 TARGET_DIR

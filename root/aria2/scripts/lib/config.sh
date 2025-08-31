@@ -14,6 +14,8 @@ if [[ -n "${_ARIA2_LIB_CONFIG_SH_LOADED:-}" ]]; then
 fi
 _ARIA2_LIB_CONFIG_SH_LOADED=1
 
+# 引入依赖库
+# common.sh 已引入 logger.sh
 . /aria2/scripts/lib/common.sh
 . /aria2/scripts/lib/path.sh
 

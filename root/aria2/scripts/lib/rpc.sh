@@ -13,6 +13,8 @@ if [[ -n "${_ARIA2_LIB_RPC_SH_LOADED:-}" ]]; then
 fi
 _ARIA2_LIB_RPC_SH_LOADED=1
 
+# 引入依赖库
+# common.sh 已引入 logger.sh
 . /aria2/scripts/lib/common.sh
 
 RPC_ADDR() { echo "http://localhost:${PORT:-6800}/jsonrpc"; } # 生成 RPC 地址，默认 6800

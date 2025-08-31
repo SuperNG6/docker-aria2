@@ -111,42 +111,36 @@ check_space_before_move() {
 		return 1
 	}
 	
+	# Docker环境使用Linux命令，参考原项目简化实现
 	local sdev tdev req avail
-	# Docker环境下，这些命令通常是可靠的，但添加基础错误处理
-	sdev=$(stat -c %d "${sp}" 2>/dev/null) || {
-		log_w "无法获取源设备信息，跳过空间检查"
-		return 0
-	}
-	tdev=$(stat -c %d "${td}" 2>/dev/null) || {
-		log_w "无法获取目标设备信息，跳过空间检查"
-		return 0
-	}
-	req=$(du -sb "${sp}" 2>/dev/null | awk '{print $1}') || {
-		log_w "无法获取源文件大小，跳过空间检查"
-		return 0
-	}
-	avail=$(df --output=avail -B1 "${td}" 2>/dev/null | sed '1d') || {
-		log_w "无法获取目标可用空间，跳过空间检查"
-		return 0
-	}
-
+	sdev=$(stat -c %d "${sp}")
+	tdev=$(stat -c %d "${td}")
+	
+	# 当源和目标的设备号不同时，说明是跨磁盘移动，需要检查空间
 	if [[ "${sdev}" != "${tdev}" ]]; then
-		log_i "检测到跨磁盘移动，检查目标磁盘空间..."
-	else
-		log_i "检查目标磁盘空间..."
-	fi
+		log_i "检测到跨磁盘移动，正在检查目标磁盘空间..."
+		
+		# 获取源文件/目录所需的空间大小（单位: 字节）
+		req=$(du -sb "${sp}" | awk '{print $1}')
+		
+		# 获取目标路径的可用空间大小（单位: 字节）
+		avail=$(df --output=avail -B1 "${td}" | sed '1d')
 
-	if [[ "${avail}" -lt "${req}" ]]; then
-		local req_g avail_g
-		req_g=$(awk "BEGIN {printf \"%.2f\", ${req}/1024/1024/1024}")
-		avail_g=$(awk "BEGIN {printf \"%.2f\", ${avail}/1024/1024/1024}")
-		log_e "目标磁盘空间不足，所需: ${req_g}GB，可用: ${avail_g}GB"
-		# 仅在空间不足时设置全局变量供调用方使用
-		REQ_SPACE_BYTES="${req}"
-		AVAIL_SPACE_BYTES="${avail}"
-		return 1
+		if (( avail < req )); then
+			local req_g avail_g
+			req_g=$(awk "BEGIN {printf \"%.2f\", ${req}/1024/1024/1024}")
+			avail_g=$(awk "BEGIN {printf \"%.2f\", ${avail}/1024/1024/1024}")
+			log_e "目标磁盘空间不足，所需: ${req_g}GB，可用: ${avail_g}GB"
+			# 仅在空间不足时设置全局变量供调用方使用
+			REQ_SPACE_BYTES="${req}"
+			AVAIL_SPACE_BYTES="${avail}"
+			return 1
+		fi
+		log_i "目标磁盘空间充足。"
+	else
+		log_i "检测为同磁盘移动，无需检查空间。"
 	fi
-	log_i "目标磁盘空间充足。"
+	
 	# 空间充足时清空变量，避免状态混乱
 	REQ_SPACE_BYTES=""
 	AVAIL_SPACE_BYTES=""

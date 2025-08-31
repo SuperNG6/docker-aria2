@@ -8,6 +8,8 @@
 # 输入参数：$1=GID  $2=FILE_NUM  $3=FILE_PATH
 set -euo pipefail
 
+# 引入依赖库
+# common.sh 已引入 logger.sh
 . /aria2/scripts/lib/common.sh
 . /aria2/scripts/lib/config.sh
 . /aria2/scripts/lib/path.sh

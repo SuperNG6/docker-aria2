@@ -5,7 +5,9 @@
 #       tracker.sh --rpc      -> 通过 RPC 动态更新 bt-tracker（无需重启）
 
 set -euo pipefail
-. /aria2/scripts/lib/logger.sh
+
+# 引入依赖库
+# common.sh 已引入 logger.sh
 . /aria2/scripts/lib/common.sh
 . /aria2/scripts/lib/config.sh
 . /aria2/scripts/lib/rpc.sh
