@@ -55,6 +55,7 @@ _filter_load() {
 
 _delete_exclude_file() {
     if [[ ${FILE_NUM} -gt 1 ]] && [[ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ]] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} || -n ${KEYWORD_FILE} || -n ${EXCLUDE_FILE_REGEX} || -n ${INCLUDE_FILE_REGEX} ]]; then
+        
         log_i "删除不需要的文件..."
         
         # 安全检查：预判过滤规则是否会删除所有文件
@@ -71,13 +72,16 @@ _delete_exclude_file() {
             if [[ -n "${INCLUDE_FILE}" ]]; then
                 # 🍎 开发环境兼容：macOS用于测试调试，Docker Linux用于生产运行
                 if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
-                    # macOS开发环境：简化处理
-                    files_to_keep=0
+                    # macOS开发环境：使用更精确的计数方式，避免重复计算
+                    local temp_count_list="/tmp/count_files_$$"
+                    > "${temp_count_list}"
                     local IFS='|'
                     for ext in ${INCLUDE_FILE}; do
-                        local count=$(find "${SOURCE_PATH}" -type f -iname "*.${ext}" | wc -l | tr -d ' ')
-                        files_to_keep=$((files_to_keep + count))
+                        find "${SOURCE_PATH}" -type f -iname "*.${ext}" >> "${temp_count_list}"
                     done
+                    # 去重后计数
+                    files_to_keep=$(sort -u "${temp_count_list}" | wc -l | tr -d ' ')
+                    rm -f "${temp_count_list}"
                 else
                     # Linux生产环境（Docker）
                     files_to_keep=$(find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${INCLUDE_FILE})" | wc -l | tr -d ' ')
@@ -320,6 +324,9 @@ clean_up() {
 # =============================移动文件=============================
 move_file() {
     # DOWNLOAD_DIR = DOWNLOAD_PATH，说明为在根目录下载的单文件，`dmof`时不进行移动
+    # 安全检查：确保 DOWNLOAD_DIR 已定义，否则使用 DOWNLOAD_PATH 作为默认值
+    local DOWNLOAD_DIR="${DOWNLOAD_DIR:-${DOWNLOAD_PATH}}"
+    
     if [[ "${MOVE}" = "false" ]]; then
         rm_aria2
         return 0
