@@ -142,7 +142,9 @@ check_space_before_move() {
 	fi
 	
 	# 空间充足时清空变量，避免状态混乱
+	# shellcheck disable=SC2034  # REQ_SPACE_BYTES被file_ops.sh使用
 	REQ_SPACE_BYTES=""
+	# shellcheck disable=SC2034  # AVAIL_SPACE_BYTES被file_ops.sh使用
 	AVAIL_SPACE_BYTES=""
 	return 0
 }

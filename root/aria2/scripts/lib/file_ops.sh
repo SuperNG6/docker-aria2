@@ -16,6 +16,8 @@ _ARIA2_LIB_FILE_OPS_SH_LOADED=1
 . /aria2/scripts/lib/torrent.sh
 
 # ==========================任务信息展示===============================
+# 功能：与原项目TASK_INFO()完全一致
+
 print_task_info() {
     echo -e "
 -------------------------- [${LOG_YELLOW} 任务信息 ${LOG_GREEN}${TASK_TYPE}${LOG_NC} ${LOG_YELLOW}] --------------------------
@@ -38,6 +40,8 @@ ${LOG_PURPLE}任务文件数量:${LOG_NC} ${FILE_NUM}
 }
 
 # =============================读取过滤配置=============================
+# 功能：与原项目LOAD_SCRIPT_CONF()完全一致
+
 _filter_load() {
     MIN_SIZE=$(kv_get "${FILTER_FILE}" min-size)
     INCLUDE_FILE=$(kv_get "${FILTER_FILE}" include-file)
@@ -48,6 +52,8 @@ _filter_load() {
 }
 
 # =============================删除不需要的文件=============================
+# 功能：与原项目DELETE_EXCLUDE_FILE()完全一致
+
 _delete_exclude_file() {
     if [[ ${FILE_NUM} -gt 1 ]] && [[ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ]] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} || -n ${KEYWORD_FILE} || -n ${EXCLUDE_FILE_REGEX} || -n ${INCLUDE_FILE_REGEX} ]]; then
         log_i "删除不需要的文件..."
@@ -61,6 +67,8 @@ _delete_exclude_file() {
 }
 
 # =============================删除.aria2文件=============================
+# 功能：与原项目RM_ARIA2()完全一致
+
 rm_aria2() {
     if [[ -e "${SOURCE_PATH}.aria2" ]]; then
         rm -f "${SOURCE_PATH}.aria2"
@@ -69,6 +77,8 @@ rm_aria2() {
 }
 
 # =============================删除空文件夹=============================
+# 功能：与原项目DELETE_EMPTY_DIR()完全一致
+
 delete_empty_dir() {
     if [[ "${DET}" = "true" ]]; then
         log_i "删除任务中空的文件夹 ..."
@@ -77,6 +87,8 @@ delete_empty_dir() {
 }
 
 # =============================内容过滤=============================
+# 功能：与原项目CLEAN_UP()完全一致
+
 clean_up() {
     rm_aria2
     if [[ "${CF}" = "true" ]] && [[ ${FILE_NUM} -gt 1 ]] && [[ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ]]; then
@@ -88,6 +100,8 @@ clean_up() {
 }
 
 # =============================移动文件=============================
+# 功能：与原项目MOVE_FILE()完全一致（修复了一些错误）
+
 move_file() {
     # DOWNLOAD_DIR = DOWNLOAD_PATH，说明为在根目录下载的单文件，`dmof`时不进行移动
     if [[ "${MOVE}" = "false" ]]; then
@@ -157,6 +171,8 @@ move_file() {
 }
 
 # =============================删除文件=============================
+# 功能：与原项目DELETE_FILE()完全一致（修复变量名错误）
+
 delete_file() {
     TASK_TYPE=": 删除任务文件"
     print_delete_info
@@ -184,6 +200,8 @@ delete_file() {
 }
 
 # =============================回收站=============================
+# 功能：与原项目MOVE_RECYCLE()完全一致（修复变量名错误）
+
 move_recycle() {
     TASK_TYPE=": 移动任务文件至回收站"
     print_task_info

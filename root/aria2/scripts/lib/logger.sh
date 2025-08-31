@@ -12,12 +12,15 @@ _ARIA2_LIB_LOGGER_SH_LOADED=1
 LOG_RED="\033[31m"
 LOG_GREEN="\033[1;32m" 
 LOG_YELLOW="\033[1;33m"
+# shellcheck disable=SC2034  # LOG_CYAN被file_ops.sh等文件使用
 LOG_CYAN="\033[36m"
+# shellcheck disable=SC2034  # LOG_PURPLE被file_ops.sh等文件使用
 LOG_PURPLE="\033[1;35m"
+# shellcheck disable=SC2034  # LOG_BOLD被file_ops.sh等文件使用
 LOG_BOLD="\033[1m"
 LOG_NC="\033[0m"
 
-# 标签定义
+# 标签定义（修正拼写错误）
 INFO="[${LOG_GREEN}INFO${LOG_NC}]"
 ERROR="[${LOG_RED}ERROR${LOG_NC}]"
 WARN="[${LOG_YELLOW}WARN${LOG_NC}]"
@@ -40,7 +43,7 @@ log_i_tee() { echo -e "$(now) ${INFO} $*" | tee -a "${1}"; }
 log_w_tee() { echo -e "$(now) ${WARN} $*" | tee -a "${1}"; }
 log_e_tee() { echo -e "$(now) ${ERROR} $*" | tee -a "${1}"; }
 
-# 文件模式：仅写入文件，使用纯文本格式
+# 文件模式：仅写入文件，使用纯文本格式（兼容原项目的条件日志）
 log_file() { 
     local level="$1" file="$2"; shift 2
     [[ -n "${file}" ]] && echo -e "$(now) [${level}] $*" >> "${file}"
