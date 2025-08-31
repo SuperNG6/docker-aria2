@@ -56,23 +56,22 @@ ensure_base_paths
 #   - validate_under_target: 校验路径前缀必须位于 TARGET_DIR 下。
 normalize_path() {
 	local p="$1"
-	# 移除内联 /./
-	p="${p//\/\.\//\/}"
-	# 折叠重复斜杠 // -> /
-	while [[ "$p" == *"//"* ]]; do p="${p//\/\//\/}"; done
-	# 去除末尾 /. -> /
-	[[ "$p" == */. ]] && p="${p%/.}"
-	echo -n "$p"
+	# 使用 sed 进行路径规范化（更高效的单次处理）
+	printf '%s' "$p" | sed 's|/\./|/|g; s|/\+|/|g; s|/\.$||'
 }
 
 validate_under_target() {
-	local p="$1"
+	local target_dir p
+	# 支持调用方式：validate_under_target path (使用 TARGET_DIR)
+	target_dir="${TARGET_DIR}"
+	p="$1"
+	
 	if [[ -z "$p" ]]; then
 		GET_PATH_INFO="error"
 		return 1
 	fi
-	# 必须在 TARGET_DIR 下
-	if [[ ! "$p" =~ ^"${TARGET_DIR}"(/.*)?$ ]]; then
+	# 必须在目标目录下
+	if [[ ! "$p" =~ ^"${target_dir}"(/.*)?$ ]]; then
 		GET_PATH_INFO="error"
 		return 1
 	fi
