@@ -203,7 +203,8 @@ _delete_exclude_file() {
                     # 删除不在保留列表中的文件
                     find "${SOURCE_PATH}" -type f | while read -r file; do
                         if ! grep -Fxq "${file}" "${temp_keep_list}"; then
-                            rm -vf "${file}" | tee -a "${CF_LOG}"
+                            rm -vf "${file}"
+                            echo "removed '${file}'" | tee -a "${CF_LOG}"
                         fi
                     done
                     rm -f "${temp_keep_list}"
@@ -234,11 +235,15 @@ _delete_exclude_file() {
             # 黑名单模式：没有include规则时，按原顺序执行exclude规则
             log_i "执行黑名单过滤模式"
             
-            # 按原项目顺序执行
-            [[ -n "${MIN_SIZE}" ]] && find "${SOURCE_PATH}" -type f -size -"${MIN_SIZE}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+            # 按原项目顺序执行，确保显示删除的文件
+            [[ -n "${MIN_SIZE}" ]] && {
+                log_i "删除小于 ${MIN_SIZE} 的文件:"
+                find "${SOURCE_PATH}" -type f -size -"${MIN_SIZE}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+            }
             
             # exclude-file规则：Docker生产环境使用regex，开发环境简化处理
             [[ -n "${EXCLUDE_FILE}" ]] && {
+                log_i "删除文件类型: ${EXCLUDE_FILE}"
                 if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
                     # macOS开发环境
                     local IFS='|'
@@ -253,6 +258,7 @@ _delete_exclude_file() {
             
             # keyword-file规则：Docker生产环境使用regex，开发环境简化处理
             [[ -n "${KEYWORD_FILE}" ]] && {
+                log_i "删除包含关键词的文件: ${KEYWORD_FILE}"
                 if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
                     # macOS开发环境：简化匹配
                     local IFS='|'
@@ -267,6 +273,7 @@ _delete_exclude_file() {
             
             # regex规则：仅Linux生产环境支持
             [[ -n "${EXCLUDE_FILE_REGEX}" ]] && {
+                log_i "删除匹配正则的文件: ${EXCLUDE_FILE_REGEX}"
                 if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
                     log_w "regex规则仅在Linux生产环境中支持，开发环境跳过"
                 else
@@ -310,10 +317,6 @@ delete_empty_dir() {
 clean_up() {
     rm_aria2
     if [[ "${CF}" = "true" ]] && [[ ${FILE_NUM} -gt 1 ]] && [[ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ]]; then
-        # 显示任务信息
-        TASK_TYPE=": 文件过滤"
-        print_task_info
-        
         log_i_tee "${CF_LOG}" "被过滤文件的任务路径: ${SOURCE_PATH}"
         _filter_load
         _delete_exclude_file
