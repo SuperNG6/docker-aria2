@@ -33,6 +33,15 @@ config_load_setting() {
 	TOR=$(kv_get "${SETTING_FILE}" handle-torrent)
 	RRT=$(kv_get "${SETTING_FILE}" remove-repeat-task)
 	MPT=$(kv_get "${SETTING_FILE}" move-paused-task)
+	
+	# 兜底默认值（防御性编程：应对配置文件损坏或缺失键的情况）
+	RMTASK="${RMTASK:-rmaria}"
+	MOVE="${MOVE:-false}"
+	CF="${CF:-false}"
+	DET="${DET:-true}"
+	TOR="${TOR:-backup-rename}"
+	RRT="${RRT:-true}"
+	MPT="${MPT:-false}"
 }
 
 # 该函数仅保留作参考，不在运行路径中调用；保留兼容思路（模板复制 + 兜底默认）
