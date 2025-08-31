@@ -34,6 +34,6 @@ log_w() { echo -e "$(now) ${WARN} $*"; }
 log_e() { echo -e "$(now) ${ERROR} $*"; }
 
 # tee模式：同时输出到控制台和文件（用于重要操作）
-log_i_tee() { echo -e "$(now) ${INFO} $*" | tee -a "${1}"; }
-log_w_tee() { echo -e "$(now) ${WARN} $*" | tee -a "${1}"; }
-log_e_tee() { echo -e "$(now) ${ERROR} $*" | tee -a "${1}"; }
+log_i_tee() { local file="$1"; shift; echo -e "$(now) ${INFO} $*" | tee -a "${file}"; }
+log_w_tee() { local file="$1"; shift; echo -e "$(now) ${WARN} $*" | tee -a "${file}"; }
+log_e_tee() { local file="$1"; shift; echo -e "$(now) ${ERROR} $*" | tee -a "${file}"; }

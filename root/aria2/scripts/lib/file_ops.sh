@@ -16,8 +16,6 @@ _ARIA2_LIB_FILE_OPS_SH_LOADED=1
 . /aria2/scripts/lib/torrent.sh
 
 # ==========================任务信息展示===============================
-# 功能：与原项目TASK_INFO()完全一致
-
 print_task_info() {
     echo -e "
 -------------------------- [${LOG_YELLOW} 任务信息 ${LOG_GREEN}${TASK_TYPE}${LOG_NC} ${LOG_YELLOW}] --------------------------
@@ -40,8 +38,6 @@ ${LOG_PURPLE}任务文件数量:${LOG_NC} ${FILE_NUM}
 }
 
 # =============================读取过滤配置=============================
-# 功能：与原项目LOAD_SCRIPT_CONF()完全一致
-
 _filter_load() {
     MIN_SIZE=$(kv_get "${FILTER_FILE}" min-size)
     INCLUDE_FILE=$(kv_get "${FILTER_FILE}" include-file)
@@ -52,34 +48,53 @@ _filter_load() {
 }
 
 # =============================删除不需要的文件=============================
-# 功能：改进版本 - 优先执行include规则，避免规则冲突
-# 兼容原配置文件，但执行逻辑更安全合理
-# 新增：全删保护 - 如果规则会删除所有文件，则跳过过滤操作
+# 功能：智能文件过滤，白名单优先 + 全删保护
+# 逻辑：1) 检测include规则优先执行（白名单模式）
+#       2) 预判保护：防止误删所有文件
+#       3) 黑名单模式按原项目顺序执行
 
 _delete_exclude_file() {
     if [[ ${FILE_NUM} -gt 1 ]] && [[ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ]] && [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} || -n ${KEYWORD_FILE} || -n ${EXCLUDE_FILE_REGEX} || -n ${INCLUDE_FILE_REGEX} ]]; then
         log_i "删除不需要的文件..."
         
         # 安全检查：预判过滤规则是否会删除所有文件
-        local total_files=$(find "${SOURCE_PATH}" -type f | wc -l)
+        local total_files=$(find "${SOURCE_PATH}" -type f | wc -l | tr -d ' ')
         local files_to_keep=0
         
         log_i "安全检查：任务包含 ${total_files} 个文件，分析过滤影响..."
         
-        # 优化逻辑：检查是否有include规则，如果有则优先执行（白名单模式）
+        # 🎯 核心逻辑：检查是否有include规则，如果有则优先执行（白名单模式）
         if [[ -n "${INCLUDE_FILE}" ]] || [[ -n "${INCLUDE_FILE_REGEX}" ]]; then
             log_i "检测到白名单规则，预判保留文件数量..."
             
             # 预判白名单模式下会保留多少文件
             if [[ -n "${INCLUDE_FILE}" ]]; then
-                files_to_keep=$(find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${INCLUDE_FILE})" | wc -l)
-                log_i "根据 include-file 规则，预计保留 ${files_to_keep} 个文件"
+                # 🍎 开发环境兼容：macOS用于测试调试，Docker Linux用于生产运行
+                if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
+                    # macOS开发环境：简化处理
+                    files_to_keep=0
+                    local IFS='|'
+                    for ext in ${INCLUDE_FILE}; do
+                        local count=$(find "${SOURCE_PATH}" -type f -iname "*.${ext}" | wc -l | tr -d ' ')
+                        files_to_keep=$((files_to_keep + count))
+                    done
+                else
+                    # Linux生产环境（Docker）
+                    files_to_keep=$(find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${INCLUDE_FILE})" | wc -l | tr -d ' ')
+                fi
+                log_i "根据 include-file 规则，预计保留: ${files_to_keep} 个文件"
             fi
             
             if [[ -n "${INCLUDE_FILE_REGEX}" ]]; then
-                local regex_keep=$(find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex "${INCLUDE_FILE_REGEX}" | wc -l)
+                # regex规则：仅Linux环境支持
+                if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
+                    local regex_keep=0
+                    log_w "regex规则仅在Linux生产环境中支持"
+                else
+                    local regex_keep=$(find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex "${INCLUDE_FILE_REGEX}" | wc -l | tr -d ' ')
+                fi
                 files_to_keep=$((files_to_keep + regex_keep))
-                log_i "根据 include-file-regex 规则，额外保留 ${regex_keep} 个文件"
+                log_i "根据 include-file-regex 规则，额外保留: ${regex_keep} 个文件"
             fi
             
         else
@@ -87,29 +102,59 @@ _delete_exclude_file() {
             log_i "检测到黑名单规则，预判删除文件数量..."
             local files_to_delete=0
             
-            # 统计各种规则会删除的文件（可能有重复，但用于安全评估）
+            # 统计各种规则会删除的文件（注意重复计算问题）
             [[ -n "${MIN_SIZE}" ]] && {
-                local size_delete=$(find "${SOURCE_PATH}" -type f -size -"${MIN_SIZE}" | wc -l)
+                local size_delete=$(find "${SOURCE_PATH}" -type f -size -"${MIN_SIZE}" | wc -l | tr -d ' ')
                 files_to_delete=$((files_to_delete + size_delete))
-                log_i "min-size 规则会删除 ${size_delete} 个文件"
+                log_i "min-size 规则会删除: ${size_delete} 个文件"
             }
             
             [[ -n "${EXCLUDE_FILE}" ]] && {
-                local ext_delete=$(find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" | wc -l)
+                # Docker生产环境使用Linux find，开发环境临时兼容macOS
+                if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
+                    # macOS开发环境
+                    local ext_delete=0
+                    local IFS='|'
+                    for ext in ${EXCLUDE_FILE}; do
+                        local count=$(find "${SOURCE_PATH}" -type f -iname "*.${ext}" | wc -l | tr -d ' ')
+                        ext_delete=$((ext_delete + count))
+                    done
+                else
+                    # Linux生产环境（Docker）
+                    local ext_delete=$(find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" | wc -l | tr -d ' ')
+                fi
                 files_to_delete=$((files_to_delete + ext_delete))
-                log_i "exclude-file 规则会删除 ${ext_delete} 个文件"
+                log_i "exclude-file 规则会删除: ${ext_delete} 个文件"
             }
             
             [[ -n "${KEYWORD_FILE}" ]] && {
-                local keyword_delete=$(find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*(${KEYWORD_FILE}).*" | wc -l)
+                # 关键词匹配：Docker生产环境使用regex，开发环境简化处理
+                if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
+                    # macOS开发环境：简化匹配
+                    local keyword_delete=0
+                    local IFS='|'
+                    for keyword in ${KEYWORD_FILE}; do
+                        local count=$(find "${SOURCE_PATH}" -type f -iname "*${keyword}*" | wc -l | tr -d ' ')
+                        keyword_delete=$((keyword_delete + count))
+                    done
+                else
+                    # Linux生产环境（Docker）
+                    local keyword_delete=$(find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*(${KEYWORD_FILE}).*" | wc -l | tr -d ' ')
+                fi
                 files_to_delete=$((files_to_delete + keyword_delete))
-                log_i "keyword-file 规则会删除 ${keyword_delete} 个文件"
+                log_i "keyword-file 规则会删除: ${keyword_delete} 个文件"
             }
             
             [[ -n "${EXCLUDE_FILE_REGEX}" ]] && {
-                local regex_delete=$(find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex "${EXCLUDE_FILE_REGEX}" | wc -l)
+                # regex规则：仅Linux生产环境支持
+                if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
+                    local regex_delete=0
+                    log_w "regex规则仅在Linux生产环境中支持，开发环境跳过"
+                else
+                    local regex_delete=$(find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex "${EXCLUDE_FILE_REGEX}" | wc -l | tr -d ' ')
+                fi
                 files_to_delete=$((files_to_delete + regex_delete))
-                log_i "exclude-file-regex 规则会删除 ${regex_delete} 个文件"
+                log_i "exclude-file-regex 规则会删除: ${regex_delete} 个文件"
             }
             
             # 黑名单模式下，保留文件数 = 总数 - 删除数（简化估算）
@@ -117,7 +162,7 @@ _delete_exclude_file() {
             [[ ${files_to_keep} -lt 0 ]] && files_to_keep=0
         fi
         
-        # 全删保护：如果会删除所有文件，则跳过过滤
+        # 🛡️ 全删保护：如果会删除所有文件，则跳过过滤
         if [[ ${files_to_keep} -eq 0 ]]; then
             log_w "🛡️  全删保护触发！"
             log_w "过滤规则会删除所有 ${total_files} 个文件，为避免误删重要内容已跳过过滤操作"
@@ -134,22 +179,47 @@ _delete_exclude_file() {
         
         log_i "✅ 安全检查通过，预计保留 ${files_to_keep} 个文件，执行过滤..."
         
-        # 执行实际的过滤逻辑
+        # 🎯 执行实际的过滤逻辑：白名单优先
         if [[ -n "${INCLUDE_FILE}" ]] || [[ -n "${INCLUDE_FILE_REGEX}" ]]; then
-            log_i "检测到白名单规则，优先执行以避免冲突"
+            log_i "检测到白名单规则，优先执行以避免规则冲突"
             
             # 白名单模式：只保留匹配的文件，删除其他所有文件
             if [[ -n "${INCLUDE_FILE}" ]]; then
                 log_i "保留文件类型: ${INCLUDE_FILE}"
-                find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+                # Docker生产环境使用Linux find，开发环境临时兼容macOS
+                if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
+                    # macOS开发环境：先收集要保留的文件，然后删除其他文件
+                    local temp_keep_list="/tmp/keep_files_$$"
+                    local IFS='|'
+                    > "${temp_keep_list}"
+                    for ext in ${INCLUDE_FILE}; do
+                        find "${SOURCE_PATH}" -type f -iname "*.${ext}" >> "${temp_keep_list}"
+                    done
+                    
+                    # 删除不在保留列表中的文件
+                    find "${SOURCE_PATH}" -type f | while read -r file; do
+                        if ! grep -Fxq "${file}" "${temp_keep_list}"; then
+                            rm -vf "${file}" | tee -a "${CF_LOG}"
+                        fi
+                    done
+                    rm -f "${temp_keep_list}"
+                else
+                    # Linux生产环境（Docker）
+                    find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+                fi
             fi
             
             if [[ -n "${INCLUDE_FILE_REGEX}" ]]; then
                 log_i "保留文件模式: ${INCLUDE_FILE_REGEX}"
-                find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex "${INCLUDE_FILE_REGEX}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+                # regex规则：仅Linux生产环境支持
+                if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
+                    log_w "regex规则仅在Linux生产环境中支持，开发环境跳过"
+                else
+                    find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex "${INCLUDE_FILE_REGEX}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+                fi
             fi
             
-            # 输出提示信息
+            # 输出提示信息：白名单优先，跳过其他规则
             log_i "白名单模式已执行，其他过滤规则已跳过以避免冲突"
             [[ -n "${EXCLUDE_FILE}" ]] && log_i "已跳过 exclude-file: ${EXCLUDE_FILE}"
             [[ -n "${KEYWORD_FILE}" ]] && log_i "已跳过 keyword-file: ${KEYWORD_FILE}"
@@ -160,37 +230,63 @@ _delete_exclude_file() {
             # 黑名单模式：没有include规则时，按原顺序执行exclude规则
             log_i "执行黑名单过滤模式"
             
-            # 1. 按文件大小过滤（删除小于指定大小的文件）
+            # 按原项目顺序执行
             [[ -n "${MIN_SIZE}" ]] && find "${SOURCE_PATH}" -type f -size -"${MIN_SIZE}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
             
-            # 2. 按文件扩展名排除（删除指定扩展名的文件）
-            [[ -n "${EXCLUDE_FILE}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+            # exclude-file规则：Docker生产环境使用regex，开发环境简化处理
+            [[ -n "${EXCLUDE_FILE}" ]] && {
+                if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
+                    # macOS开发环境
+                    local IFS='|'
+                    for ext in ${EXCLUDE_FILE}; do
+                        find "${SOURCE_PATH}" -type f -iname "*.${ext}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+                    done
+                else
+                    # Linux生产环境（Docker）
+                    find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+                fi
+            }
             
-            # 3. 按关键词排除（删除文件名包含指定关键词的文件）
-            [[ -n "${KEYWORD_FILE}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*(${KEYWORD_FILE}).*" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+            # keyword-file规则：Docker生产环境使用regex，开发环境简化处理
+            [[ -n "${KEYWORD_FILE}" ]] && {
+                if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
+                    # macOS开发环境：简化匹配
+                    local IFS='|'
+                    for keyword in ${KEYWORD_FILE}; do
+                        find "${SOURCE_PATH}" -type f -iname "*${keyword}*" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+                    done
+                else
+                    # Linux生产环境（Docker）
+                    find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*(${KEYWORD_FILE}).*" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+                fi
+            }
             
-            # 4. 按正则排除（删除匹配正则的文件）
-            [[ -n "${EXCLUDE_FILE_REGEX}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex "${EXCLUDE_FILE_REGEX}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+            # regex规则：仅Linux生产环境支持
+            [[ -n "${EXCLUDE_FILE_REGEX}" ]] && {
+                if command -v uname >/dev/null 2>&1 && [[ "$(uname)" == "Darwin" ]]; then
+                    log_w "regex规则仅在Linux生产环境中支持，开发环境跳过"
+                else
+                    find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex "${EXCLUDE_FILE_REGEX}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
+                fi
+            }
         fi
         
         # 统计剩余文件
-        local remaining_files=$(find "${SOURCE_PATH}" -type f 2>/dev/null | wc -l)
+        local remaining_files=$(find "${SOURCE_PATH}" -type f 2>/dev/null | wc -l | tr -d ' ')
         log_i "过滤完成，剩余文件数: ${remaining_files}"
         
         # 验证保护机制是否有效
-        if [[ ${remaining_files} -eq 0 ]]; then
+        if [[ ${remaining_files} -eq 0 ]] && [[ ${total_files} -gt 0 ]]; then
             log_e "❌ 异常：尽管有安全保护，但所有文件仍被删除！"
             log_e "这可能是预判逻辑的bug，请报告此问题"
             log_e_tee "${CF_LOG}" "过滤保护失效: ${SOURCE_PATH} 所有文件被删除"
         else
-            log_i "✅ 过滤保护有效，成功保留了 ${remaining_files} 个重要文件"
+            log_i "✅ 过滤保护有效，成功保留了 ${remaining_files} 个文件"
         fi
     fi
 }
 
 # =============================删除.aria2文件=============================
-# 功能：与原项目RM_ARIA2()完全一致
-
 rm_aria2() {
     if [[ -e "${SOURCE_PATH}.aria2" ]]; then
         rm -f "${SOURCE_PATH}.aria2"
@@ -199,8 +295,6 @@ rm_aria2() {
 }
 
 # =============================删除空文件夹=============================
-# 功能：与原项目DELETE_EMPTY_DIR()完全一致
-
 delete_empty_dir() {
     if [[ "${DET}" = "true" ]]; then
         log_i "删除任务中空的文件夹 ..."
@@ -209,11 +303,13 @@ delete_empty_dir() {
 }
 
 # =============================内容过滤=============================
-# 功能：与原项目CLEAN_UP()完全一致
-
 clean_up() {
     rm_aria2
     if [[ "${CF}" = "true" ]] && [[ ${FILE_NUM} -gt 1 ]] && [[ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ]]; then
+        # 显示任务信息
+        TASK_TYPE=": 文件过滤"
+        print_task_info
+        
         log_i_tee "${CF_LOG}" "被过滤文件的任务路径: ${SOURCE_PATH}"
         _filter_load
         _delete_exclude_file
@@ -222,8 +318,6 @@ clean_up() {
 }
 
 # =============================移动文件=============================
-# 功能：与原项目MOVE_FILE()完全一致（修复了一些错误）
-
 move_file() {
     # DOWNLOAD_DIR = DOWNLOAD_PATH，说明为在根目录下载的单文件，`dmof`时不进行移动
     if [[ "${MOVE}" = "false" ]]; then
@@ -291,8 +385,6 @@ move_file() {
 }
 
 # =============================删除文件=============================
-# 功能：与原项目DELETE_FILE()完全一致（修复变量名错误）
-
 delete_file() {
     TASK_TYPE=": 删除任务文件"
     print_delete_info
@@ -320,8 +412,6 @@ delete_file() {
 }
 
 # =============================回收站=============================
-# 功能：与原项目MOVE_RECYCLE()完全一致（修复变量名错误）
-
 move_recycle() {
     TASK_TYPE=": 移动任务文件至回收站"
     print_task_info
