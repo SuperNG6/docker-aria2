@@ -21,19 +21,27 @@ handle_torrent() {
 	case "${TOR}" in
 	retain)
 		# 保留种子文件，不做处理
-		:
+		log_torrent "种子已保留: $(basename "${TORRENT_FILE}") -> ${SAVE_PATH:-unknown}"
 		;;
 	delete)
-		rm -f "${TORRENT_FILE}" && log_i "已删除种子文件: ${TORRENT_FILE}"
+		log_i "已删除种子文件: ${TORRENT_FILE}"
+		rm -f "${TORRENT_FILE}"
+		log_torrent "种子已删除: $(basename "${TORRENT_FILE}") -> ${SAVE_PATH:-unknown}"
 		;;
 	rename)
-		mv -f "${TORRENT_FILE}" "$(dirname "${TORRENT_FILE}")/${TASK_NAME}.torrent" && log_i "已重命名种子文件: ${TORRENT_FILE} -> ${TASK_NAME}.torrent"
+		log_i "已重命名种子文件: ${TORRENT_FILE} -> ${TASK_NAME}.torrent"
+		mv -f "${TORRENT_FILE}" "$(dirname "${TORRENT_FILE}")/${TASK_NAME}.torrent"
+		log_torrent "种子已重命名: ${TASK_NAME}.torrent -> ${SAVE_PATH:-unknown}"
 		;;
 	backup)
-		mkdir -p "${BAK_TORRENT_DIR}" && mv -vf "${TORRENT_FILE}" "${BAK_TORRENT_DIR}" && log_i "备份种子文件: ${TORRENT_FILE}"
+		log_i "备份种子文件: ${TORRENT_FILE}"
+		mkdir -p "${BAK_TORRENT_DIR}" && mv -vf "${TORRENT_FILE}" "${BAK_TORRENT_DIR}"
+		log_torrent "种子已备份: $(basename "${TORRENT_FILE}") -> ${BAK_TORRENT_DIR}"
 		;;
 	backup-rename)
-		mkdir -p "${BAK_TORRENT_DIR}" && mv -f "${TORRENT_FILE}" "${BAK_TORRENT_DIR}/${TASK_NAME}.torrent" && log_i "重命名并备份种子文件: ${BAK_TORRENT_DIR}/${TASK_NAME}.torrent"
+		log_i "重命名并备份种子文件: ${BAK_TORRENT_DIR}/${TASK_NAME}.torrent"
+		mkdir -p "${BAK_TORRENT_DIR}" && mv -f "${TORRENT_FILE}" "${BAK_TORRENT_DIR}/${TASK_NAME}.torrent"
+		log_torrent "种子已重命名并备份: ${TASK_NAME}.torrent -> ${BAK_TORRENT_DIR}"
 		;;
 	*)
 		:

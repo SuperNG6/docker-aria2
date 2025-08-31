@@ -10,6 +10,7 @@ _ARIA2_LIB_FILE_OPS_SH_LOADED=1
 
 . /aria2/scripts/lib/common.sh
 . /aria2/scripts/lib/path.sh
+. /aria2/scripts/lib/torrent.sh
 
 # 任务信息显示函数
 print_task_info() {
@@ -72,12 +73,12 @@ delete_empty_dir() {
 clean_up() {
 	rm_aria2
 	if [[ "${CF}" = "true" ]] && [[ ${FILE_NUM} -gt 1 ]] && [[ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ]]; then
-		echo -e "$(now) ${INFO} 被过滤文件的任务路径: ${SOURCE_PATH}" | tee -a "${CF_LOG}"
+		log_i_tee "${CF_LOG}" "被过滤文件的任务路径: ${SOURCE_PATH}"
 		_filter_load
 		
 		# 与原项目完全一致的实现：只有在有规则时才执行
 		if [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} || -n ${KEYWORD_FILE} || -n ${EXCLUDE_FILE_REGEX} || -n ${INCLUDE_FILE_REGEX} ]]; then
-			echo -e "$(now) ${INFO} 删除不需要的文件..." | tee -a "${CF_LOG}"
+			log_i_tee "${CF_LOG}" "删除不需要的文件..."
 			[[ -n "${MIN_SIZE}" ]] && find "${SOURCE_PATH}" -type f -size -"${MIN_SIZE}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
 			[[ -n "${EXCLUDE_FILE}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
 			[[ -n "${KEYWORD_FILE}" ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*(${KEYWORD_FILE}).*" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
@@ -117,43 +118,49 @@ move_file() {
 				local req_g avail_g
 				req_g=$(awk "BEGIN {printf \"%.2f\", ${REQ_SPACE_BYTES}/1024/1024/1024}")
 				avail_g=$(awk "BEGIN {printf \"%.2f\", ${AVAIL_SPACE_BYTES}/1024/1024/1024}")
-				echo -e "$(now) [ERROR] 目标磁盘空间不足，移动失败。所需空间:${req_g} GB, 可用空间:${avail_g} GB. 源:${SOURCE_PATH} -> 目标:${TARGET_PATH}" >>"${MOVE_LOG}"
+				echo -e "$(now) ${ERROR} 目标磁盘空间不足！无法移动文件。"
+				echo -e "$(now) ${ERROR} 所需空间: ${req_g} GB, 目标可用空间: ${avail_g} GB."
+				log_e_file "${MOVE_LOG}" "目标磁盘空间不足，移动失败。所需空间:${req_g} GB, 可用空间:${avail_g} GB. 源:${SOURCE_PATH} -> 目标:${TARGET_PATH}"
 			fi
 			local FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
-			local SOURCE_NAME
-			SOURCE_NAME=$(basename "${SOURCE_PATH}")
-			echo -e "$(now) ${WARN} 目标磁盘空间不足，尝试将任务移动到: ${FAIL_DIR}"
+			echo -e "$(now) ${WARN} 尝试将任务移动到: ${FAIL_DIR}"
 			mkdir -p "${FAIL_DIR}"
-			if mv -f "${SOURCE_PATH}" "${FAIL_DIR}"; then
-				echo -e "$(now) ${INFO} 因目标磁盘空间不足，已将文件移动至: ${FAIL_DIR}/${SOURCE_NAME}"
-				echo -e "$(now) [INFO] 因目标磁盘空间不足，已将文件移动至: ${FAIL_DIR}/${SOURCE_NAME}" >>"${MOVE_LOG}"
+			mv -f "${SOURCE_PATH}" "${FAIL_DIR}"
+			local MOVE_FAIL_EXIT_CODE=$?
+			if [[ ${MOVE_FAIL_EXIT_CODE} -eq 0 ]]; then
+				echo -e "$(now) ${INFO} 因目标磁盘空间不足，已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
+				log_i_file "${MOVE_LOG}" "因目标磁盘空间不足，已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
 			else
-				echo -e "$(now) ${ERROR} 移动到 ${FAIL_DIR} 失败: ${SOURCE_PATH}"
-				echo -e "$(now) [ERROR] 移动到 ${FAIL_DIR} 失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
+				echo -e "$(now) ${ERROR} 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
+				log_e_file "${MOVE_LOG}" "移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
 			fi
 			return 1
 		fi
 
-		if mv -f "${SOURCE_PATH}" "${TARGET_PATH}"; then
+		mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
+		local MOVE_EXIT_CODE=$?
+		if [[ ${MOVE_EXIT_CODE} -eq 0 ]]; then
 			echo -e "$(now) ${INFO} 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
-			echo -e "$(now) [INFO] 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}" >>"${MOVE_LOG}"
+			log_i_file "${MOVE_LOG}" "已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
 		else
 			echo -e "$(now) ${ERROR} 文件移动失败: ${SOURCE_PATH}"
-			echo -e "$(now) [ERROR] 文件移动失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
+			log_e_file "${MOVE_LOG}" "文件移动失败: ${SOURCE_PATH}"
 			local FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
-			local SOURCE_NAME
-			SOURCE_NAME=$(basename "${SOURCE_PATH}")
 			mkdir -p "${FAIL_DIR}"
 			# Docker环境下的基础检查：确保文件仍然存在
 			if [[ ! -e "${SOURCE_PATH}" ]]; then
 				echo -e "$(now) ${WARN} 源文件不存在，无法移动: ${SOURCE_PATH}"
-				echo -e "$(now) [WARN] 源文件不存在，无法移动: ${SOURCE_PATH}" >>"${MOVE_LOG}"
-			elif mv -f "${SOURCE_PATH}" "${FAIL_DIR}"; then
-				echo -e "$(now) ${INFO} 已将文件移动至: ${FAIL_DIR}/${SOURCE_NAME}"
-				echo -e "$(now) [INFO] 已将文件移动至: ${FAIL_DIR}/${SOURCE_NAME}" >>"${MOVE_LOG}"
+				log_w_file "${MOVE_LOG}" "源文件不存在，无法移动: ${SOURCE_PATH}"
 			else
-				echo -e "$(now) ${ERROR} 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
-				echo -e "$(now) [ERROR] 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
+				mv -f "${SOURCE_PATH}" "${FAIL_DIR}"
+				local MOVE_FAIL_EXIT_CODE=$?
+				if [[ ${MOVE_FAIL_EXIT_CODE} -eq 0 ]]; then
+					echo -e "$(now) ${INFO} 已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
+					log_i_file "${MOVE_LOG}" "已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
+				else
+					echo -e "$(now) ${ERROR} 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
+					log_e_file "${MOVE_LOG}" "移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
+				fi
 			fi
 		fi
 	fi
@@ -165,12 +172,14 @@ delete_file() {
 	TASK_TYPE=": 删除任务文件"
 	print_delete_info
 	echo -e "$(now) ${INFO} 下载已停止，开始删除文件..."
-	if rm -rf "${SOURCE_PATH}"; then
+	rm -rf "${SOURCE_PATH}"
+	local DELETE_EXIT_CODE=$?
+	if [[ ${DELETE_EXIT_CODE} -eq 0 ]]; then
 		echo -e "$(now) ${INFO} 已删除文件: ${SOURCE_PATH}"
-		echo -e "$(now) [INFO] 文件删除成功: ${SOURCE_PATH}" >>"${DELETE_LOG}"
+		log_i_file "${DELETE_LOG}" "文件删除成功: ${SOURCE_PATH}"
 	else
-		echo -e "$(now) ${ERROR} 文件删除失败: ${SOURCE_PATH}"
-		echo -e "$(now) [ERROR] 文件删除失败: ${SOURCE_PATH}" >>"${DELETE_LOG}"
+		echo -e "$(now) ${ERROR} delete failed: ${SOURCE_PATH}"
+		log_e_file "${DELETE_LOG}" "文件删除失败: ${SOURCE_PATH}"
 	fi
 }
 
@@ -179,14 +188,17 @@ delete_file() {
 move_recycle() {
 	TASK_TYPE=": 移动任务文件至回收站"
 	print_task_info
-	echo -e "$(now) ${INFO} 开始移动至回收站: ${LOG_GREEN}${TARGET_PATH}${LOG_NC}"
+	echo -e "$(now) ${INFO} 开始移动已下载的任务至回收站 ${LOG_GREEN}${TARGET_PATH}${LOG_NC}"
 	mkdir -p "${TARGET_PATH}"
-	if mv -f "${SOURCE_PATH}" "${TARGET_PATH}"; then
+	mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
+	local RECYCLE_EXIT_CODE=$?
+	if [[ ${RECYCLE_EXIT_CODE} -eq 0 ]]; then
 		echo -e "$(now) ${INFO} 已移至回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
-		echo -e "$(now) [INFO] 成功移动文件到回收站: ${SOURCE_PATH} -> ${TARGET_PATH}" >>"${RECYCLE_LOG}"
+		log_i_file "${RECYCLE_LOG}" "成功移动文件到回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
 	else
-		echo -e "$(now) ${ERROR} 移动文件到回收站失败，改为直接删除: ${SOURCE_PATH}"
-		rm -rf "${SOURCE_PATH}" || true
-		echo -e "$(now) [ERROR] 移动文件到回收站失败: ${SOURCE_PATH}" >>"${RECYCLE_LOG}"
+		echo -e "$(now) ${ERROR} 移动文件到回收站失败: ${SOURCE_PATH}"
+		echo -e "$(now) ${INFO} 已删除文件: ${SOURCE_PATH}"
+		rm -rf "${SOURCE_PATH}"
+		log_e_file "${RECYCLE_LOG}" "移动文件到回收站失败: ${SOURCE_PATH}"
 	fi
 }

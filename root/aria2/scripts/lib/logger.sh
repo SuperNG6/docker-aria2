@@ -22,3 +22,22 @@ now() { date +"%Y/%m/%d %H:%M:%S"; }
 log_i() { echo -e "$(now) ${INFO} $*"; }
 log_w() { echo -e "$(now) ${WARN} $*"; }
 log_e() { echo -e "$(now) ${ERROR} $*"; }
+
+# 支持同时输出到控制台和日志文件的函数
+log_i_tee() { echo -e "$(now) ${INFO} $*" | tee -a "${1}"; }
+log_w_tee() { echo -e "$(now) ${WARN} $*" | tee -a "${1}"; }
+log_e_tee() { echo -e "$(now) ${ERROR} $*" | tee -a "${1}"; }
+
+# 支持条件日志文件写入的函数
+log_i_file() { local file="$1"; shift; [[ -n "${file}" ]] && echo -e "$(now) [INFO] $*" >>"${file}"; }
+log_w_file() { local file="$1"; shift; [[ -n "${file}" ]] && echo -e "$(now) [WARN] $*" >>"${file}"; }
+log_e_file() { local file="$1"; shift; [[ -n "${file}" ]] && echo -e "$(now) [ERROR] $*" >>"${file}"; }
+
+# 种子专用日志函数：记录时间、种子文件名、保存位置
+log_torrent() {
+    local torrent_log="/logs/torrent.log"
+    # 确保日志目录存在
+    mkdir -p "$(dirname "$torrent_log")"
+    # 简洁格式：时间 + 种子信息
+    echo "$(now) $*" >> "$torrent_log"
+}
