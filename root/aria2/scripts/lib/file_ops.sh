@@ -114,7 +114,7 @@ move_file() {
         TASK_TYPE=": 移动任务文件"
         print_task_info
         clean_up
-        log_i_color "开始移动该任务文件到: ${LOG_GREEN}${TARGET_PATH}${LOG_NC}"
+        log_i "开始移动该任务文件到: ${LOG_GREEN}${TARGET_PATH}${LOG_NC}"
         mkdir -p "${TARGET_PATH}"
 
         # 移动前检查磁盘空间（使用common.sh中的统一函数）
@@ -124,9 +124,7 @@ move_file() {
                 local req_g avail_g
                 req_g=$(awk "BEGIN {printf \"%.2f\", ${REQ_SPACE_BYTES}/1024/1024/1024}")
                 avail_g=$(awk "BEGIN {printf \"%.2f\", ${AVAIL_SPACE_BYTES}/1024/1024/1024}")
-                log_e "目标磁盘空间不足！无法移动文件。"
-                log_e "所需空间: ${req_g} GB, 目标可用空间: ${avail_g} GB."
-                log_e_file "${MOVE_LOG}" "目标磁盘空间不足，移动失败。所需空间:${req_g} GB, 可用空间:${avail_g} GB. 源:${SOURCE_PATH} -> 目标:${TARGET_PATH}"
+                log_e_tee "${MOVE_LOG}" "目标磁盘空间不足，移动失败。所需空间:${req_g} GB, 可用空间:${avail_g} GB. 源:${SOURCE_PATH} -> 目标:${TARGET_PATH}"
             fi
             
             # 空间不足，直接将任务移动到失败文件夹
@@ -205,7 +203,7 @@ delete_file() {
 move_recycle() {
     TASK_TYPE=": 移动任务文件至回收站"
     print_task_info
-    log_i_color "开始移动已下载的任务至回收站 ${LOG_GREEN}${TARGET_PATH}${LOG_NC}"
+    log_i "开始移动已下载的任务至回收站 ${LOG_GREEN}${TARGET_PATH}${LOG_NC}"
     mkdir -p "${TARGET_PATH}"
     mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
     local RECYCLE_EXIT_CODE=$?  # 修复：原项目错误使用了MOVE_EXIT_CODE

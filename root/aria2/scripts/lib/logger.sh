@@ -33,21 +33,7 @@ log_i() { echo -e "$(now) ${INFO} $*"; }
 log_w() { echo -e "$(now) ${WARN} $*"; }
 log_e() { echo -e "$(now) ${ERROR} $*"; }
 
-# 彩色日志函数（支持颜色输出到控制台）
-log_i_color() { echo -e "$(now) ${INFO} $*"; }
-log_w_color() { echo -e "$(now) ${WARN} $*"; }
-log_e_color() { echo -e "$(now) ${ERROR} $*"; }
-
 # tee模式：同时输出到控制台和文件（用于重要操作）
 log_i_tee() { echo -e "$(now) ${INFO} $*" | tee -a "${1}"; }
 log_w_tee() { echo -e "$(now) ${WARN} $*" | tee -a "${1}"; }
 log_e_tee() { echo -e "$(now) ${ERROR} $*" | tee -a "${1}"; }
-
-# 文件模式：仅写入文件，使用纯文本格式（兼容原项目的条件日志）
-log_file() { 
-    local level="$1" file="$2"; shift 2
-    [[ -n "${file}" ]] && echo -e "$(now) [${level}] $*" >> "${file}"
-}
-log_i_file() { log_file "INFO" "$@"; }
-log_w_file() { log_file "WARN" "$@"; }
-log_e_file() { log_file "ERROR" "$@"; }
