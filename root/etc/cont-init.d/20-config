@@ -27,6 +27,7 @@ mkdir -p "${CONFIG_DIR}/ssl" "${LOG_DIR}" "${BAK_TORRENT_DIR}" "${DOWNLOAD_PATH}
 [[ -f "${RECYCLE_LOG}" ]] || : > "${RECYCLE_LOG}"
 [[ -f "${DELETE_LOG}" ]] || : > "${DELETE_LOG}"
 [[ -f "${CF_LOG}" ]] || : > "${CF_LOG}"
+[[ -f "${TORRENT_LOG}" ]] || : > "${TORRENT_LOG}"
 
 # setting.conf 缺省回填/容错回写：
 # 将模板复制为临时文件 → 覆盖用户现有值 → 为缺失键填默认值 → 原子替换回 setting.conf

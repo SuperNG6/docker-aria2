@@ -34,6 +34,7 @@ get_base_paths() {
 	MOVE_LOG="${MOVE_LOG:-${LOG_DIR}/move.log}"
 	DELETE_LOG="${DELETE_LOG:-${LOG_DIR}/delete.log}"
 	RECYCLE_LOG="${RECYCLE_LOG:-${LOG_DIR}/recycle.log}"
+	TORRENT_LOG="${TORRENT_LOG:-${LOG_DIR}/torrent.log}"
 
 	# 其他目录（允许环境覆盖）
 	BAK_TORRENT_DIR="${BAK_TORRENT_DIR:-${CONFIG_DIR}/backup-torrent}" # 种子备份目录
