@@ -27,8 +27,3 @@ log_e() { echo -e "$(now) ${ERROR} $*"; }
 log_i_tee() { echo -e "$(now) ${INFO} $*" | tee -a "${1}"; }
 log_w_tee() { echo -e "$(now) ${WARN} $*" | tee -a "${1}"; }
 log_e_tee() { echo -e "$(now) ${ERROR} $*" | tee -a "${1}"; }
-
-# 支持条件日志文件写入的函数
-log_i_file() { local file="$1"; shift; [[ -n "${file}" ]] && echo -e "$(now) [INFO] $*" >>"${file}"; }
-log_w_file() { local file="$1"; shift; [[ -n "${file}" ]] && echo -e "$(now) [WARN] $*" >>"${file}"; }
-log_e_file() { local file="$1"; shift; [[ -n "${file}" ]] && echo -e "$(now) [ERROR] $*" >>"${file}"; }

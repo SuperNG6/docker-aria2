@@ -118,9 +118,7 @@ move_file() {
 				local req_g avail_g
 				req_g=$(awk "BEGIN {printf \"%.2f\", ${REQ_SPACE_BYTES}/1024/1024/1024}")
 				avail_g=$(awk "BEGIN {printf \"%.2f\", ${AVAIL_SPACE_BYTES}/1024/1024/1024}")
-				echo -e "$(now) ${ERROR} 目标磁盘空间不足！无法移动文件。"
-				echo -e "$(now) ${ERROR} 所需空间: ${req_g} GB, 目标可用空间: ${avail_g} GB."
-				log_e_file "${MOVE_LOG}" "目标磁盘空间不足，移动失败。所需空间:${req_g} GB, 可用空间:${avail_g} GB. 源:${SOURCE_PATH} -> 目标:${TARGET_PATH}"
+				log_e_tee "${MOVE_LOG}" "目标磁盘空间不足！无法移动文件。所需空间: ${req_g} GB, 目标可用空间: ${avail_g} GB. 源:${SOURCE_PATH} -> 目标:${TARGET_PATH}"
 			fi
 			local FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
 			echo -e "$(now) ${WARN} 尝试将任务移动到: ${FAIL_DIR}"
@@ -128,11 +126,9 @@ move_file() {
 			mv -f "${SOURCE_PATH}" "${FAIL_DIR}"
 			local MOVE_FAIL_EXIT_CODE=$?
 			if [[ ${MOVE_FAIL_EXIT_CODE} -eq 0 ]]; then
-				echo -e "$(now) ${INFO} 因目标磁盘空间不足，已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
-				log_i_file "${MOVE_LOG}" "因目标磁盘空间不足，已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
+				log_i_tee "${MOVE_LOG}" "因目标磁盘空间不足，已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
 			else
-				echo -e "$(now) ${ERROR} 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
-				log_e_file "${MOVE_LOG}" "移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
+				log_e_tee "${MOVE_LOG}" "移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
 			fi
 			return 1
 		fi
@@ -140,26 +136,21 @@ move_file() {
 		mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
 		local MOVE_EXIT_CODE=$?
 		if [[ ${MOVE_EXIT_CODE} -eq 0 ]]; then
-			echo -e "$(now) ${INFO} 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
-			log_i_file "${MOVE_LOG}" "已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
+			log_i_tee "${MOVE_LOG}" "已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
 		else
-			echo -e "$(now) ${ERROR} 文件移动失败: ${SOURCE_PATH}"
-			log_e_file "${MOVE_LOG}" "文件移动失败: ${SOURCE_PATH}"
+			log_e_tee "${MOVE_LOG}" "文件移动失败: ${SOURCE_PATH}"
 			local FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
 			mkdir -p "${FAIL_DIR}"
 			# Docker环境下的基础检查：确保文件仍然存在
 			if [[ ! -e "${SOURCE_PATH}" ]]; then
-				echo -e "$(now) ${WARN} 源文件不存在，无法移动: ${SOURCE_PATH}"
-				log_w_file "${MOVE_LOG}" "源文件不存在，无法移动: ${SOURCE_PATH}"
+				log_w_tee "${MOVE_LOG}" "源文件不存在，无法移动: ${SOURCE_PATH}"
 			else
 				mv -f "${SOURCE_PATH}" "${FAIL_DIR}"
 				local MOVE_FAIL_EXIT_CODE=$?
 				if [[ ${MOVE_FAIL_EXIT_CODE} -eq 0 ]]; then
-					echo -e "$(now) ${INFO} 已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
-					log_i_file "${MOVE_LOG}" "已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
+					log_i_tee "${MOVE_LOG}" "已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
 				else
-					echo -e "$(now) ${ERROR} 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
-					log_e_file "${MOVE_LOG}" "移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
+					log_e_tee "${MOVE_LOG}" "移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
 				fi
 			fi
 		fi
@@ -175,11 +166,9 @@ delete_file() {
 	rm -rf "${SOURCE_PATH}"
 	local DELETE_EXIT_CODE=$?
 	if [[ ${DELETE_EXIT_CODE} -eq 0 ]]; then
-		echo -e "$(now) ${INFO} 已删除文件: ${SOURCE_PATH}"
-		log_i_file "${DELETE_LOG}" "文件删除成功: ${SOURCE_PATH}"
+		log_i_tee "${DELETE_LOG}" "已删除文件: ${SOURCE_PATH}"
 	else
-		echo -e "$(now) ${ERROR} delete failed: ${SOURCE_PATH}"
-		log_e_file "${DELETE_LOG}" "文件删除失败: ${SOURCE_PATH}"
+		log_e_tee "${DELETE_LOG}" "delete failed: ${SOURCE_PATH}"
 	fi
 }
 
@@ -193,12 +182,10 @@ move_recycle() {
 	mv -f "${SOURCE_PATH}" "${TARGET_PATH}"
 	local RECYCLE_EXIT_CODE=$?
 	if [[ ${RECYCLE_EXIT_CODE} -eq 0 ]]; then
-		echo -e "$(now) ${INFO} 已移至回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
-		log_i_file "${RECYCLE_LOG}" "成功移动文件到回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
+		log_i_tee "${RECYCLE_LOG}" "已移至回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
 	else
-		echo -e "$(now) ${ERROR} 移动文件到回收站失败: ${SOURCE_PATH}"
+		log_e_tee "${RECYCLE_LOG}" "移动文件到回收站失败: ${SOURCE_PATH}"
 		echo -e "$(now) ${INFO} 已删除文件: ${SOURCE_PATH}"
 		rm -rf "${SOURCE_PATH}"
-		log_e_file "${RECYCLE_LOG}" "移动文件到回收站失败: ${SOURCE_PATH}"
 	fi
 }
