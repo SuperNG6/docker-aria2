@@ -34,7 +34,7 @@ LIGHT_PURPLE_FONT_PREFIX="\033[1;35m"
 FONT_COLOR_SUFFIX="\033[0m"
 INFO="[${LIGHT_GREEN_FONT_PREFIX}INFO${FONT_COLOR_SUFFIX}]"
 ERROR="[${RED_FONT_PREFIX}ERROR${FONT_COLOR_SUFFIX}]"
-WARRING="[${YELLOW_FONT_PREFIX}WARRING${FONT_COLOR_SUFFIX}]"
+WARNING="[${YELLOW_FONT_PREFIX}WARNING${FONT_COLOR_SUFFIX}]"
 
 # ============================时间==============================
 
@@ -160,7 +160,7 @@ MOVE_FILE() {
                 
                 # 空间不足，直接将任务移动到失败文件夹
                 FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
-                echo -e "$(DATE_TIME) ${WARRING} 尝试将任务移动到: ${FAIL_DIR}"
+                echo -e "$(DATE_TIME) ${WARNING} 尝试将任务移动到: ${FAIL_DIR}"
                 mkdir -p "${FAIL_DIR}"
                 mv -f "${SOURCE_PATH}" "${FAIL_DIR}"
                 MOVE_FAIL_EXIT_CODE=$?
@@ -213,8 +213,8 @@ DELETE_FILE() {
     DELETE_INFO
     echo -e "$(DATE_TIME) ${INFO} 下载已停止，开始删除文件..."
     rm -rf "${SOURCE_PATH}"
-    MOVE_EXIT_CODE=$?
-    if [ ${MOVE_EXIT_CODE} -eq 0 ]; then
+    DELETE_EXIT_CODE=$?
+    if [ ${DELETE_EXIT_CODE} -eq 0 ]; then
         echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${SOURCE_PATH}"
         [ ${DELETE_LOG} ] && echo -e "$(DATE_TIME) [INFO] 文件删除成功: ${SOURCE_PATH}" >>${DELETE_LOG}
     else
@@ -237,9 +237,16 @@ MOVE_RECYCLE() {
         [ ${RECYCLE_LOG} ] && echo -e "$(DATE_TIME) [INFO] 成功移动文件到回收站: ${SOURCE_PATH} -> ${TARGET_PATH}" >>${RECYCLE_LOG}
     else
         echo -e "$(DATE_TIME) ${ERROR} 移动文件到回收站失败: ${SOURCE_PATH}"
-        echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${SOURCE_PATH}"
+        echo -e "$(DATE_TIME) ${INFO} 尝试删除文件: ${SOURCE_PATH}"
         rm -rf "${SOURCE_PATH}"
-        [ ${RECYCLE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] 移动文件到回收站失败: ${SOURCE_PATH}" >>${RECYCLE_LOG}
+        DELETE_EXIT_CODE=$?
+        if [ ${DELETE_EXIT_CODE} -eq 0 ]; then
+            echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${SOURCE_PATH}"
+            [ ${RECYCLE_LOG} ] && echo -e "$(DATE_TIME) [WARNING] 移动文件到回收站失败，已删除文件: ${SOURCE_PATH}" >>${RECYCLE_LOG}
+        else
+            echo -e "$(DATE_TIME) ${ERROR} 删除文件也失败: ${SOURCE_PATH}"
+            [ ${RECYCLE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] 移动到回收站和删除文件都失败: ${SOURCE_PATH}" >>${RECYCLE_LOG}
+        fi
     fi
 }
 
@@ -253,8 +260,8 @@ HANDLE_TORRENT() {
         rm -f "${TORRENT_FILE}"
         return
     elif [ "${TOR}" = "rename" ]; then
-        echo -e "$(DATE_TIME) ${INFO} 已删除种子文件: ${TORRENT_FILE}"
-        mv -f "${TORRENT_FILE}" "${TASK_NAME}.torrent"
+        echo -e "$(DATE_TIME) ${INFO} 重命名种子文件: ${TORRENT_FILE} -> ${DOWNLOAD_DIR}/${TASK_NAME}.torrent"
+        mv -f "${TORRENT_FILE}" "${DOWNLOAD_DIR}/${TASK_NAME}.torrent"
     elif [ "${TOR}" = "backup" ]; then
         echo -e "$(DATE_TIME) ${INFO} 备份种子文件: ${TORRENT_FILE}"
         mv -vf "${TORRENT_FILE}" "${BAK_TORRENT_DIR}"

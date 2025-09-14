@@ -2,46 +2,53 @@
 
 SCRIPT_CONF="/config/setting.conf"
 
+# 全局配置定义：格式为 "配置项名:变量名:默认值"
+declare -a CONFIG_ITEMS=(
+    "remove-task:RMTASK:rmaria"
+    "move-task:MOVE:false"
+    "content-filter:CF:false"
+    "delete-empty-dir:DET:true"
+    "handle-torrent:TOR:backup-rename"
+    "remove-repeat-task:RRT:true"
+    "move-paused-task:MPT:false"
+)
+
 LOAD_CONF() {
-    RMTASK="$(grep ^remove-task "${SCRIPT_CONF}" | cut -d= -f2-)"
-    MOVE="$(grep ^move-task "${SCRIPT_CONF}" | cut -d= -f2-)"
-    CF="$(grep ^content-filter "${SCRIPT_CONF}" | cut -d= -f2-)"
-    DET="$(grep ^delete-empty-dir "${SCRIPT_CONF}" | cut -d= -f2-)"
-    TOR="$(grep ^handle-torrent "${SCRIPT_CONF}" | cut -d= -f2-)"
-    RRT="$(grep ^remove-repeat-task "${SCRIPT_CONF}" | cut -d= -f2-)"
-    MPT="$(grep ^move-paused-task "${SCRIPT_CONF}" | cut -d= -f2-)"
+    for config_item in "${CONFIG_ITEMS[@]}"; do
+        IFS=':' read -r key var_name default_value <<< "$config_item"
+        
+        local value=""
+        if [ -f "${SCRIPT_CONF}" ]; then
+            value="$(grep "^${key}=" "${SCRIPT_CONF}" 2>/dev/null | cut -d= -f2-)"
+        fi
+        
+        # 动态设置全局变量
+        declare -g "${var_name}"="${value:-${default_value}}"
+    done
 }
 
-SED_CONF() {
+SED_CONF() {    
     # 复制用户配置文件
     cp /aria2/conf/setting.conf /config/setting.conf.new
-    # 复原用户配置文件参数
-    sed -i "s@^\(remove-task=\).*@\1${RMTASK}@" /config/setting.conf.new
-    sed -i "s@^\(move-task=\).*@\1${MOVE}@" /config/setting.conf.new
-    sed -i "s@^\(content-filter=\).*@\1${CF}@" /config/setting.conf.new
-    sed -i "s@^\(delete-empty-dir=\).*@\1${DET}@" /config/setting.conf.new
-    sed -i "s@^\(handle-torrent=\).*@\1${TOR}@" /config/setting.conf.new
-    sed -i "s@^\(remove-repeat-task=\).*@\1${RRT}@" /config/setting.conf.new
-    sed -i "s@^\(move-paused-task=\).*@\1${MPT}@" /config/setting.conf.new
-    # 如某项参数不存在，则使用默认参数，防止程序运行出错
-    if [[ -z "${RMTASK}" ]]; then
-        sed -i "s@^\(remove-task=\).*@\1rmaria@" /config/setting.conf.new
-    elif [[ -z "${MOVE}" ]]; then
-        sed -i "s@^\(move-task=\).*@\1false@" /config/setting.conf.new
-    elif [[ -z "${CF}" ]]; then
-        sed -i "s@^\(content-filter=\).*@\1false@" /config/setting.conf.new
-    elif [[ -z "${DET}" ]]; then
-        sed -i "s@^\(delete-empty-dir=\).*@\1true@" /config/setting.conf.new
-    elif [[ -z "${TOR}" ]]; then
-        sed -i "s@^\(handle-torrent=\).*@\1backup-rename@" /config/setting.conf.new
-    elif [[ -z "${RRT}" ]]; then
-        sed -i "s@^\(remove-repeat-task=\).*@\1true@" /config/setting.conf.new
-    elif [[ -z "${MPT}" ]]; then
-        sed -i "s@^\(move-paused-task=\).*@\1false@" /config/setting.conf.new
-    fi
+    
+    # 批量更新配置项（使用当前内存中的变量值）
+    for config_item in "${CONFIG_ITEMS[@]}"; do
+        IFS=':' read -r key var_name default_value <<< "$config_item"
+        
+        # 获取当前变量值（不重新加载，使用内存中的值）
+        local current_value="${!var_name}"
+        sed -i "s@^\(${key}=\).*@\1${current_value}@" /config/setting.conf.new
+    done
 
-    rm -f /config/setting.conf
-    mv /config/setting.conf.new /config/setting.conf
+    # 检查操作是否成功
+    if [ $? -eq 0 ]; then
+        rm -f /config/setting.conf
+        mv /config/setting.conf.new /config/setting.conf
+    else
+        echo "错误: 无法更新配置"
+        rm -f /config/setting.conf.new
+        return 1
+    fi
 }
 
 LOAD_CONF

@@ -22,8 +22,8 @@ START() {
         echo -e "$(DATE_TIME) ${ERROR} GID:${TASK_GID} GET TASK PATH ERROR!"
         exit 1
     elif [ -d "${COMPLETED_DIR}" ] && [ "${TASK_STATUS}" != "error" ]; then
-        echo -e "$(DATE_TIME) ${WARRING} 发现目标文件夹已存在当前任务 ${LIGHT_GREEN_FONT_PREFIX}${COMPLETED_DIR}${FONT_COLOR_SUFFIX}"
-        echo -e "$(DATE_TIME) ${WARRING} 正在删除该任务，并清除相关文件... ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
+        echo -e "$(DATE_TIME) ${WARNING} 发现目标文件夹已存在当前任务 ${LIGHT_GREEN_FONT_PREFIX}${COMPLETED_DIR}${FONT_COLOR_SUFFIX}"
+        echo -e "$(DATE_TIME) ${WARNING} 正在删除该任务，并清除相关文件... ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
         RM_ARIA2
         rm -rf "${SOURCE_PATH}"
         REMOVE_REPEAT_TASK

@@ -292,7 +292,7 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
       1、添加回收站功能，默认关闭`-e RECYCLE=false`，可选择开启,/downloads/recycle（修改脚本自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
       2、下载完文件后自动移动到/downloads/completed,默认关闭`-e MOVE=false`，可选择开启（修改脚本自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
-      3、更换ariac静态编译版本，解除aria2c线程限制（来自[P3TERX/aria2-builder](https://github.com/P3TERX/aria2-builder)，感谢）
+      3、更换aria2静态编译版本，解除aria2c线程限制（来自[P3TERX/aria2-builder](https://github.com/P3TERX/aria2-builder)，感谢）
       4、本次更新的两个选项（回收站，下载完成后移动到completed文件夹）均可手动开关，极大的提升了aria2的使用体验
       5、更新base imgae `lsiobase/alpine:3.11`
       6、优化启动脚本

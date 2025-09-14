@@ -18,7 +18,6 @@ ENV TZ=Asia/Shanghai UT=true SECRET=yourtoken CACHE=128M QUIET=true \
 
 # copy local files && aria2c
 COPY root/ /
-COPY darkhttpd/ /etc/cont-init.d/
 COPY --from=builder /tmp/index.html /www/index.html
 COPY --from=builder /usr/local/bin/aria2c /usr/local/bin/aria2c
 
