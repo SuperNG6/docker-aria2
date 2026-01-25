@@ -301,7 +301,8 @@ GET_FINAL_PATH() {
         SOURCE_PATH="${FILE_PATH}"
         RELATIVE_PATH="${FILE_PATH#"${DOWNLOAD_DIR}/"}"
         # 单文件，去除.
-        TASK_NAME="${RELATIVE_PATH%.*}"
+        TASK_NAME="${RELATIVE_PATH##*/}"
+        TASK_NAME="${TASK_NAME%.*}"
         GET_TARGET_PATH
         return
     fi

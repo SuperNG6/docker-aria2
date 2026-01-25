@@ -9,8 +9,8 @@ exec \
     --conf-path=/config/aria2.conf \
     $SECRET_TOKEN \
     --disk-cache=$CACHE \
-    --quiet=$QUIET
+    --quiet=$QUIET \
   > /dev/stdout \
-  2 > /dev/stderr
+  2> /dev/stderr
 
 echo 'Exiting aria2'

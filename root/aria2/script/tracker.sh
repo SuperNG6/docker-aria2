@@ -11,12 +11,11 @@ LIGHT_PURPLE_FONT_PREFIX="\033[1;35m"
 FONT_COLOR_SUFFIX="\033[0m"
 INFO="[${GREEN_FONT_PREFIX}INFO${FONT_COLOR_SUFFIX}]"
 ERROR="[${RED_FONT_PREFIX}ERROR${FONT_COLOR_SUFFIX}]"
-ARIA2_CONF=${1:-aria2.conf}
+ARIA2_CONF=${1:-/config/aria2.conf}
 DOWNLOADER="curl -fsSL --connect-timeout 3 --max-time 3 --retry 2"
 SCRIPT_CONF="/config/setting.conf"
 NL=$'\n'
 echo && echo -e "$INFO Get trackers ..."
-ARIA2_CONF="/config/aria2.conf"
 
 DATE_TIME() {
     date +"%Y/%m/%d %H:%M:%S"

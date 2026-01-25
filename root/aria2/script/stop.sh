@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-. "$(dirname $0)/setting"
-. "$(dirname $0)/core"
-. "$(dirname $0)/rpc_info"
+. "$(dirname "$0")/setting"
+. "$(dirname "$0")/core"
+. "$(dirname "$0")/rpc_info"
 
 TASK_GID=$1
 FILE_NUM=$2
@@ -37,6 +37,6 @@ STOP() {
 }
 
 # 判断`SOURCE_PATH`是否存：start.sh可能已经删除文件或文件夹，不存在`SOURCE_PATH`则不进行任何操作
-if [ -d "${SOURCE_PATH}" ] || [ -e "${SOURCE_PATH}" ]; then
+if [ -e "${SOURCE_PATH}" ]; then
     STOP
 fi
