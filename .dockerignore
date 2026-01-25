@@ -1,6 +1,0 @@
-.git
-.gitignore
-.DS_Store
-build.sh
-docker-compose.yml
-README.md

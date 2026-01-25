@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Aria2 Best Practice - 全能下载神器</title>
+    <meta name="description" content="全平台、轻量级、功能强大的 Aria2 容器化解决方案，支持反吸血、自动脚本、完美权限控制。">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            200: '#99f6e4',
+                            300: '#5eead4',
+                            400: '#2dd4bf',
+                            500: '#14b8a6', // Teal
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a',
+                            950: '#042f2e',
+                        },
+                        dark: {
+                            bg: '#020617',
+                            card: '#1e293b',
+                            border: '#334155',
+                        }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- Global Background -->
+    <div class="fixed-bg">
+        <div class="bg-gradient-layer"></div>
+        <div class="bg-grid-layer"></div>
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 glass-nav transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <a href="#" class="flex items-center space-x-2 group">
+                        <i class="fa-solid fa-cloud-arrow-down text-brand-400 text-2xl group-hover:scale-110 transition-transform drop-shadow-[0_0_8px_rgba(20,184,166,0.6)]"></i>
+                        <span class="font-bold text-xl tracking-tight text-white group-hover:text-brand-300 transition-colors">Docker <span class="text-brand-400">Aria2</span></span>
+                    </a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-8">
+                        <a href="#features" class="text-gray-300 hover:text-brand-300 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white/5">特性</a>
+                        <a href="#quick-start" class="text-gray-300 hover:text-brand-300 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white/5">快速开始</a>
+                        <a href="#configuration" class="text-gray-300 hover:text-brand-300 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white/5">配置</a>
+                        <a href="#docs" class="text-gray-300 hover:text-brand-300 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white/5">文档</a>
+                        <a href="https://github.com/SuperNG6/docker-aria2" target="_blank" class="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-full text-sm font-bold transition-all transform hover:scale-105 shadow-lg shadow-brand-900/50 flex items-center gap-2 hover:shadow-brand-500/30">
+                            <i class="fab fa-github animate-bounce"></i> <span>GitHub</span>
+                        </a>
+                    </div>
+                </div>
+                <!-- Mobile Menu Button -->
+                <div class="-mr-2 flex md:hidden">
+                    <button type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div class="hidden md:hidden bg-dark-card border-b border-dark-border" id="mobile-menu">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <a href="#features" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">特性</a>
+                <a href="#quick-start" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">快速开始</a>
+                <a href="#configuration" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">配置</a>
+                <a href="#docs" class="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium">文档</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+
+            <div class="inline-block mb-6 px-4 py-1.5 rounded-full border border-brand-500/30 bg-brand-500/10 text-brand-300 text-xs font-semibold uppercase tracking-wider animate-fade-in-up hover:scale-105 transition-transform cursor-default backdrop-blur-sm">
+                <i class="fa-solid fa-rocket mr-1 text-brand-400"></i> v1.3.13 Updated
+            </div>
+
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 animate-fade-in-up drop-shadow-2xl" style="animation-delay: 0.1s;">
+                Docker <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-blue-400 to-purple-500 glow-text">Aria2</span>
+                <br class="hidden md:block" />
+                Best Practice
+            </h1>
+
+            <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-300 animate-fade-in-up" style="animation-delay: 0.2s;">
+                全平台、轻量级、功能强大的 <span class="text-brand-300 font-semibold">Aria2</span> 容器化解决方案。
+                <br>
+                完美支持 x86/ARM，内置 WebUI，专为 NAS 和服务器打造。
+            </p>
+
+            <div class="mt-8 flex justify-center gap-4 animate-fade-in-up flex-wrap" style="animation-delay: 0.3s;">
+                <!-- Docker Pulls -->
+                <div class="inline-flex items-center bg-gray-800 rounded-md overflow-hidden shadow-lg hover:scale-105 transition-transform cursor-default ring-1 ring-white/10">
+                    <div class="bg-[#24292e] px-3 py-1.5 text-xs text-white font-bold uppercase tracking-wider flex items-center">
+                        <i class="fab fa-docker mr-1.5"></i> Docker Pulls
+                    </div>
+                    <div class="bg-[#007ec6] px-3 py-1.5 text-xs text-white font-bold min-w-[80px]">
+                        <span class="counter" data-target="10000000">0</span>+
+                    </div>
+                </div>
+
+                <!-- GitHub Stars -->
+                <div class="inline-flex items-center bg-gray-800 rounded-md overflow-hidden shadow-lg hover:scale-105 transition-transform cursor-default ring-1 ring-white/10">
+                    <div class="bg-[#24292e] px-3 py-1.5 text-xs text-white font-bold uppercase tracking-wider flex items-center">
+                        <i class="fab fa-github mr-1.5"></i> Stars
+                    </div>
+                    <div class="bg-[#dfb317] px-3 py-1.5 text-xs text-white font-bold min-w-[60px]">
+                        <span class="counter" data-target="4500">0</span>+
+                    </div>
+                </div>
+
+                <!-- Image Size -->
+                <div class="inline-flex items-center bg-gray-800 rounded-md overflow-hidden shadow-lg hover:scale-105 transition-transform cursor-default ring-1 ring-white/10">
+                    <div class="bg-[#24292e] px-3 py-1.5 text-xs text-white font-bold uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-hard-drive mr-1.5"></i> Image Size
+                    </div>
+                    <div class="bg-[#44cc11] px-3 py-1.5 text-xs text-white font-bold">
+                        10MB
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-10 flex justify-center gap-4 animate-fade-in-up" style="animation-delay: 0.4s;">
+                <a href="#quick-start" class="btn-gradient px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-brand-600 hover:bg-brand-700 md:py-4 md:text-lg md:px-10 shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid fa-bolt mr-2"></i> 立即开始
+                </a>
+                <a href="https://hub.docker.com/r/superng6/aria2" target="_blank" class="px-8 py-3 border border-gray-600 text-base font-medium rounded-md text-gray-300 bg-transparent hover:bg-gray-800 md:py-4 md:text-lg md:px-10 transition-all hover:-translate-y-1 hover:border-white hover:text-white backdrop-blur-sm">
+                    <i class="fab fa-docker mr-2"></i> Docker Hub
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 reveal">
+                <h2 class="text-base text-brand-400 font-semibold tracking-wide uppercase tracking-widest">Meticulously Designed</h2>
+                <p class="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-white sm:text-4xl">核心特性</p>
+                <p class="mt-4 max-w-2xl text-xl text-gray-400 mx-auto">长期迭代，精心打磨的下载体验。</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="glass-card p-8 rounded-2xl reveal">
+                    <div class="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 ring-1 ring-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                        <i class="fa-solid fa-microchip text-brand-400 text-2xl drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">全平台支持</h3>
+                    <p class="text-gray-400">统一 Tag 支持 x86-64, arm64, armhf。无论你是高性能服务器还是树莓派/NAS，都能完美运行。</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="glass-card p-8 rounded-2xl reveal delay-100">
+                    <div class="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 ring-1 ring-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                        <i class="fa-solid fa-shield-halved text-red-400 text-2xl drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">反吸血功能</h3>
+                    <p class="text-gray-400">特殊的 <code>a2b-latest</code> 镜像可屏蔽迅雷、QQ旋风、百度网盘等只下载不上传的吸血客户端，维护 P2P 生态。</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="glass-card p-8 rounded-2xl reveal delay-200">
+                    <div class="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 ring-1 ring-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                        <i class="fa-solid fa-user-lock text-blue-400 text-2xl drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">完美权限控制</h3>
+                    <p class="text-gray-400">支持 PUID/PGID 环境变量映射。以指定用户身份运行，彻底解决 NAS 下文件权限混乱的问题。</p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="glass-card p-8 rounded-2xl reveal">
+                    <div class="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 ring-1 ring-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                        <i class="fa-solid fa-wand-magic-sparkles text-purple-400 text-2xl drop-shadow-[0_0_8px_rgba(192,132,252,0.5)]"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">智能脚本</h3>
+                    <p class="text-gray-400">内置自动更新 Trackers，下载完成自动移动文件、清理垃圾文件、删除空目录，省心省力。</p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="glass-card p-8 rounded-2xl reveal delay-100">
+                    <div class="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 ring-1 ring-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                        <i class="fa-solid fa-trash-can-arrow-up text-yellow-400 text-2xl drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">回收站机制</h3>
+                    <p class="text-gray-400">独有的回收站功能，防止误删文件。支持保留目录结构移动到回收站或已完成目录。</p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="glass-card p-8 rounded-2xl reveal delay-200">
+                    <div class="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 ring-1 ring-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                        <i class="fa-solid fa-gauge-high text-green-400 text-2xl drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">极致轻量</h3>
+                    <p class="text-gray-400">基于 Alpine Linux 构建，镜像体积仅约 10MB。内存占用极低，性能释放无压力。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section id="quick-start" class="py-20 border-t border-white/5 bg-black/20">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 reveal">
+                <h2 class="text-3xl font-extrabold text-white">快速部署</h2>
+                <p class="mt-4 text-gray-400">选择你喜欢的部署方式，一键启动。</p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex justify-center mb-8 reveal">
+                <div class="bg-dark-card p-1 rounded-lg inline-flex border border-white/10 backdrop-blur-md" id="deploy-tabs">
+                    <button class="px-6 py-2 rounded-md text-sm font-medium bg-brand-600 text-white shadow transition-all tab-btn" onclick="switchTab('docker-cli')">Docker CLI</button>
+                    <button class="px-6 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-white transition-all tab-btn" onclick="switchTab('docker-compose')">Docker Compose</button>
+                    <button class="px-6 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-white transition-all tab-btn" onclick="switchTab('synology')">群晖特供</button>
+                </div>
+            </div>
+
+            <!-- Terminal Windows -->
+            <div class="reveal">
+                <!-- Docker CLI -->
+                <div id="docker-cli" class="tab-content block">
+                    <div class="terminal-window">
+                        <div class="terminal-header">
+                            <div class="terminal-controls">
+                                <div class="control-dot dot-red"></div>
+                                <div class="control-dot dot-yellow"></div>
+                                <div class="control-dot dot-green"></div>
+                            </div>
+                            <div class="terminal-title">bash — docker run</div>
+                            <button class="text-gray-400 hover:text-white transition-colors" onclick="copyCode(this)">
+                                <i class="far fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="terminal-content p-6 overflow-x-auto bg-[#0d1117]">
+                            <pre class="text-sm md:text-base font-mono text-gray-300 leading-relaxed"><code>docker run -d \
+  --name=<span class="text-brand-300">aria2</span> \
+  -e <span class="text-yellow-300">PUID</span>=1026 \
+  -e <span class="text-yellow-300">PGID</span>=100 \
+  -e <span class="text-yellow-300">TZ</span>=Asia/Shanghai \
+  -e <span class="text-yellow-300">SECRET</span>=yourtoken \
+  -e <span class="text-yellow-300">CACHE</span>=512M \
+  -e <span class="text-yellow-300">PORT</span>=6800 \
+  -e <span class="text-yellow-300">WEBUI</span>=true \
+  -e <span class="text-yellow-300">WEBUI_PORT</span>=8080 \
+  -e <span class="text-yellow-300">UT</span>=true \
+  -p 6800:6800 \
+  -p 8080:8080 \
+  -p 6881:6881 \
+  -p 6881:6881/udp \
+  -v $PWD/config:/config \
+  -v $PWD/downloads:/downloads \
+  --restart unless-stopped \
+  superng6/aria2:webui-latest</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Docker Compose -->
+                <div id="docker-compose" class="tab-content hidden">
+                    <div class="terminal-window">
+                        <div class="terminal-header">
+                            <div class="terminal-controls">
+                                <div class="control-dot dot-red"></div>
+                                <div class="control-dot dot-yellow"></div>
+                                <div class="control-dot dot-green"></div>
+                            </div>
+                            <div class="terminal-title">docker-compose.yml</div>
+                            <button class="text-gray-400 hover:text-white transition-colors" onclick="copyCode(this)">
+                                <i class="far fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="terminal-content p-6 overflow-x-auto bg-[#0d1117]">
+                            <pre class="text-sm md:text-base font-mono text-gray-300 leading-relaxed"><code>version: "3.1"
+services:
+  aria2:
+    image: <span class="text-green-400">superng6/aria2:webui-latest</span>
+    container_name: aria2
+    network_mode: host <span class="text-gray-500"># 推荐使用 host 模式性能更好</span>
+    environment:
+      - <span class="text-yellow-300">PUID</span>=1026
+      - <span class="text-yellow-300">PGID</span>=100
+      - <span class="text-yellow-300">TZ</span>=Asia/Shanghai
+      - <span class="text-yellow-300">SECRET</span>=yourtoken
+      - <span class="text-yellow-300">CACHE</span>=512M
+      - <span class="text-yellow-300">WEBUI</span>=true
+    volumes:
+      - $PWD/config:/config
+      - $PWD/downloads:/downloads
+    restart: unless-stopped</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Synology -->
+                <div id="synology" class="tab-content hidden">
+                    <div class="glass-card p-8 rounded-xl text-gray-300">
+                        <h3 class="text-xl font-bold text-white mb-4"><i class="fa-solid fa-server mr-2"></i>群晖用户指南</h3>
+                        <div class="space-y-4">
+                            <p>群晖用户使用 Docker 时，最关键的是获取正确的 UID 和 GID，以确保文件权限正常。</p>
+                            <div class="bg-black/30 p-4 rounded-lg border-l-4 border-brand-500">
+                                <p class="font-mono text-sm text-brand-300">1. SSH 登录到你的群晖 NAS</p>
+                                <p class="font-mono text-sm mt-2 text-brand-300">2. 输入命令: <span class="text-white bg-gray-800 px-2 rounded">id 你的用户名</span></p>
+                            </div>
+                            <p>将获取到的 <code>uid</code> 填入 <code>PUID</code>，<code>gid</code> 填入 <code>PGID</code>。</p>
+                            <p class="text-sm text-gray-400 mt-4">* 建议在 File Station 中对 docker 配置文件夹和下载文件夹授予该用户的读写权限。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Configuration -->
+    <section id="configuration" class="py-20 relative">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12 reveal">
+                <h2 class="text-3xl font-extrabold text-white">配置参数</h2>
+                <p class="mt-4 text-gray-400">核心环境变量说明，更多配置请查看 <code>/config/setting.conf</code></p>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-white/5 glass-card reveal">
+                <table class="min-w-full divide-y divide-white/5">
+                    <thead class="bg-white/5">
+                        <tr>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-brand-400 uppercase tracking-wider">变量名 (ENV)</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">默认值</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">说明</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap font-mono text-sm text-brand-200">PUID / PGID</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">1026 / 100</td>
+                            <td class="px-6 py-4 text-sm text-gray-400">运行用户的 UID 和 GID，权限管理关键</td>
+                        </tr>
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap font-mono text-sm text-brand-200">SECRET</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">yourtoken</td>
+                            <td class="px-6 py-4 text-sm text-gray-400">Aria2 RPC 连接密钥 (Token)</td>
+                        </tr>
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap font-mono text-sm text-brand-200">CACHE</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">128M</td>
+                            <td class="px-6 py-4 text-sm text-gray-400">磁盘缓存大小，大内存机器建议调大</td>
+                        </tr>
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap font-mono text-sm text-brand-200">WEBUI</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">true</td>
+                            <td class="px-6 py-4 text-sm text-gray-400">是否开启内置 AriaNg Web 控制台</td>
+                        </tr>
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap font-mono text-sm text-brand-200">UT</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">true</td>
+                            <td class="px-6 py-4 text-sm text-gray-400">启动时是否自动更新 Trackers 列表</td>
+                        </tr>
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap font-mono text-sm text-brand-200">SMD</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">true</td>
+                            <td class="px-6 py-4 text-sm text-gray-400">是否保存磁力链接为种子文件</td>
+                        </tr>
+                        <tr class="hover:bg-white/5 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap font-mono text-sm text-brand-200">BTPORT</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">32516</td>
+                            <td class="px-6 py-4 text-sm text-gray-400">BT/DHT 监听端口，建议映射到公网</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-8 p-8 bg-brand-900/10 border border-brand-500/20 rounded-xl reveal backdrop-blur-md">
+                <h3 class="text-lg font-bold text-brand-300 mb-4"><i class="fa-solid fa-gear mr-2"></i>高级设置详解 (setting.conf)</h3>
+                <p class="text-gray-400 text-sm mb-6">
+                    容器启动后会在 <code>/config</code> 目录下生成 <code>setting.conf</code>。此文件控制了容器的高级功能，无需重启容器，修改即刻生效。
+                </p>
+
+                <div class="space-y-6">
+                    <!-- Config Item -->
+                    <div class="border-b border-white/5 pb-4 last:border-0">
+                        <div class="flex items-center justify-between mb-2">
+                            <code class="text-brand-400 font-mono text-sm bg-black/20 px-2 py-1 rounded">remove-task</code>
+                            <span class="text-xs text-gray-500 border border-gray-700 rounded px-2 py-0.5">默认: rmaria</span>
+                        </div>
+                        <p class="text-gray-300 text-sm mb-2">删除任务后的操作。</p>
+                        <ul class="text-xs text-gray-400 space-y-1 list-disc list-inside ml-2">
+                            <li><code>delete</code>: 删除任务后同时删除文件</li>
+                            <li><code>recycle</code>: 删除文件至回收站 (需开启回收站功能)</li>
+                            <li><code>rmaria</code>: 只删除 .aria2 文件 (保留下载的文件)</li>
+                        </ul>
+                    </div>
+
+                    <!-- Config Item -->
+                    <div class="border-b border-white/5 pb-4 last:border-0">
+                        <div class="flex items-center justify-between mb-2">
+                            <code class="text-brand-400 font-mono text-sm bg-black/20 px-2 py-1 rounded">move-task</code>
+                            <span class="text-xs text-gray-500 border border-gray-700 rounded px-2 py-0.5">默认: false</span>
+                        </div>
+                        <p class="text-gray-300 text-sm mb-2">下载完成后是否移动文件。</p>
+                        <ul class="text-xs text-gray-400 space-y-1 list-disc list-inside ml-2">
+                            <li><code>true</code>: 下载完成后保留目录结构移动到完成目录</li>
+                            <li><code>dmof</code>: (推荐) 非自定义目录的单文件不移动；自定义目录或多文件任务保留目录结构移动</li>
+                            <li><code>false</code>: 不移动</li>
+                        </ul>
+                    </div>
+
+                    <!-- Config Item -->
+                    <div class="border-b border-white/5 pb-4 last:border-0">
+                        <div class="flex items-center justify-between mb-2">
+                            <code class="text-brand-400 font-mono text-sm bg-black/20 px-2 py-1 rounded">content-filter</code>
+                            <span class="text-xs text-gray-500 border border-gray-700 rounded px-2 py-0.5">默认: false</span>
+                        </div>
+                        <p class="text-gray-300 text-sm mb-2">文件过滤功能开关。开启后，任务下载完成后会自动删除不需要的文件（如 html, url, txt 等，可在 <code>文件过滤.conf</code> 中配置）。</p>
+                    </div>
+
+                     <!-- Config Item -->
+                    <div class="border-b border-white/5 pb-4 last:border-0">
+                        <div class="flex items-center justify-between mb-2">
+                            <code class="text-brand-400 font-mono text-sm bg-black/20 px-2 py-1 rounded">handle-torrent</code>
+                            <span class="text-xs text-gray-500 border border-gray-700 rounded px-2 py-0.5">默认: backup-rename</span>
+                        </div>
+                        <p class="text-gray-300 text-sm mb-2">对磁力链接生成的种子文件的处理。</p>
+                        <ul class="text-xs text-gray-400 space-y-1 list-disc list-inside ml-2">
+                            <li><code>retain</code>: 默认保留</li>
+                            <li><code>delete</code>: 删除种子文件</li>
+                            <li><code>backup</code>: 备份种子文件到 <code>/config/backup-torrent</code></li>
+                            <li><code>rename</code>: 重命名种子文件</li>
+                            <li><code>backup-rename</code>: 重命名并备份 (推荐)</li>
+                        </ul>
+                    </div>
+
+                    <!-- Config Item -->
+                    <div class="border-b border-white/5 pb-4 last:border-0">
+                        <div class="flex items-center justify-between mb-2">
+                            <code class="text-brand-400 font-mono text-sm bg-black/20 px-2 py-1 rounded">remove-repeat-task</code>
+                            <span class="text-xs text-gray-500 border border-gray-700 rounded px-2 py-0.5">默认: true</span>
+                        </div>
+                        <p class="text-gray-300 text-sm mb-2">检测重复任务。若已完成目录有当前任务，则取消下载并删除任务文件。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 p-6 glass-card rounded-xl reveal">
+                <h3 class="text-lg font-bold text-white mb-4"><i class="fa-solid fa-filter mr-2"></i>文件过滤配置 (文件过滤.conf)</h3>
+                <p class="text-gray-400 text-sm mb-6">
+                    当 <code>content-filter=true</code> 时生效。配置文件位于 <code>/config/文件过滤.conf</code>。
+                </p>
+                 <div class="terminal-window">
+                    <div class="terminal-header">
+                        <div class="terminal-controls">
+                            <div class="control-dot dot-red"></div>
+                            <div class="control-dot dot-yellow"></div>
+                            <div class="control-dot dot-green"></div>
+                        </div>
+                        <div class="terminal-title">文件过滤.conf</div>
+                    </div>
+                    <div class="terminal-content p-4 overflow-x-auto bg-[#0d1117]">
+                        <pre class="text-xs md:text-sm font-mono text-gray-300 leading-relaxed"><code><span class="text-gray-500"># 排除小文件 (低于此大小的文件将在下载完成后被删除)</span>
+<span class="text-brand-300">min-size</span>=10M
+
+<span class="text-gray-500"># 保留文件类型 (其它文件类型将在下载完成后被删除)</span>
+<span class="text-brand-300">include-file</span>=mp4|mkv|rmvb|mov|avi|srt|ass
+
+<span class="text-gray-500"># 排除文件类型 (排除的文件类型将在下载完成后被删除)</span>
+<span class="text-brand-300">exclude-file</span>=html|url|lnk|txt|jpg|png
+
+<span class="text-gray-500"># 按关键词排除 (包含以下关键字的文件将在下载完成后被删除)</span>
+<span class="text-brand-300">keyword-file</span>=广告1|广告2|广告3</code></pre>
+                    </div>
+                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Docs / FAQ -->
+    <section id="docs" class="py-20 relative">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-extrabold text-white text-center mb-12 reveal">教程与常见问题</h2>
+
+            <div class="space-y-6">
+                <!-- FAQ Item -->
+                <div class="glass-card rounded-lg p-6 reveal">
+                    <h3 class="text-lg font-bold text-white mb-2"><i class="fa-brands fa-synology text-brand-500 mr-2"></i>群晖 NAS 权限问题详解</h3>
+                    <p class="text-gray-400 text-sm mb-3">
+                        群晖用户最常见的问题是文件无法下载或无法删除。这是因为 Docker 容器默认以 root 运行，而群晖文件系统有严格的权限控制。
+                    </p>
+                    <ol class="list-decimal list-inside text-sm text-gray-400 space-y-2 bg-black/20 p-4 rounded-lg">
+                        <li>开启 SSH 功能，登录群晖后台。</li>
+                        <li>输入 <code>id 你的用户名</code> 获取 UID 和 GID。</li>
+                        <li>在 Docker 环境变量中设置 <code>PUID</code> 和 <code>PGID</code>。</li>
+                        <li><strong>重要：</strong>在群晖 File Station 中，右键点击 docker 配置文件夹和下载文件夹，选择属性 -> 权限。</li>
+                        <li>确保该用户拥有“读取”和“写入”权限。</li>
+                    </ol>
+                </div>
+
+                <!-- FAQ Item -->
+                <div class="glass-card rounded-lg p-6 reveal">
+                    <h3 class="text-lg font-bold text-white mb-2"><i class="fa-solid fa-folder-tree text-brand-500 mr-2"></i>目录结构与挂载</h3>
+                    <p class="text-gray-400 text-sm mb-3">
+                        建议的目录挂载方式：
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-black/20 p-3 rounded border border-white/5">
+                            <span class="text-brand-300 font-mono text-xs block mb-1">/config</span>
+                            <p class="text-gray-500 text-xs">配置文件目录。包含 aria2.conf, setting.conf, logs, ssl 证书等。请务必持久化保存。</p>
+                        </div>
+                        <div class="bg-black/20 p-3 rounded border border-white/5">
+                            <span class="text-brand-300 font-mono text-xs block mb-1">/downloads</span>
+                            <p class="text-gray-500 text-xs">默认下载目录。所有下载文件将保存于此。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ Item -->
+                <div class="glass-card rounded-lg p-6 reveal">
+                    <h3 class="text-lg font-bold text-white mb-2">WebUI 如何访问？</h3>
+                    <p class="text-gray-400">默认端口为 <code>8080</code>。浏览器访问 <code>http://your-ip:8080</code> 即可。内置 AriaNg 面板，已配置好连接。</p>
+                </div>
+
+                <!-- FAQ Item -->
+                <div class="glass-card rounded-lg p-6 reveal">
+                    <h3 class="text-lg font-bold text-white mb-2">如何开启 SSL？</h3>
+                    <p class="text-gray-400">将证书文件放置在 <code>/config/ssl</code> 目录下，并修改 <code>/config/aria2.conf</code> 文件，取消相关 SSL 配置行的注释即可。</p>
+                </div>
+
+                <!-- FAQ Item -->
+                <div class="glass-card rounded-lg p-6 reveal">
+                    <h3 class="text-lg font-bold text-white mb-2">下载速度慢怎么办？</h3>
+                    <p class="text-gray-400">
+                        1. 确保 <code>BTPORT</code> (默认32516) 端口在路由器上做了端口转发（UDP+TCP）。<br>
+                        2. 容器会自动更新 Trackers 列表以优化连接，无需手动干预。<br>
+                        3. 如果是内网环境，确保 NAT 类型不是严格型。
+                    </p>
+                </div>
+
+                 <!-- FAQ Item -->
+                <div class="glass-card rounded-lg p-6 reveal">
+                    <h3 class="text-lg font-bold text-white mb-2">关于 a2b-latest 镜像</h3>
+                    <p class="text-gray-400">
+                        <code>superng6/aria2:a2b-latest</code> 镜像集成了 aria2b 功能，用于屏蔽迅雷、QQ旋风、百度网盘等吸血客户端。
+                        使用此镜像需要开启 <code>NET_ADMIN</code> 权限 (Docker run增加 <code>--cap-add NET_ADMIN</code>)，并映射 <code>/lib/modules:/lib/modules</code>。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark-card py-12 border-t border-dark-border mt-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
+            <div class="mb-4 md:mb-0">
+                <span class="text-2xl font-bold text-white">Docker <span class="text-brand-500">Aria2</span></span>
+                <p class="text-gray-500 text-sm mt-1">Made with <i class="fa-solid fa-heart text-red-500"></i> by SuperNG6</p>
+            </div>
+            <div class="flex space-x-6">
+                <a href="https://github.com/SuperNG6/docker-aria2" class="text-gray-400 hover:text-white transition-colors transform hover:scale-110">
+                    <i class="fab fa-github text-2xl"></i>
+                </a>
+                <a href="https://hub.docker.com/r/superng6/aria2" class="text-gray-400 hover:text-white transition-colors transform hover:scale-110">
+                    <i class="fab fa-docker text-2xl"></i>
+                </a>
+                <a href="https://sleele.com" class="text-gray-400 hover:text-white transition-colors transform hover:scale-110">
+                    <i class="fa-solid fa-blog text-2xl"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Back to Top Button -->
+    <button id="back-to-top" class="fixed bottom-8 right-8 bg-brand-600 text-white p-3 rounded-full shadow-lg opacity-0 invisible transition-all duration-300 hover:bg-brand-500 hover:scale-110 focus:outline-none z-40" aria-label="Back to top">
+        <i class="fa-solid fa-arrow-up"></i>
+    </button>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+</body>
+</html>

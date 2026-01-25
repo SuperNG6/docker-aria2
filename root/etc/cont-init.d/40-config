@@ -1,9 +1,0 @@
-#!/usr/bin/with-contenv bash
-
-# permissions
-chown -R abc:abc \
-    /config \
-    /downloads
-  
-chmod a+x \
-  /aria2/script/*
