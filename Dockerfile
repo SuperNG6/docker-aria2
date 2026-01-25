@@ -30,6 +30,6 @@ RUN apk add --no-cache darkhttpd curl jq findutils \
     && rm -rf /var/cache/apk/* /tmp/*
 
 # volume
-VOLUME /config /downloads /www
+VOLUME /config /downloads
 
 EXPOSE 8080 6800 32516 32516/udp
