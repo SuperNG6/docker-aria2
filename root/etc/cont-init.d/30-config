@@ -3,46 +3,40 @@
 # extra function
 sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/stop.sh@' /config/aria2.conf
 sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/completed.sh@' /config/aria2.conf
-sed -i "s/.*on-download-pause.*/on-download-pause=\/aria2\/script\/pause.sh/" /config/aria2.conf
-sed -i "s/.*on-download-start.*/on-download-start=\/aria2\/script\/start.sh/" /config/aria2.conf
+sed -i 's@^\(on-download-pause=\).*@\1/aria2/script/pause.sh@' /config/aria2.conf
+sed -i 's@^\(on-download-start=\).*@\1/aria2/script/start.sh@' /config/aria2.conf
 # port
 sed -i "s@^\(rpc-listen-port=\).*@\1${PORT}@" /config/aria2.conf
 sed -i "s@^\(dht-listen-port=\).*@\1${BTPORT}@" /config/aria2.conf
 sed -i "s@^\(listen-port=\).*@\1${BTPORT}@" /config/aria2.conf
 
 # bt-save-metadata
-if [[ "$SMD" = "true" ]]
-then
+if [[ "${SMD}" = "true" ]]; then
     sed -i 's@^\(bt-save-metadata=\).*@\1true@' /config/aria2.conf
 else
     sed -i 's@^\(bt-save-metadata=\).*@\1false@' /config/aria2.conf
 fi
 
 # file-allocation
-if [[ "$FA" = "falloc" ]]
-then
+if [[ "${FA}" = "falloc" ]]; then
     sed -i 's@^\(file-allocation=\).*@\1falloc@' /config/aria2.conf
-elif [[ "$FA" = "trunc" ]]
-then
+elif [[ "${FA}" = "trunc" ]]; then
     sed -i 's@^\(file-allocation=\).*@\1trunc@' /config/aria2.conf
-elif [[ "$FA" = "prealloc" ]]
-then
+elif [[ "${FA}" = "prealloc" ]]; then
     sed -i 's@^\(file-allocation=\).*@\1prealloc@' /config/aria2.conf
 else
     sed -i 's@^\(file-allocation=\).*@\1none@' /config/aria2.conf 
 fi
 
 # auto updatetracker
-if [ "$UT" == "true" ]
-then
-  bash /aria2/script/tracker.sh
+if [ "${UT}" = "true" ]; then
+    bash /aria2/script/tracker.sh
 fi
 
 # rpc update tracker
-if [ "$RUT" == "true" ]
-then
-  cp /aria2/conf/rpc-tracker1 /etc/crontabs/root
-  /usr/sbin/crond
+if [ "${RUT}" = "true" ]; then
+    cp /aria2/conf/rpc-tracker1 /etc/crontabs/root
+    /usr/sbin/crond
 else
-  cp /aria2/conf/rpc-tracker0 /etc/crontabs/root
+    cp /aria2/conf/rpc-tracker0 /etc/crontabs/root
 fi

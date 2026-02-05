@@ -31,6 +31,6 @@ START() {
     fi
 }
 
-if [ "${RRT}" = "true" ]; then
+if [ "${RRT:-true}" = "true" ]; then
     START
 fi

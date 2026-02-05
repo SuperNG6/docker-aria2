@@ -2,10 +2,10 @@ FROM superng6/alpine:3.22 AS builder
 
 # download static aria2c && AriaNg AllInOne
 RUN apk add --no-cache curl wget unzip \
-    && ARIANG_VER=$(wget -qO- https://api.github.com/repos/mayswind/AriaNg/tags | grep 'name' | cut -d\" -f4 | head -1 ) \
-    && wget -P /tmp https://github.com/mayswind/AriaNg/releases/download/${ARIANG_VER}/AriaNg-${ARIANG_VER}-AllInOne.zip \
+    && ARIANG_VER=$(wget -qO- --timeout=30 https://api.github.com/repos/mayswind/AriaNg/tags | grep 'name' | cut -d\" -f4 | head -1 ) \
+    && wget --timeout=60 -P /tmp https://github.com/mayswind/AriaNg/releases/download/${ARIANG_VER}/AriaNg-${ARIANG_VER}-AllInOne.zip \
     && unzip /tmp/AriaNg-${ARIANG_VER}-AllInOne.zip -d /tmp \
-    && curl -fsSL https://git.io/docker-aria2c.sh | bash
+    && curl -fsSL --connect-timeout 10 --max-time 60 https://git.io/docker-aria2c.sh | bash
 
 # install static aria2c
 FROM superng6/alpine:3.22
@@ -24,7 +24,7 @@ COPY --from=builder /usr/local/bin/aria2c /usr/local/bin/aria2c
 # install
 RUN apk add --no-cache darkhttpd curl jq findutils \
     && chmod a+x /usr/local/bin/aria2c \
-    && ARIANG_VER=$(wget -qO- https://api.github.com/repos/mayswind/AriaNg/tags | grep 'name' | cut -d\" -f4 | head -1 ) \
+    && ARIANG_VER=$(wget -qO- --timeout=30 https://api.github.com/repos/mayswind/AriaNg/tags | grep 'name' | cut -d\" -f4 | head -1 ) \
     && echo "docker-aria2-$(date +"%Y-%m-%d")" > /aria2/build-date \
     && echo "docker-ariang-$ARIANG_VER" >> /aria2/build-date \
     && rm -rf /var/cache/apk/* /tmp/*
@@ -33,3 +33,7 @@ RUN apk add --no-cache darkhttpd curl jq findutils \
 VOLUME /config /downloads
 
 EXPOSE 8080 6800 32516 32516/udp
+
+# healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -sf http://localhost:${WEBUI_PORT:-8080}/ || exit 1
