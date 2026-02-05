@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-. "$(dirname $0)/setting"
-. "$(dirname $0)/core"
-. "$(dirname $0)/rpc_info"
+. "$(dirname "$0")/setting"
+. "$(dirname "$0")/core"
+. "$(dirname "$0")/rpc_info"
 
 TASK_GID=$1
 FILE_NUM=$2
@@ -26,6 +26,6 @@ MOVE_PAUSED() {
     fi
 }
 
-if [ "${MPT}" = true ]; then
+if [ "${MPT:-false}" = "true" ]; then
     MOVE_PAUSED
 fi

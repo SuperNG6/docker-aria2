@@ -32,9 +32,9 @@ GET_TRACKERS() {
         )
     else
         echo && echo -e "$(DATE_TIME) ${INFO} Get BT trackers from url(s):${CTU} ..."
-        URLS=$(echo ${CTU} | tr "," "$NL")
-        for URL in $URLS; do
-            TRACKER+="$(${DOWNLOADER} ${URL} | tr "," "\n")$NL"
+        URLS=$(echo "${CTU}" | tr "," "$NL")
+        for URL in ${URLS}; do
+            TRACKER+="$(${DOWNLOADER} "${URL}" | tr "," "\n")$NL"
         done
         TRACKER="$(echo "$TRACKER" | awk NF | sort -u | sed 'H;1h;$!d;x;y/\n/,/' )"
     fi
@@ -56,12 +56,12 @@ ${TRACKER}
 
 ADD_TRACKERS() {
     echo -e "$(DATE_TIME) ${INFO} 添加 BT trackers 到 Aria2 配置文件中 ${LIGHT_PURPLE_FONT_PREFIX}${ARIA2_CONF}${FONT_COLOR_SUFFIX} ..." && echo
-    if [ ! -f ${ARIA2_CONF} ]; then
+    if [ ! -f "${ARIA2_CONF}" ]; then
         echo -e "$(DATE_TIME) ${ERROR} '${ARIA2_CONF}' 不存在"
         exit 1
     else
-        [ -z $(grep "bt-tracker=" ${ARIA2_CONF}) ] && echo "bt-tracker=" >>${ARIA2_CONF}
-        sed -i "s@^\(bt-tracker=\).*@\1${TRACKER}@" ${ARIA2_CONF} && echo -e "$(DATE_TIME) ${INFO} 成功添加 BT trackers 到 Aria2 配置文件中!"
+        [ -z "$(grep "bt-tracker=" "${ARIA2_CONF}")" ] && echo "bt-tracker=" >>"${ARIA2_CONF}"
+        sed -i "s@^\(bt-tracker=\).*@\1${TRACKER}@" "${ARIA2_CONF}" && echo -e "$(DATE_TIME) ${INFO} 成功添加 BT trackers 到 Aria2 配置文件中!"
     fi
 }
 

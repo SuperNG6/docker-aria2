@@ -1,24 +1,27 @@
 #!/usr/bin/env bash
 
+# RPC 请求超时配置
+RPC_TIMEOUT="--connect-timeout 5 --max-time 30"
+
 RPC_TASK_INFO() {
-    if [[ "${SECRET}" ]]; then
+    if [[ -n "${SECRET}" ]]; then
         RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.tellStatus","id":"NG6","params":["token:'${SECRET}'","'${TASK_GID}'"]}'
     else
         RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.tellStatus","id":"NG6","params":["'${TASK_GID}'"]}'
     fi
-    curl "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}"
+    curl ${RPC_TIMEOUT} "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl ${RPC_TIMEOUT} "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}"
 }
 
 # ==================================RPC删除任务==================================
 REMOVE_REPEAT_TASK() {
     sleep 3s
     RPC_ADDRESS="localhost:${PORT}/jsonrpc"
-    if [[ "${SECRET}" ]]; then
+    if [[ -n "${SECRET}" ]]; then
         RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.remove","id":"NG6","params":["token:'${SECRET}'","'${TASK_GID}'"]}'
     else
         RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.remove","id":"NG6","params":["'${TASK_GID}'"]}'
     fi
-    curl "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}"
+    curl ${RPC_TIMEOUT} "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl ${RPC_TIMEOUT} "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}"
 }
 
 GET_RPC_RESULT() {
@@ -29,13 +32,13 @@ GET_RPC_RESULT() {
 # ======================================================================
 
 GET_DOWNLOAD_DIR() {
-    [[ -z ${RPC_RESULT} ]] && {
+    [[ -z "${RPC_RESULT}" ]] && {
         echo -e "$(DATE_TIME) ${ERROR} Aria2 RPC interface error!"
         exit 1
     }
     DOWNLOAD_DIR=$(echo "${RPC_RESULT}" | jq -r '.result.dir')
     [[ -z "${DOWNLOAD_DIR}" || "${DOWNLOAD_DIR}" = "null" ]] && {
-        echo ${RPC_RESULT} | jq '.result'
+        echo "${RPC_RESULT}" | jq '.result'
         echo -e "$(DATE_TIME) ${ERROR} Failed to get download directory!"
         exit 1
     }
