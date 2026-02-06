@@ -48,22 +48,8 @@ then
 fi
 
 # 创建日志文件
-if [[ ! -e /config/logs/move.log ]]
-then
-  touch /config/logs/move.log
-fi
-
-if [[ ! -e /config/logs/recycle.log ]]
-then
-  touch /config/logs/recycle.log
-fi
-
-if [[ ! -e /config/logs/delete.log ]]
-then
-  touch /config/logs/delete.log
-fi
-
-if [[ ! -e /config/logs/文件过滤日志.log ]]
-then
-  touch /config/logs/文件过滤日志.log
-fi
+for log_file in move.log recycle.log delete.log 文件过滤日志.log; do
+  if [[ ! -e /config/logs/${log_file} ]]; then
+    touch "/config/logs/${log_file}"
+  fi
+done

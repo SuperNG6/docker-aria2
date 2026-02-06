@@ -122,6 +122,23 @@ CLEAN_UP() {
 
 # =============================移动文件=============================
 
+# 辅助函数：将文件移动到失败文件夹
+# 参数: $1 = 失败原因描述
+MOVE_TO_FAIL_DIR() {
+    local reason="$1"
+    local FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
+    echo -e "$(DATE_TIME) ${WARNING} 尝试将任务移动到: ${FAIL_DIR}"
+    mkdir -p "${FAIL_DIR}"
+    mv -f "${SOURCE_PATH}" "${FAIL_DIR}"
+    if [ $? -eq 0 ]; then
+        echo -e "$(DATE_TIME) ${INFO} ${reason}，已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
+        [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [INFO] ${reason}，已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}" >>"${MOVE_LOG}"
+    else
+        echo -e "$(DATE_TIME) ${ERROR} 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
+        [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [ERROR] 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
+    fi
+}
+
 MOVE_FILE() {
     # DOWNLOAD_DIR = DOWNLOAD_PATH，说明为在根目录下载的单文件，`dmof`时不进行移动
     if [ "${MOVE}" = "false" ]; then
@@ -158,19 +175,7 @@ MOVE_FILE() {
                 echo -e "$(DATE_TIME) ${ERROR} 所需空间: ${REQUIRED_GB} GB, 目标可用空间: ${AVAILABLE_GB} GB."
                 [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [ERROR] 目标磁盘空间不足，移动失败。所需空间:${REQUIRED_GB} GB, 可用空间:${AVAILABLE_GB} GB. 源:${SOURCE_PATH} -> 目标:${TARGET_PATH}" >>"${MOVE_LOG}"
                 
-                # 空间不足，直接将任务移动到失败文件夹
-                FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
-                echo -e "$(DATE_TIME) ${WARNING} 尝试将任务移动到: ${FAIL_DIR}"
-                mkdir -p "${FAIL_DIR}"
-                mv -f "${SOURCE_PATH}" "${FAIL_DIR}"
-                MOVE_FAIL_EXIT_CODE=$?
-                if [ ${MOVE_FAIL_EXIT_CODE} -eq 0 ]; then
-                    echo -e "$(DATE_TIME) ${INFO} 因目标磁盘空间不足，已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
-                    [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [INFO] 因目标磁盘空间不足，已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}" >>"${MOVE_LOG}"
-                else
-                    echo -e "$(DATE_TIME) ${ERROR} 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
-                    [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [ERROR] 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
-                fi
+                MOVE_TO_FAIL_DIR "因目标磁盘空间不足"
                 
                 # 终止后续的正常移动流程
                 return 1
@@ -191,17 +196,7 @@ MOVE_FILE() {
             [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [ERROR] 文件移动失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
             
             # 移动失败后（非空间不足原因），转移至 /downloads/move-failed
-            FAIL_DIR="${DOWNLOAD_PATH}/move-failed"
-            mkdir -p "${FAIL_DIR}"
-            mv -f "${SOURCE_PATH}" "${FAIL_DIR}"
-            MOVE_FAIL_EXIT_CODE=$?
-            if [ ${MOVE_FAIL_EXIT_CODE} -eq 0 ]; then
-                echo -e "$(DATE_TIME) ${INFO} 已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}"
-                [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [INFO] 已将文件移动至: ${SOURCE_PATH} -> ${FAIL_DIR}" >>"${MOVE_LOG}"
-            else
-                echo -e "$(DATE_TIME) ${ERROR} 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}"
-                [ "${MOVE_LOG}" ] && echo -e "$(DATE_TIME) [ERROR] 移动到 ${FAIL_DIR} 依然失败: ${SOURCE_PATH}" >>"${MOVE_LOG}"
-            fi
+            MOVE_TO_FAIL_DIR "文件移动失败"
         fi
     fi
 }
