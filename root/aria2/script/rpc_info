@@ -35,7 +35,7 @@ GET_DOWNLOAD_DIR() {
     }
     DOWNLOAD_DIR=$(echo "${RPC_RESULT}" | jq -r '.result.dir')
     [[ -z "${DOWNLOAD_DIR}" || "${DOWNLOAD_DIR}" = "null" ]] && {
-        echo ${RPC_RESULT} | jq '.result'
+        echo "${RPC_RESULT}" | jq '.result'
         echo -e "$(DATE_TIME) ${ERROR} Failed to get download directory!"
         exit 1
     }
