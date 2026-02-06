@@ -8,8 +8,8 @@ exec \
 	s6-setuidgid abc aria2c \
     --conf-path=/config/aria2.conf \
     $SECRET_TOKEN \
-    --disk-cache=$CACHE \
-    --quiet=$QUIET \
+    --disk-cache="$CACHE" \
+    --quiet="$QUIET" \
   > /dev/stdout \
   2> /dev/stderr
 

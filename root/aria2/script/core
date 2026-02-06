@@ -216,10 +216,10 @@ DELETE_FILE() {
     DELETE_EXIT_CODE=$?
     if [ ${DELETE_EXIT_CODE} -eq 0 ]; then
         echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${SOURCE_PATH}"
-        [ ${DELETE_LOG} ] && echo -e "$(DATE_TIME) [INFO] 文件删除成功: ${SOURCE_PATH}" >>${DELETE_LOG}
+        [ "${DELETE_LOG}" ] && echo -e "$(DATE_TIME) [INFO] 文件删除成功: ${SOURCE_PATH}" >>"${DELETE_LOG}"
     else
         echo -e "$(DATE_TIME) ${ERROR} delete failed: ${SOURCE_PATH}"
-        [ ${DELETE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] 文件删除失败: ${SOURCE_PATH}" >>${DELETE_LOG}
+        [ "${DELETE_LOG}" ] && echo -e "$(DATE_TIME) [ERROR] 文件删除失败: ${SOURCE_PATH}" >>"${DELETE_LOG}"
     fi
 }
 
@@ -234,7 +234,7 @@ MOVE_RECYCLE() {
     MOVE_EXIT_CODE=$?
     if [ ${MOVE_EXIT_CODE} -eq 0 ]; then
         echo -e "$(DATE_TIME) ${INFO} 已移至回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
-        [ ${RECYCLE_LOG} ] && echo -e "$(DATE_TIME) [INFO] 成功移动文件到回收站: ${SOURCE_PATH} -> ${TARGET_PATH}" >>${RECYCLE_LOG}
+        [ "${RECYCLE_LOG}" ] && echo -e "$(DATE_TIME) [INFO] 成功移动文件到回收站: ${SOURCE_PATH} -> ${TARGET_PATH}" >>"${RECYCLE_LOG}"
     else
         echo -e "$(DATE_TIME) ${ERROR} 移动文件到回收站失败: ${SOURCE_PATH}"
         echo -e "$(DATE_TIME) ${INFO} 尝试删除文件: ${SOURCE_PATH}"
@@ -242,10 +242,10 @@ MOVE_RECYCLE() {
         DELETE_EXIT_CODE=$?
         if [ ${DELETE_EXIT_CODE} -eq 0 ]; then
             echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${SOURCE_PATH}"
-            [ ${RECYCLE_LOG} ] && echo -e "$(DATE_TIME) [WARNING] 移动文件到回收站失败，已删除文件: ${SOURCE_PATH}" >>${RECYCLE_LOG}
+            [ "${RECYCLE_LOG}" ] && echo -e "$(DATE_TIME) [WARNING] 移动文件到回收站失败，已删除文件: ${SOURCE_PATH}" >>"${RECYCLE_LOG}"
         else
             echo -e "$(DATE_TIME) ${ERROR} 删除文件也失败: ${SOURCE_PATH}"
-            [ ${RECYCLE_LOG} ] && echo -e "$(DATE_TIME) [ERROR] 移动到回收站和删除文件都失败: ${SOURCE_PATH}" >>${RECYCLE_LOG}
+            [ "${RECYCLE_LOG}" ] && echo -e "$(DATE_TIME) [ERROR] 移动到回收站和删除文件都失败: ${SOURCE_PATH}" >>"${RECYCLE_LOG}"
         fi
     fi
 }
