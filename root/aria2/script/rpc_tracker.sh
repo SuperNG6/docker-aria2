@@ -61,7 +61,7 @@ ADD_TRACKERS_RPC() {
 
 ADD_TRACKERS_RPC_STATUS() {
     RPC_RESULT=$(ADD_TRACKERS_RPC)
-    [[ $(echo ${RPC_RESULT} | grep OK) ]] &&
+    [[ $(echo "${RPC_RESULT}" | grep OK) ]] &&
         echo -e "$(DATE_TIME) ${INFO} BT trackers successfully added to Aria2 !" ||
         echo -e "$(DATE_TIME) ${ERROR} Network failure or Aria2 RPC interface error!"
 }
