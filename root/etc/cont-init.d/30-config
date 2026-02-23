@@ -1,38 +1,57 @@
 #!/usr/bin/with-contenv bash
 
+ARIA2_CONF="/config/aria2.conf"
+
+ENSURE_ARIA2_CONF_KEY() {
+  local key="$1"
+  if ! grep -q "^${key}=" "${ARIA2_CONF}"; then
+    if [ -s "${ARIA2_CONF}" ] && [ -n "$(tail -c 1 "${ARIA2_CONF}")" ]; then
+      echo >>"${ARIA2_CONF}"
+    fi
+    echo "${key}=" >>"${ARIA2_CONF}"
+  fi
+}
+
+SET_ARIA2_CONF_VALUE() {
+  local key="$1"
+  local value="$2"
+  ENSURE_ARIA2_CONF_KEY "${key}"
+  sed -i "s@^\(${key}=\).*@\1${value}@" "${ARIA2_CONF}"
+}
+
 # extra function
-sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/stop.sh@' /config/aria2.conf
-sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/completed.sh@' /config/aria2.conf
-sed -i "s/.*on-download-pause.*/on-download-pause=\/aria2\/script\/pause.sh/" /config/aria2.conf
-sed -i "s/.*on-download-start.*/on-download-start=\/aria2\/script\/start.sh/" /config/aria2.conf
+SET_ARIA2_CONF_VALUE "on-download-stop" "/aria2/script/stop.sh"
+SET_ARIA2_CONF_VALUE "on-download-complete" "/aria2/script/completed.sh"
+SET_ARIA2_CONF_VALUE "on-download-pause" "/aria2/script/pause.sh"
+SET_ARIA2_CONF_VALUE "on-download-start" "/aria2/script/start.sh"
 # port
-sed -i "s@^\(rpc-listen-port=\).*@\1${PORT}@" /config/aria2.conf
-sed -i "s@^\(dht-listen-port=\).*@\1${BTPORT}@" /config/aria2.conf
-sed -i "s@^\(listen-port=\).*@\1${BTPORT}@" /config/aria2.conf
+SET_ARIA2_CONF_VALUE "rpc-listen-port" "${PORT}"
+SET_ARIA2_CONF_VALUE "dht-listen-port" "${BTPORT}"
+SET_ARIA2_CONF_VALUE "listen-port" "${BTPORT}"
 
 # bt-save-metadata
 if [[ "$SMD" = "true" ]]
 then
-    sed -i 's@^\(bt-save-metadata=\).*@\1true@' /config/aria2.conf
+    SET_ARIA2_CONF_VALUE "bt-save-metadata" "true"
 else
-    sed -i 's@^\(bt-save-metadata=\).*@\1false@' /config/aria2.conf
+    SET_ARIA2_CONF_VALUE "bt-save-metadata" "false"
 fi
 
 # file-allocation
 if [[ "$FA" = "falloc" ]]
 then
-    sed -i 's@^\(file-allocation=\).*@\1falloc@' /config/aria2.conf
+    SET_ARIA2_CONF_VALUE "file-allocation" "falloc"
 elif [[ "$FA" = "trunc" ]]
 then
-    sed -i 's@^\(file-allocation=\).*@\1trunc@' /config/aria2.conf
+    SET_ARIA2_CONF_VALUE "file-allocation" "trunc"
 elif [[ "$FA" = "prealloc" ]]
 then
-    sed -i 's@^\(file-allocation=\).*@\1prealloc@' /config/aria2.conf
+    SET_ARIA2_CONF_VALUE "file-allocation" "prealloc"
 else
-    sed -i 's@^\(file-allocation=\).*@\1none@' /config/aria2.conf 
+    SET_ARIA2_CONF_VALUE "file-allocation" "none"
 fi
 
-# auto updatetracker
+# auto update tracker
 if [ "$UT" == "true" ]
 then
   bash /aria2/script/tracker.sh
@@ -46,4 +65,3 @@ then
 else
   cp /aria2/conf/rpc-tracker0 /etc/crontabs/root
 fi
-

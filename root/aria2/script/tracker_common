@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+RED_FONT_PREFIX="\033[31m"
+GREEN_FONT_PREFIX="\033[32m"
+FONT_COLOR_SUFFIX="\033[0m"
+# shellcheck disable=SC2034
+INFO="[${GREEN_FONT_PREFIX}INFO${FONT_COLOR_SUFFIX}]"
+# shellcheck disable=SC2034
+ERROR="[${RED_FONT_PREFIX}ERROR${FONT_COLOR_SUFFIX}]"
+DOWNLOADER="curl -fsSL --connect-timeout 3 --max-time 3 --retry 2"
+NL=$'\n'
+
+. "$(dirname "$0")/log_common"
+
+# 获取并合并 BT trackers 列表，支持默认源与自定义源（CTU）。
+GET_TRACKERS() {
+    TRACKER=""
+    if [[ -z "${CTU}" ]]; then
+        echo
+        LOG_INFO "开始获取 BT trackers 列表..."
+        local tracker_url
+        for tracker_url in "$@"; do
+            TRACKER="$(${DOWNLOADER} "${tracker_url}")" && break
+        done
+    else
+        echo
+        LOG_INFO "开始从自定义地址获取 BT trackers 列表：${CTU} ..."
+        URLS=$(echo "${CTU}" | tr "," "$NL")
+        for URL in $URLS; do
+            TRACKER+="$(${DOWNLOADER} "${URL}" | tr "," "\n")$NL"
+        done
+        TRACKER="$(echo "$TRACKER" | awk NF | sort -u | sed 'H;1h;$!d;x;y/\n/,/' )"
+    fi
+
+    [[ -z "${TRACKER}" ]] && {
+        echo
+        LOG_ERROR "获取 BT trackers 失败：网络异常或链接无效。" && exit 1
+    }
+}
+
+ECHO_TRACKERS() {
+    echo -e "
+--------------------[BitTorrent Trackers]--------------------
+${TRACKER}
+--------------------[BitTorrent Trackers]--------------------
+"
+}

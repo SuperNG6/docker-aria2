@@ -1,16 +1,15 @@
 #!/usr/bin/with-contenv bash
 
-if [[ ! -z $SECRET ]];then
-  SECRET_TOKEN="--rpc-secret=${SECRET}"
+RPC_SECRET_ARGS=()
+if [[ -n "${SECRET}" ]]; then
+  RPC_SECRET_ARGS=(--rpc-secret="${SECRET}")
 fi
 
 exec \
 	s6-setuidgid abc aria2c \
-    --conf-path=/config/aria2.conf \
-    $SECRET_TOKEN \
-    --disk-cache=$CACHE \
-    --quiet=$QUIET \
+	    --conf-path=/config/aria2.conf \
+	    "${RPC_SECRET_ARGS[@]}" \
+	    --disk-cache="${CACHE}" \
+	    --quiet="${QUIET}" \
   > /dev/stdout \
   2> /dev/stderr
-
-echo 'Exiting aria2'

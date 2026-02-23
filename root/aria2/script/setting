@@ -1,6 +1,37 @@
 #!/usr/bin/env bash
 
 SCRIPT_CONF="/config/setting.conf"
+NEW_SCRIPT_CONF="/config/setting.conf.new"
+
+# 确保配置项存在后再替换其值。
+ENSURE_CONF_ITEM() {
+    local conf_file="$1"
+    local key="$2"
+    if ! grep -q "^${key}=" "${conf_file}"; then
+        if [ -s "${conf_file}" ] && [ -n "$(tail -c 1 "${conf_file}")" ]; then
+            echo >>"${conf_file}"
+        fi
+        echo "${key}=" >>"${conf_file}"
+    fi
+}
+
+SET_CONF_ITEM() {
+    local conf_file="$1"
+    local key="$2"
+    local value="$3"
+    ENSURE_CONF_ITEM "${conf_file}" "${key}"
+    sed -i "s@^\(${key}=\).*@\1${value}@" "${conf_file}"
+}
+
+SET_DEFAULT_CONF_ITEM() {
+    local conf_file="$1"
+    local current_value="$2"
+    local key="$3"
+    local default_value="$4"
+    if [[ -z "${current_value}" ]]; then
+        SET_CONF_ITEM "${conf_file}" "${key}" "${default_value}"
+    fi
+}
 
 LOAD_CONF() {
     RMTASK="$(grep ^remove-task "${SCRIPT_CONF}" | cut -d= -f2-)"
@@ -14,34 +45,26 @@ LOAD_CONF() {
 
 SED_CONF() {
     # 复制用户配置文件
-    cp /aria2/conf/setting.conf /config/setting.conf.new
+    cp /aria2/conf/setting.conf "${NEW_SCRIPT_CONF}"
     # 复原用户配置文件参数
-    sed -i "s@^\(remove-task=\).*@\1${RMTASK}@" /config/setting.conf.new
-    sed -i "s@^\(move-task=\).*@\1${MOVE}@" /config/setting.conf.new
-    sed -i "s@^\(content-filter=\).*@\1${CF}@" /config/setting.conf.new
-    sed -i "s@^\(delete-empty-dir=\).*@\1${DET}@" /config/setting.conf.new
-    sed -i "s@^\(handle-torrent=\).*@\1${TOR}@" /config/setting.conf.new
-    sed -i "s@^\(remove-repeat-task=\).*@\1${RRT}@" /config/setting.conf.new
-    sed -i "s@^\(move-paused-task=\).*@\1${MPT}@" /config/setting.conf.new
+    SET_CONF_ITEM "${NEW_SCRIPT_CONF}" "remove-task" "${RMTASK}"
+    SET_CONF_ITEM "${NEW_SCRIPT_CONF}" "move-task" "${MOVE}"
+    SET_CONF_ITEM "${NEW_SCRIPT_CONF}" "content-filter" "${CF}"
+    SET_CONF_ITEM "${NEW_SCRIPT_CONF}" "delete-empty-dir" "${DET}"
+    SET_CONF_ITEM "${NEW_SCRIPT_CONF}" "handle-torrent" "${TOR}"
+    SET_CONF_ITEM "${NEW_SCRIPT_CONF}" "remove-repeat-task" "${RRT}"
+    SET_CONF_ITEM "${NEW_SCRIPT_CONF}" "move-paused-task" "${MPT}"
     # 如某项参数不存在，则使用默认参数，防止程序运行出错
-    if [[ -z "${RMTASK}" ]]; then
-        sed -i "s@^\(remove-task=\).*@\1rmaria@" /config/setting.conf.new
-    elif [[ -z "${MOVE}" ]]; then
-        sed -i "s@^\(move-task=\).*@\1false@" /config/setting.conf.new
-    elif [[ -z "${CF}" ]]; then
-        sed -i "s@^\(content-filter=\).*@\1false@" /config/setting.conf.new
-    elif [[ -z "${DET}" ]]; then
-        sed -i "s@^\(delete-empty-dir=\).*@\1true@" /config/setting.conf.new
-    elif [[ -z "${TOR}" ]]; then
-        sed -i "s@^\(handle-torrent=\).*@\1backup-rename@" /config/setting.conf.new
-    elif [[ -z "${RRT}" ]]; then
-        sed -i "s@^\(remove-repeat-task=\).*@\1true@" /config/setting.conf.new
-    elif [[ -z "${MPT}" ]]; then
-        sed -i "s@^\(move-paused-task=\).*@\1false@" /config/setting.conf.new
-    fi
+    SET_DEFAULT_CONF_ITEM "${NEW_SCRIPT_CONF}" "${RMTASK}" "remove-task" "rmaria"
+    SET_DEFAULT_CONF_ITEM "${NEW_SCRIPT_CONF}" "${MOVE}" "move-task" "false"
+    SET_DEFAULT_CONF_ITEM "${NEW_SCRIPT_CONF}" "${CF}" "content-filter" "false"
+    SET_DEFAULT_CONF_ITEM "${NEW_SCRIPT_CONF}" "${DET}" "delete-empty-dir" "true"
+    SET_DEFAULT_CONF_ITEM "${NEW_SCRIPT_CONF}" "${TOR}" "handle-torrent" "backup-rename"
+    SET_DEFAULT_CONF_ITEM "${NEW_SCRIPT_CONF}" "${RRT}" "remove-repeat-task" "true"
+    SET_DEFAULT_CONF_ITEM "${NEW_SCRIPT_CONF}" "${MPT}" "move-paused-task" "false"
 
     rm -f /config/setting.conf
-    mv /config/setting.conf.new /config/setting.conf
+    mv "${NEW_SCRIPT_CONF}" /config/setting.conf
 }
 
 LOAD_CONF

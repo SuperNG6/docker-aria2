@@ -1,67 +1,99 @@
 #!/usr/bin/env bash
 
-RPC_TASK_INFO() {
-    if [[ "${SECRET}" ]]; then
-        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.tellStatus","id":"NG6","params":["token:'${SECRET}'","'${TASK_GID}'"]}'
-    else
-        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.tellStatus","id":"NG6","params":["'${TASK_GID}'"]}'
-    fi
-    curl "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}"
+. "$(dirname "$0")/log_common"
+
+# 根据环境变量 PORT 返回标准 aria2 RPC 地址。
+GET_RPC_ADDRESS() {
+    echo "localhost:${PORT}/jsonrpc"
 }
 
-# ==================================RPC删除任务==================================
+RPC_ERROR_EXIT() {
+    local error_message="$1"
+    LOG_ERROR "${error_message}"
+    exit 1
+}
+
+RPC_CALL() {
+    local rpc_payload="$1"
+    curl "${RPC_ADDRESS}" -fsSd "${rpc_payload}" || curl "https://${RPC_ADDRESS}" -kfsSd "${rpc_payload}"
+}
+
+RPC_DUMP_RESULT() {
+    echo "${RPC_RESULT}" | jq '.result'
+}
+
+RPC_REQUIRE_FIELD() {
+    local jq_path="$1"
+    local error_message="$2"
+    local output_var="$3"
+    local field_value
+    field_value=$(echo "${RPC_RESULT}" | jq -r "${jq_path}")
+    if [[ -z "${field_value}" || "${field_value}" = "null" ]]; then
+        RPC_DUMP_RESULT
+        RPC_ERROR_EXIT "${error_message}"
+    fi
+    printf -v "${output_var}" '%s' "${field_value}"
+}
+
+RPC_OPTIONAL_FIELD() {
+    local jq_path="$1"
+    local error_message="$2"
+    local output_var="$3"
+    local field_value
+    field_value=$(echo "${RPC_RESULT}" | jq -r "${jq_path}")
+    if [[ -z "${field_value}" ]]; then
+        RPC_DUMP_RESULT
+        RPC_ERROR_EXIT "${error_message}"
+    elif [[ "${field_value}" = "null" ]]; then
+        return 1
+    fi
+    printf -v "${output_var}" '%s' "${field_value}"
+}
+
+BUILD_RPC_PAYLOAD_WITH_GID() {
+    local rpc_method="$1"
+    if [[ "${SECRET}" ]]; then
+        printf '{"jsonrpc":"2.0","method":"aria2.%s","id":"NG6","params":["token:%s","%s"]}' "${rpc_method}" "${SECRET}" "${TASK_GID}"
+    else
+        printf '{"jsonrpc":"2.0","method":"aria2.%s","id":"NG6","params":["%s"]}' "${rpc_method}" "${TASK_GID}"
+    fi
+}
+
+RPC_TASK_INFO() {
+    RPC_PAYLOAD="$(BUILD_RPC_PAYLOAD_WITH_GID "tellStatus")"
+    RPC_CALL "${RPC_PAYLOAD}"
+}
+
+# ==================================RPC 删除任务==================================
 REMOVE_REPEAT_TASK() {
     sleep 3s
-    RPC_ADDRESS="localhost:${PORT}/jsonrpc"
-    if [[ "${SECRET}" ]]; then
-        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.remove","id":"NG6","params":["token:'${SECRET}'","'${TASK_GID}'"]}'
-    else
-        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.remove","id":"NG6","params":["'${TASK_GID}'"]}'
-    fi
-    curl "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}"
+    RPC_ADDRESS="$(GET_RPC_ADDRESS)"
+    RPC_PAYLOAD="$(BUILD_RPC_PAYLOAD_WITH_GID "remove")"
+    RPC_CALL "${RPC_PAYLOAD}"
 }
 
 GET_RPC_RESULT() {
-    RPC_ADDRESS="localhost:${PORT}/jsonrpc"
+    RPC_ADDRESS="$(GET_RPC_ADDRESS)"
     RPC_RESULT="$(RPC_TASK_INFO)"
 }
 
 # ======================================================================
 
 GET_DOWNLOAD_DIR() {
-    [[ -z ${RPC_RESULT} ]] && {
-        echo -e "$(DATE_TIME) ${ERROR} Aria2 RPC interface error!"
-        exit 1
-    }
-    DOWNLOAD_DIR=$(echo "${RPC_RESULT}" | jq -r '.result.dir')
-    [[ -z "${DOWNLOAD_DIR}" || "${DOWNLOAD_DIR}" = "null" ]] && {
-        echo ${RPC_RESULT} | jq '.result'
-        echo -e "$(DATE_TIME) ${ERROR} Failed to get download directory!"
-        exit 1
-    }
+    [[ -z "${RPC_RESULT}" ]] && RPC_ERROR_EXIT "Aria2 RPC 接口异常！"
+    RPC_REQUIRE_FIELD '.result.dir' "获取下载目录失败！" DOWNLOAD_DIR
 }
 
 GET_TASK_STATUS() {
-    TASK_STATUS=$(echo "${RPC_RESULT}" | jq -r '.result.status')
-    [[ -z "${TASK_STATUS}" || "${TASK_STATUS}" = "null" ]] && {
-        echo "${RPC_RESULT}" | jq '.result'
-        echo -e "$(DATE_TIME) ${ERROR} Failed to get task status!"
-        exit 1
-    }
+    RPC_REQUIRE_FIELD '.result.status' "获取任务状态失败！" TASK_STATUS
 }
 
 GET_INFO_HASH() {
-    INFO_HASH=$(echo "${RPC_RESULT}" | jq -r '.result.infoHash')
-    if [[ -z "${INFO_HASH}" ]]; then
-        echo "${RPC_RESULT}" | jq '.result'
-        echo -e "$(DATE_TIME) ${ERROR} Failed to get Info Hash!"
-        exit 1
-    elif [[ "${INFO_HASH}" = "null" ]]; then
+    if ! RPC_OPTIONAL_FIELD '.result.infoHash' "获取种子哈希失败！" INFO_HASH; then
         return 1
-    else
-        TORRENT_PATH="${DOWNLOAD_DIR}/${INFO_HASH}"
-        TORRENT_FILE="${DOWNLOAD_DIR}/${INFO_HASH}.torrent"
     fi
+    # shellcheck disable=SC2034
+    TORRENT_FILE="${DOWNLOAD_DIR}/${INFO_HASH}.torrent"
 }
 
 

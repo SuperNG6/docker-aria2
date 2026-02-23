@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+. "$(dirname "$0")/setting"
+. "$(dirname "$0")/core"
+. "$(dirname "$0")/rpc_info"
+
+# 入参：gid、file_num、file_path、target_dir（completed|recycle）。
+# 副作用：初始化 hook 脚本依赖的全局任务上下文。
+LOAD_HOOK_CONTEXT() {
+    TASK_GID="$1"
+    FILE_NUM="$2"
+    FILE_PATH="$3"
+    HOOK_TARGET_DIR="$4"
+
+    GET_BASE_PATH
+    if [ "${HOOK_TARGET_DIR}" = "recycle" ]; then
+        RECYCLE_PATH
+    else
+        COMPLETED_PATH
+    fi
+
+    # aria2 在部分钩子场景会传空路径或 0 文件数；此类任务无需继续走 RPC/路径计算。
+    if [ -z "${FILE_PATH}" ] || ! [[ "${FILE_NUM}" =~ ^[0-9]+$ ]] || [ "${FILE_NUM}" -eq 0 ]; then
+        HOOK_SKIP_TASK="true"
+        return
+    fi
+
+    HOOK_SKIP_TASK="false"
+    GET_RPC_INFO
+    GET_FINAL_PATH
+}
+
+# 执行业务逻辑前校验任务上下文。
+# 单文件边界场景或无效路径状态时提前退出。
+EXIT_IF_INVALID_TASK() {
+    if [ "${HOOK_SKIP_TASK}" = "true" ]; then
+        exit 0
+    elif [ "${GET_PATH_INFO}" = "error" ]; then
+        LOG_ERROR "GID:${TASK_GID} 获取任务路径失败！"
+        exit 1
+    fi
+}

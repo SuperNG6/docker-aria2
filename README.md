@@ -147,7 +147,7 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
       2、增强程序健壮性，"/config/setting.conf"的参数误删除也会使用默认参数
       3、下个版本可能会合并webui版和普通版，二者资源占用上几乎没有区别，不想再多维护一个版本了
       4、docker-compose 事例说明中加入host模式写法，推荐使用host模式，性能更好
-      5、"/config/setting.conf"的`自定义tracker地址`功能，变更至docker环境变量中,| `-e CTU=` |启动容器时更新自定义trackes地址中的trackes|
+      5、"/config/setting.conf"的`自定义tracker地址`功能，变更至docker环境变量中,| `-e CTU=` |启动容器时更新自定义tracker地址中的trackers|
 
 ## 2021/08/24
 
@@ -396,7 +396,7 @@ https://hub.docker.com/r/superng6/ariang
 | `-e WEBUI_PORT=8080` | WEBUI端口 |
 | `-e BTPORT=32516` | DHT和BT监听端口 |
 | `-e UT=true` |启动容器时更新trackers|
-| `-e CTU=` |启动容器时更新自定义trackes地址|
+| `-e CTU=` |启动容器时更新自定义tracker地址|
 | `-e RUT=true` |每天凌晨3点更新trackers|
 | `-e SMD=true` |保存磁力链接为种子文件|
 | `-e FA=` |磁盘预分配模式`none`,`falloc`,`trunc`,`prealloc`|

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+# 返回统一时间格式（YYYY/MM/DD HH:MM:SS）。
+DATE_TIME() {
+    date +"%Y/%m/%d %H:%M:%S"
+}
+
+# 追加日志到指定文件；未传入日志路径时静默跳过。
+APPEND_LOG() {
+    local log_file="$1"
+    local log_message="$2"
+    [ "${log_file}" ] && echo -e "${log_message}" >>"${log_file}"
+}
+
+# 输出 INFO 级别控制台日志，优先使用调用方定义的 INFO 标签。
+LOG_INFO() {
+    local info_tag="${INFO:-[INFO]}"
+    echo -e "$(DATE_TIME) ${info_tag} $*"
+}
+
+# 输出 WARNING 级别控制台日志，优先使用调用方定义的 WARNING 标签。
+LOG_WARNING() {
+    local warning_tag="${WARNING:-[WARNING]}"
+    echo -e "$(DATE_TIME) ${warning_tag} $*"
+}
+
+# 输出 ERROR 级别控制台日志，优先使用调用方定义的 ERROR 标签。
+LOG_ERROR() {
+    local error_tag="${ERROR:-[ERROR]}"
+    echo -e "$(DATE_TIME) ${error_tag} $*"
+}
+
+# 以 [INFO] 前缀写入日志文件。
+LOG_FILE_INFO() {
+    local log_file="$1"
+    shift
+    APPEND_LOG "${log_file}" "$(DATE_TIME) [INFO] $*"
+}
+
+# 以 [ERROR] 前缀写入日志文件。
+LOG_FILE_ERROR() {
+    local log_file="$1"
+    shift
+    APPEND_LOG "${log_file}" "$(DATE_TIME) [ERROR] $*"
+}

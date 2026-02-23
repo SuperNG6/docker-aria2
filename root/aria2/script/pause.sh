@@ -1,31 +1,18 @@
 #!/usr/bin/env bash
 
-. "$(dirname $0)/setting"
-. "$(dirname $0)/core"
-. "$(dirname $0)/rpc_info"
+. "$(dirname "$0")/hook_common"
 
-TASK_GID=$1
-FILE_NUM=$2
-FILE_PATH=$3
+LOAD_HOOK_CONTEXT "$1" "$2" "$3" "completed"
 
-GET_BASE_PATH
-COMPLETED_PATH
-GET_RPC_INFO
-GET_FINAL_PATH
-
+# 下载暂停钩子：可选执行“暂停后移动”策略。
 MOVE_PAUSED() {
-    if [ "${FILE_NUM}" -eq 0 ] || [ -z "${FILE_PATH}" ]; then
-        exit 0
-    elif [ "${GET_PATH_INFO}" = "error" ]; then
-        echo -e "$(DATE_TIME) ${ERROR} GID:${TASK_GID} GET TASK PATH ERROR!"
-        exit 1
-    else
-        MOVE=true
-        MOVE_FILE
-        CHECK_TORRENT
-    fi
+    EXIT_IF_INVALID_TASK
+    # shellcheck disable=SC2034
+    MOVE=true
+    MOVE_FILE
+    CHECK_TORRENT
 }
 
-if [ "${MPT}" = true ]; then
+if [ "${MPT}" = "true" ]; then
     MOVE_PAUSED
 fi

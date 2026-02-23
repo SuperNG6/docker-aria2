@@ -28,4 +28,6 @@ else
   # --- Aria2B 未启用或环境变量未设置，执行这里的逻辑 ---
   echo "信息：Aria2B 功能未启用。"
   echo "信息：(如需启用，请在环境中设置变量 A2B=true)"
+  # Keep service process alive to avoid s6 restart loop/log spam when A2B is disabled.
+  exec tail -f /dev/null
 fi
