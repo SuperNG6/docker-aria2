@@ -30,18 +30,20 @@ LOAD_CONF() {
 
 # 将当前全局变量值回写到 setting.conf（升级镜像时合并新模板用）
 # 用临时文件保证原子性；任意一条 sed 失败则整体回滚
+# 值中的 sed 元字符（反斜杠、&、分隔符 |）逐一转义，避免新增配置项值含特殊字符时炸裂
 SED_CONF() {
     cp /aria2/conf/setting.conf /config/setting.conf.new
-    local failed=0
+    local failed=0 key var_name default_value escaped
     for config_item in "${CONFIG_ITEMS[@]}"; do
         IFS=':' read -r key var_name default_value <<< "$config_item"
-        sed -i "s@^\(${key}=\).*@\1${!var_name}@" /config/setting.conf.new || failed=1
+        escaped=$(printf '%s' "${!var_name}" | sed -e 's/[\&|]/\\&/g')
+        sed -i "s|^\(${key}=\).*|\1${escaped}|" /config/setting.conf.new || failed=1
     done
     if [ "${failed}" -eq 0 ]; then
         rm -f /config/setting.conf
         mv /config/setting.conf.new /config/setting.conf
     else
-        echo "错误: 无法更新配置"
+        echo "错误: 无法更新配置" >&2
         rm -f /config/setting.conf.new
         return 1
     fi

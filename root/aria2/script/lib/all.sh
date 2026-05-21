@@ -22,8 +22,12 @@ INIT_EVENT() {
     FILE_NUM=$3
     FILE_PATH=$4
     GET_BASE_PATH
-    [ "${path_type}" = "recycle" ] && RECYCLE_PATH || COMPLETED_PATH
-    GET_RPC_INFO
+    if [ "${path_type}" = "recycle" ]; then
+        RECYCLE_PATH
+    else
+        COMPLETED_PATH
+    fi
+    GET_RPC_INFO || exit 1
     GET_FINAL_PATH
 }
 

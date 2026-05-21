@@ -2,8 +2,8 @@
 # 日志工具库：终端颜色常量、时间戳函数、任务信息打印模板
 # 供所有事件脚本和 tracker 脚本通过 lib/all.sh 引入使用
 
-# ANSI 颜色前缀/后缀
-RED_FONT_PREFIX="\033[31m"
+# ANSI 颜色前缀/后缀；所有色码统一为 1;3Xm（亮色 + 加粗），让 ERROR 与 INFO/WARNING 视觉一致
+RED_FONT_PREFIX="\033[1;31m"
 LIGHT_GREEN_FONT_PREFIX="\033[1;32m"
 YELLOW_FONT_PREFIX="\033[1;33m"
 LIGHT_PURPLE_FONT_PREFIX="\033[1;35m"
