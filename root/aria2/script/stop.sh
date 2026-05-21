@@ -14,11 +14,14 @@ GUARD_EVENT              # 磁力/无效任务跳过；路径错误退出
 
 # start.sh 在重复任务检测时可能已删除文件，跳过后续操作
 [ -e "${SOURCE_PATH}" ] || exit 0
+# 下载出错的任务保留文件供用户排查或续传
+[ "${TASK_STATUS}" = "error" ] && exit 0
 
-if   [ "${RMTASK}" = "recycle" ] && [ "${TASK_STATUS}" != "error" ]; then
-    MOVE_RECYCLE; CHECK_TORRENT; RM_ARIA2
-elif [ "${RMTASK}" = "delete"  ] && [ "${TASK_STATUS}" != "error" ]; then
-    DELETE_FILE;  CHECK_TORRENT; RM_ARIA2
-elif [ "${RMTASK}" = "rmaria"  ] && [ "${TASK_STATUS}" != "error" ]; then
-    CHECK_TORRENT; RM_ARIA2
-fi
+# 三种处理模式分流；CHECK_TORRENT 和 RM_ARIA2 由公共尾部统一处理
+case "${RMTASK}" in
+    recycle) MOVE_RECYCLE ;;
+    delete)  DELETE_FILE  ;;
+    rmaria)  ;;  # 不动文件，仅清理 .aria2 控制文件（落到下面统一执行）
+esac
+CHECK_TORRENT
+RM_ARIA2

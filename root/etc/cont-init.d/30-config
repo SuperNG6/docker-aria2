@@ -1,52 +1,44 @@
 #!/usr/bin/with-contenv bash
 # 容器启动第三步：将环境变量应用到 aria2.conf，并配置定时任务
 # 所有可通过环境变量控制的 aria2 参数都在这里用 sed 写入配置文件
+# 统一用 ^\(key=\).* 锚定模式：只替换值，永不误匹配注释行
 
-# 将下载事件钩子脚本路径写入 aria2.conf
-# aria2 会在对应事件发生时调用这些脚本
-sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/stop.sh@' /config/aria2.conf
-sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/completed.sh@' /config/aria2.conf
-sed -i 's@^\(on-download-pause=\).*@\1/aria2/script/pause.sh@' /config/aria2.conf
-sed -i 's@^\(on-download-start=\).*@\1/aria2/script/start.sh@' /config/aria2.conf
+# 写入下载事件钩子脚本路径（aria2 在对应事件发生时调用）
+sed -i \
+    -e 's@^\(on-download-stop=\).*@\1/aria2/script/stop.sh@' \
+    -e 's@^\(on-download-complete=\).*@\1/aria2/script/completed.sh@' \
+    -e 's@^\(on-download-pause=\).*@\1/aria2/script/pause.sh@' \
+    -e 's@^\(on-download-start=\).*@\1/aria2/script/start.sh@' \
+    /config/aria2.conf
 
-# 将环境变量中的端口号写入配置（PORT=RPC端口，BTPORT=BT监听端口）
-sed -i "s@^\(rpc-listen-port=\).*@\1${PORT}@" /config/aria2.conf
-sed -i "s@^\(dht-listen-port=\).*@\1${BTPORT}@" /config/aria2.conf
-sed -i "s@^\(listen-port=\).*@\1${BTPORT}@" /config/aria2.conf
+# 端口配置：PORT=RPC 端口，BTPORT=BT/DHT 监听端口
+sed -i \
+    -e "s@^\(rpc-listen-port=\).*@\1${PORT}@" \
+    -e "s@^\(dht-listen-port=\).*@\1${BTPORT}@" \
+    -e "s@^\(listen-port=\).*@\1${BTPORT}@" \
+    /config/aria2.conf
 
 # SMD=true：保存磁力链接的元数据（.torrent 文件），方便种子文件备份功能使用
-if [[ "$SMD" = "true" ]]
-then
-    sed -i 's@^\(bt-save-metadata=\).*@\1true@' /config/aria2.conf
-else
-    sed -i 's@^\(bt-save-metadata=\).*@\1false@' /config/aria2.conf
-fi
+[ "$SMD" = "true" ] && SMD_VAL=true || SMD_VAL=false
+sed -i "s@^\(bt-save-metadata=\).*@\1${SMD_VAL}@" /config/aria2.conf
 
 # FA 环境变量控制文件预分配方式（影响下载初始化速度和磁盘性能）
 # falloc：快速预分配（推荐 ext4/xfs），trunc：截断预分配，prealloc：慢速预分配，none：不预分配
-if [[ "$FA" = "falloc" ]]
-then
-    sed -i 's@^\(file-allocation=\).*@\1falloc@' /config/aria2.conf
-elif [[ "$FA" = "trunc" ]]
-then
-    sed -i 's@^\(file-allocation=\).*@\1trunc@' /config/aria2.conf
-elif [[ "$FA" = "prealloc" ]]
-then
-    sed -i 's@^\(file-allocation=\).*@\1prealloc@' /config/aria2.conf
-else
-    sed -i 's@^\(file-allocation=\).*@\1none@' /config/aria2.conf
-fi
+# 未识别的值统一回退到 none，避免把无意义字符串写入 aria2.conf
+case "$FA" in
+    falloc|trunc|prealloc|none) FA_VAL="$FA" ;;
+    *)                          FA_VAL=none ;;
+esac
+sed -i "s@^\(file-allocation=\).*@\1${FA_VAL}@" /config/aria2.conf
 
-# UT=true：容器启动时立即更新 BT tracker 列表（写入 aria2.conf 文件，重载后生效）
-if [ "$UT" == "true" ]; then
-  bash /aria2/script/update-tracker.sh
-fi
+# UT=true：容器启动时立即更新 BT tracker 列表（写入 aria2.conf 文件，aria2c 启动后生效）
+[ "$UT" = "true" ] && bash /aria2/script/update-tracker.sh
 
 # RUT=true：启用定时（每日凌晨 5 点）通过 RPC 动态更新 tracker（无需重启）
-# 无论 RUT 值如何，都启动 crond，以保证系统维护定时任务（hourly/daily/weekly/monthly）正常运行
-if [ "$RUT" == "true" ]; then
-  cp /aria2/conf/rpc-tracker1 /etc/crontabs/root  # 含系统 cron + tracker 更新任务
+# 无论 RUT 值如何，都启动 crond 以保证系统维护定时任务（hourly/daily/weekly/monthly）正常运行
+if [ "$RUT" = "true" ]; then
+    cp /aria2/conf/rpc-tracker1 /etc/crontabs/root  # 含系统 cron + tracker 更新任务
 else
-  cp /aria2/conf/rpc-tracker0 /etc/crontabs/root  # 仅含系统 cron 任务
+    cp /aria2/conf/rpc-tracker0 /etc/crontabs/root  # 仅含系统 cron 任务
 fi
 /usr/sbin/crond

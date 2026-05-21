@@ -20,8 +20,8 @@ if [ ! -f "${ARIA2_CONF}" ]; then
     exit 1
 fi
 
-# 若配置文件中还没有 bt-tracker= 行，先追加一个空行（确保 sed 能匹配）
-[ -z "$(grep "bt-tracker=" "${ARIA2_CONF}")" ] && echo "bt-tracker=" >> "${ARIA2_CONF}"
+# 若配置文件中还没有 bt-tracker= 行，先追加一个空行（确保下一步 sed 能匹配）
+grep -q "^bt-tracker=" "${ARIA2_CONF}" || echo "bt-tracker=" >> "${ARIA2_CONF}"
 
 # 将 tracker 列表写入配置文件的 bt-tracker 行
 sed -i "s@^\(bt-tracker=\).*@\1${TRACKER}@" "${ARIA2_CONF}" && \

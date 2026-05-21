@@ -27,8 +27,8 @@ GET_TRACKERS() {
         for URL in $URLS; do
             TRACKER+="$(${DOWNLOADER} "${URL}" | tr "," "\n")$NL"
         done
-        # 去重、去空行，然后转换回逗号分隔格式
-        TRACKER="$(echo "$TRACKER" | awk NF | sort -u | sed 'H;1h;$!d;x;y/\n/,/')"
+        # 去重、去空行，然后用 paste 把多行折成单行逗号分隔（适配 aria2 bt-tracker 参数）
+        TRACKER="$(echo "$TRACKER" | awk NF | sort -u | paste -sd ,)"
     fi
     [[ -z "${TRACKER}" ]] && {
         echo -e "$(DATE_TIME) ${ERROR} 无法获取 trackers，网络故障或链接无效"

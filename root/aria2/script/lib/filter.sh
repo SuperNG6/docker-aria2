@@ -6,28 +6,34 @@
 # 从文件过滤配置文件读取过滤规则到全局变量
 # 支持：最小文件大小、包含/排除扩展名、关键字过滤、正则过滤
 LOAD_FILTER_CONF() {
-    MIN_SIZE="$(grep ^min-size "${FILTER_CONF}" | cut -d= -f2-)"              # 小于此大小的文件将被删除（如 100k）
-    INCLUDE_FILE="$(grep ^include-file "${FILTER_CONF}" | cut -d= -f2-)"      # 只保留这些扩展名（如 mp4|mkv|avi）
-    EXCLUDE_FILE="$(grep ^exclude-file "${FILTER_CONF}" | cut -d= -f2-)"      # 删除这些扩展名（如 txt|jpg）
-    KEYWORD_FILE="$(grep ^keyword-file "${FILTER_CONF}" | cut -d= -f2-)"      # 文件名包含这些关键词则删除
-    INCLUDE_FILE_REGEX="$(grep ^include-file-regex "${FILTER_CONF}" | cut -d= -f2-)"  # 只保留匹配此正则的文件
-    EXCLUDE_FILE_REGEX="$(grep ^exclude-file-regex "${FILTER_CONF}" | cut -d= -f2-)"  # 删除匹配此正则的文件
+    MIN_SIZE="$(grep ^min-size "${FILTER_CONF}" | cut -d= -f2-)"                     # 小于此大小的文件将被删除（如 100k）
+    INCLUDE_FILE="$(grep ^include-file "${FILTER_CONF}" | cut -d= -f2-)"             # 只保留这些扩展名（如 mp4|mkv|avi）
+    EXCLUDE_FILE="$(grep ^exclude-file "${FILTER_CONF}" | cut -d= -f2-)"             # 删除这些扩展名（如 txt|jpg）
+    KEYWORD_FILE="$(grep ^keyword-file "${FILTER_CONF}" | cut -d= -f2-)"             # 文件名包含这些关键词则删除
+    INCLUDE_FILE_REGEX="$(grep ^include-file-regex "${FILTER_CONF}" | cut -d= -f2-)" # 只保留匹配此正则的文件
+    EXCLUDE_FILE_REGEX="$(grep ^exclude-file-regex "${FILTER_CONF}" | cut -d= -f2-)" # 删除匹配此正则的文件
+}
+
+# 共用的删除-记日志管道：按 find 参数批量删除并把结果 tee 到过滤日志
+# 调用方按需拼出 -size / -iregex / ! -iregex 等参数
+_filter_rule() {
+    find "${SOURCE_PATH}" -type f "$@" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
 }
 
 # 按过滤规则删除任务目录内不需要的文件
 # 只在多文件任务（文件夹）中运行，防止误删单文件任务
 DELETE_EXCLUDE_FILE() {
-    if [[ ${FILE_NUM} -gt 1 ]] && [ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ] && \
-       [[ -n ${MIN_SIZE} || -n ${INCLUDE_FILE} || -n ${EXCLUDE_FILE} || -n ${KEYWORD_FILE} || -n ${EXCLUDE_FILE_REGEX} || -n ${INCLUDE_FILE_REGEX} ]]; then
-        echo -e "$(DATE_TIME) ${INFO} 删除不需要的文件..."
-        # 各规则均记录到过滤日志；多个规则可同时生效
-        [[ -n ${MIN_SIZE} ]]           && find "${SOURCE_PATH}" -type f -size -${MIN_SIZE} -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
-        [[ -n ${EXCLUDE_FILE} ]]       && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
-        [[ -n ${KEYWORD_FILE} ]]       && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex ".*(${KEYWORD_FILE}).*" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
-        [[ -n ${INCLUDE_FILE} ]]       && find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
-        [[ -n ${EXCLUDE_FILE_REGEX} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended -iregex "${EXCLUDE_FILE_REGEX}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
-        [[ -n ${INCLUDE_FILE_REGEX} ]] && find "${SOURCE_PATH}" -type f -regextype posix-extended ! -iregex "${INCLUDE_FILE_REGEX}" -print0 | xargs -0 rm -vf | tee -a "${CF_LOG}"
-    fi
+    [ "${FILE_NUM}" -gt 1 ] && [ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ] || return
+    # 任一规则非空即进入删除流程（拼接判定比 6 个独立 -n 更紧凑）
+    [ -n "${MIN_SIZE}${INCLUDE_FILE}${EXCLUDE_FILE}${KEYWORD_FILE}${EXCLUDE_FILE_REGEX}${INCLUDE_FILE_REGEX}" ] || return
+
+    echo -e "$(DATE_TIME) ${INFO} 删除不需要的文件..."
+    [ -n "${MIN_SIZE}" ]           && _filter_rule -size "-${MIN_SIZE}"
+    [ -n "${EXCLUDE_FILE}" ]       && _filter_rule -regextype posix-extended -iregex ".*\.(${EXCLUDE_FILE})"
+    [ -n "${KEYWORD_FILE}" ]       && _filter_rule -regextype posix-extended -iregex ".*(${KEYWORD_FILE}).*"
+    [ -n "${INCLUDE_FILE}" ]       && _filter_rule -regextype posix-extended ! -iregex ".*\.(${INCLUDE_FILE})"
+    [ -n "${EXCLUDE_FILE_REGEX}" ] && _filter_rule -regextype posix-extended -iregex "${EXCLUDE_FILE_REGEX}"
+    [ -n "${INCLUDE_FILE_REGEX}" ] && _filter_rule -regextype posix-extended ! -iregex "${INCLUDE_FILE_REGEX}"
 }
 
 # 删除过滤后遗留的空目录（DET=true 时启用）

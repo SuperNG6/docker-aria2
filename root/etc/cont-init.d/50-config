@@ -3,7 +3,6 @@
 # WEBUI=true 时用 darkhttpd 在 WEBUI_PORT 端口托管 /www 目录下的静态页面
 # darkhttpd 以守护进程模式运行（--daemon），不阻塞 s6 的后续初始化
 
-if [ "$WEBUI" == "true" ]
-then
-  darkhttpd /www --index index.html --port ${WEBUI_PORT} --daemon
+if [ "$WEBUI" = "true" ]; then
+    darkhttpd /www --index index.html --port "${WEBUI_PORT}" --daemon
 fi

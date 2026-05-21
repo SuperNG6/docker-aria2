@@ -27,6 +27,8 @@ RPC_PAYLOAD=$(jq -nc \
 RPC_RESULT=$(curl "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}")
 
 # 检查返回值中是否含 "OK"（aria2 成功响应的标志）
-[[ $(echo "${RPC_RESULT}" | grep OK) ]] && \
-    echo -e "$(DATE_TIME) ${INFO} BT trackers 更新成功!" || \
+if echo "${RPC_RESULT}" | grep -q OK; then
+    echo -e "$(DATE_TIME) ${INFO} BT trackers 更新成功!"
+else
     echo -e "$(DATE_TIME) ${ERROR} 网络故障或 Aria2 RPC 接口错误!"
+fi

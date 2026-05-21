@@ -1,74 +1,41 @@
 #!/usr/bin/with-contenv bash
 # 容器启动第二步：初始化配置文件和目录结构
-# 首次启动时将内置默认配置复制到 /config（持久化卷）；
+# 首次启动时将内置默认配置复制到 /config（持久化卷）
 # 后续启动时通过 SED_CONF 把用户已有配置合并到新模板（升级时保留旧值）
 
 # 创建必要的目录（卷挂载后可能不存在子目录）
 mkdir -p \
-	/config/ssl \
-  /config/logs \
-  /config/backup-torrent \
-  /downloads/completed \
-  /downloads/recycle
+    /config/ssl \
+    /config/logs \
+    /config/backup-torrent \
+    /downloads/completed \
+    /downloads/recycle
 
-# 首次启动时复制默认配置文件
-if [[ ! -e /config/aria2.conf ]]
-then
-  cp /aria2/conf/aria2.conf.default /config/aria2.conf
+# aria2.conf：首次启动复制默认；已存在则保留用户配置
+[ -e /config/aria2.conf ] || cp /aria2/conf/aria2.conf.default /config/aria2.conf
+
+# setting.conf：首次启动直接复制；已存在则合并到新模板（保留旧值 + 引入新键）
+# 注：首次启动 cp 后的文件就是新模板本身，无需再做一次 SED_CONF
+if [ ! -e /config/setting.conf ]; then
+    cp /aria2/conf/setting.conf /config/setting.conf
+else
+    . /aria2/script/lib/config.sh
+    SED_CONF
 fi
 
-if [[ ! -e /config/setting.conf ]]
-then
-  cp /aria2/conf/setting.conf /config/setting.conf
+# 文件过滤.conf：首次启动复制默认
+[ -e /config/文件过滤.conf ] || cp /aria2/conf/文件过滤.conf /config/文件过滤.conf
+
+# 运行时数据文件：aria2 会话与 DHT 路由表
+[ -e /config/aria2.session ] || touch /config/aria2.session
+[ -e /config/dht.dat ]       || touch /config/dht.dat
+
+# 2021.03.15 变更：日志文件从 /config/ 根目录迁到 /config/logs/
+if [ -e /config/move.log ] || [ -e /config/recycle.log ] || [ -e /config/delete.log ] || [ -e /config/文件过滤日志.log ]; then
+    mv /config/*.log /config/logs/
 fi
 
-# 升级镜像时：用户已有 setting.conf，调用 SED_CONF 将当前值合并进新模板
-# 确保新增的配置项也出现在 setting.conf 中（否则新配置项只有默认值生效）
-if [[ -e /config/setting.conf ]]
-then
-  . /aria2/script/lib/config.sh
-  SED_CONF
-fi
-
-if [[ ! -e /config/文件过滤.conf ]]
-then
-  cp /aria2/conf/文件过滤.conf /config/文件过滤.conf
-fi
-
-if [[ ! -e /config/aria2.session ]]
-then
-  touch /config/aria2.session
-fi
-
-if [[ ! -e /config/dht.dat ]]
-then
-  touch /config/dht.dat
-fi
-
-# 2021.03.15 变更：日志文件地址变更为`/config/logs`
-# 旧版日志放在 /config/ 根目录，迁移到 logs 子目录
-if [[ -e /config/move.log || -e /config/recycle.log || -e /config/delete.log || -e /config/文件过滤日志.log ]]
-then
-  mv /config/*.log /config/logs/
-fi
-
-# 创建各功能日志文件（不存在时）
-if [[ ! -e /config/logs/move.log ]]
-then
-  touch /config/logs/move.log
-fi
-
-if [[ ! -e /config/logs/recycle.log ]]
-then
-  touch /config/logs/recycle.log
-fi
-
-if [[ ! -e /config/logs/delete.log ]]
-then
-  touch /config/logs/delete.log
-fi
-
-if [[ ! -e /config/logs/文件过滤日志.log ]]
-then
-  touch /config/logs/文件过滤日志.log
-fi
+# 各功能日志文件按需创建（缺一即补）
+for log in move.log recycle.log delete.log 文件过滤日志.log; do
+    [ -e "/config/logs/${log}" ] || touch "/config/logs/${log}"
+done
