@@ -2,17 +2,14 @@
 # 容器启动第三步：将环境变量应用到 aria2.conf，并配置定时任务
 # 所有可通过环境变量控制的 aria2 参数都在这里用 sed 写入配置文件
 # 统一用 ^\(key=\).* 锚定模式：只替换值，永不误匹配注释行
+# 钩子路径 + 端口号合并到单次 sed -i，省 6 个 sed 进程
 
-# 写入下载事件钩子脚本路径（aria2 在对应事件发生时调用）
+# 写入下载事件钩子脚本路径 + RPC/BT 端口
 sed -i \
     -e 's@^\(on-download-stop=\).*@\1/aria2/script/stop.sh@' \
     -e 's@^\(on-download-complete=\).*@\1/aria2/script/completed.sh@' \
     -e 's@^\(on-download-pause=\).*@\1/aria2/script/pause.sh@' \
     -e 's@^\(on-download-start=\).*@\1/aria2/script/start.sh@' \
-    /config/aria2.conf
-
-# 端口配置：PORT=RPC 端口，BTPORT=BT/DHT 监听端口
-sed -i \
     -e "s@^\(rpc-listen-port=\).*@\1${PORT}@" \
     -e "s@^\(dht-listen-port=\).*@\1${BTPORT}@" \
     -e "s@^\(listen-port=\).*@\1${BTPORT}@" \

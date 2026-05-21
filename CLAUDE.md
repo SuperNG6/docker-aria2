@@ -48,7 +48,7 @@ root/
 │   └── script/
 │       ├── lib/                # Shared function libraries (sourced via lib/all.sh)
 │       │   ├── all.sh          # Meta-entry: sources all libs, defines INIT_EVENT/GUARD_EVENT
-│       │   ├── log.sh          # Color constants, DATE_TIME(), TASK_INFO(), DELETE_INFO()
+│       │   ├── log.sh          # Color constants, DATE_TIME(), TASK_INFO() (pass `no-target` to omit move-target line)
 │       │   ├── config.sh       # Reads/writes setting.conf; auto-runs LOAD_CONF on source
 │       │   ├── paths.sh        # Path calculation functions
 │       │   ├── files.sh        # MOVE_FILE, DELETE_FILE, MOVE_RECYCLE, RM_ARIA2

@@ -2,7 +2,7 @@
 # 文件操作库：移动、删除、回收站、清理 .aria2 控制文件
 # 所有函数依赖 log.sh 的颜色变量和 DATE_TIME()，需通过 lib/all.sh 引入
 
-# 共用的日志行写入函数：自动加时间戳和级别标签
+# 共用日志行写入函数：自动加时间戳和级别标签
 # 用法：log_line "${MOVE_LOG}" INFO "已移动: a -> b"
 log_line() {
     local file=$1 level=$2 msg=$3
@@ -29,8 +29,28 @@ CLEAN_UP() {
     fi
 }
 
+# 判断源路径与目标路径是否跨磁盘（不同设备号即跨盘）
+# 跨盘 mv 实际是 cp + rm，耗时随文件大小线性增长，需要预先校验目标盘空间
+_IS_CROSS_DEVICE() {
+    [ "$(stat -c %d "$1")" != "$(stat -c %d "$2")" ]
+}
+
+# 检查目标路径所在文件系统的可用空间是否容得下源路径全部数据
+# 返回 0=够；返回 1=不够，并打印 GB 单位的对比 + 写入 MOVE_LOG
+_CHECK_SPACE() {
+    local src=$1 dst=$2 required available required_gb available_gb
+    required=$(du -sb "${src}" | awk '{print $1}')
+    available=$(df --output=avail -B1 "${dst}" | sed '1d')
+    (( available >= required )) && return 0
+    required_gb=$(awk "BEGIN {printf \"%.2f\", ${required}/1024/1024/1024}")
+    available_gb=$(awk "BEGIN {printf \"%.2f\", ${available}/1024/1024/1024}")
+    echo -e "$(DATE_TIME) ${ERROR} 目标磁盘空间不足！需 ${required_gb} GB，可用 ${available_gb} GB" >&2
+    log_line "${MOVE_LOG}" ERROR "目标磁盘空间不足。需:${required_gb}G 可用:${available_gb}G 源:${src} -> 目标:${dst}"
+    return 1
+}
+
 # 把任务移到 /downloads/move-failed 回退目录
-# 在两种情况下调用：跨盘移动前发现空间不足、主路径 mv 失败
+# 两种情况调用：跨盘前空间不足、主路径 mv 失败
 # 传入 reason 描述会出现在日志前缀，区分调用上下文
 _MOVE_TO_FAILED() {
     local reason=${1:-}
@@ -74,33 +94,18 @@ MOVE_FILE() {
     echo -e "$(DATE_TIME) ${INFO} 开始移动该任务文件到: ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
     mkdir -p "${TARGET_PATH}"
 
-    # 获取源和目标的设备号，判断是否跨磁盘
-    local source_dev target_dev
-    source_dev=$(stat -c %d "${SOURCE_PATH}")
-    target_dev=$(stat -c %d "${TARGET_PATH}")
-
-    if [ "${source_dev}" != "${target_dev}" ]; then
-        # 跨磁盘移动（实际是 cp + rm），需要确认目标盘有足够空间
+    # 跨盘前先验空间，空间不足走 move-failed 回退避免半成品
+    if _IS_CROSS_DEVICE "${SOURCE_PATH}" "${TARGET_PATH}"; then
         echo -e "$(DATE_TIME) ${INFO} 检测到跨磁盘移动，正在检查目标磁盘空间..."
-        local required available required_gb available_gb
-        required=$(du -sb "${SOURCE_PATH}" | awk '{print $1}')
-        available=$(df --output=avail -B1 "${TARGET_PATH}" | sed '1d')
-        if (( available < required )); then
-            required_gb=$(awk "BEGIN {printf \"%.2f\", ${required}/1024/1024/1024}")
-            available_gb=$(awk "BEGIN {printf \"%.2f\", ${available}/1024/1024/1024}")
-            echo -e "$(DATE_TIME) ${ERROR} 目标磁盘空间不足！无法移动文件。"
-            echo -e "$(DATE_TIME) ${ERROR} 所需空间: ${required_gb} GB, 目标可用空间: ${available_gb} GB."
-            log_line "${MOVE_LOG}" ERROR "目标磁盘空间不足，移动失败。所需空间:${required_gb} GB, 可用空间:${available_gb} GB. 源:${SOURCE_PATH} -> 目标:${TARGET_PATH}"
+        if ! _CHECK_SPACE "${SOURCE_PATH}" "${TARGET_PATH}"; then
             echo -e "$(DATE_TIME) ${WARNING} 尝试将任务移动到: ${DOWNLOAD_PATH}/move-failed"
             _MOVE_TO_FAILED "因目标磁盘空间不足，"
             return 1
         fi
         echo -e "$(DATE_TIME) ${INFO} 目标磁盘空间充足。"
-    else
-        echo -e "$(DATE_TIME) ${INFO} 检测为同磁盘移动，无需检查空间。"
     fi
 
-    # 执行移动；失败则回退到 move-failed 目录
+    # 执行移动；失败回退到 move-failed 目录
     if mv -f "${SOURCE_PATH}" "${TARGET_PATH}"; then
         echo -e "$(DATE_TIME) ${INFO} 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
         log_line "${MOVE_LOG}" INFO "已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
@@ -114,7 +119,7 @@ MOVE_FILE() {
 # 彻底删除任务文件（RMTASK=delete 时由 stop.sh 调用）
 DELETE_FILE() {
     TASK_TYPE=": 删除任务文件"
-    DELETE_INFO
+    TASK_INFO no-target    # 删除场景无目标路径，传 no-target 隐藏对应行
     echo -e "$(DATE_TIME) ${INFO} 下载已停止，开始删除文件..."
     if rm -rf "${SOURCE_PATH}"; then
         echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${SOURCE_PATH}"

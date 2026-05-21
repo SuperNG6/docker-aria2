@@ -3,7 +3,7 @@
 # 使用 BASH_SOURCE[0] 而非 $0，确保被 source 时路径仍然正确（$0 指向调用者）
 
 _LIB="$(dirname "${BASH_SOURCE[0]}")"
-. "${_LIB}/log.sh"     # 颜色常量、DATE_TIME、TASK_INFO、DELETE_INFO
+. "${_LIB}/log.sh"     # 颜色常量、DATE_TIME、TASK_INFO
 . "${_LIB}/config.sh"  # 读取 setting.conf（LOAD_CONF 在 source 时自动执行）
 . "${_LIB}/paths.sh"   # GET_BASE_PATH、COMPLETED_PATH、RECYCLE_PATH、GET_FINAL_PATH
 . "${_LIB}/files.sh"   # RM_ARIA2、CLEAN_UP、MOVE_FILE、DELETE_FILE、MOVE_RECYCLE
