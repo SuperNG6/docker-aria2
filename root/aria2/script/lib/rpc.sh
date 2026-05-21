@@ -21,15 +21,21 @@ RPC_TASK_INFO() {
 
 # 移除重复任务（aria2 中删除指定 GID 的任务）
 # 调用前需等待 3 秒，确保 aria2 已完成本次任务的内部状态更新
+# 返回 0=移除成功（RPC 响应含 .result）；返回 1=网络失败或 aria2 拒绝（.error 非空）
+# 调用方需检查返回值——失败时本地文件已删，但 aria2 任务仍存活，可能继续下载
 REMOVE_REPEAT_TASK() {
     sleep 3
-    local payload
+    local payload result
     payload=$(jq -nc \
         --arg secret "${SECRET}" \
         --arg gid "${TASK_GID}" \
         '{jsonrpc:"2.0",method:"aria2.remove",id:"NG6",
           params:(if $secret == "" then [$gid] else ["token:" + $secret, $gid] end)}')
-    curl "${RPC_ADDRESS}" -fsSd "${payload}" || curl "https://${RPC_ADDRESS}" -kfsSd "${payload}"
+    result=$(curl "${RPC_ADDRESS}" -fsSd "${payload}" 2>/dev/null) \
+        || result=$(curl "https://${RPC_ADDRESS}" -kfsSd "${payload}" 2>/dev/null) \
+        || return 1
+    # 响应里 .result 字段（值为被移除的 GID）存在才算真成功；.error 字段表示 aria2 拒绝
+    [ -n "$(echo "${result}" | jq -r '.result // empty' 2>/dev/null)" ]
 }
 
 # 发起 RPC 查询，结果存入 RPC_RESULT；空响应（curl 失败 / aria2 未起）即报错
