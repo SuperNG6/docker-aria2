@@ -2,8 +2,7 @@
 
 . "$(dirname "$0")/lib/all.sh"
 
-INIT_EVENT "$@"
-RECYCLE_PATH
+INIT_EVENT recycle "$@"
 GUARD_EVENT
 
 # start.sh 可能已删除文件，SOURCE_PATH 不存在则跳过

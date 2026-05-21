@@ -9,12 +9,15 @@ _LIB="$(dirname "${BASH_SOURCE[0]}")"
 . "${_LIB}/torrent.sh"
 . "${_LIB}/rpc.sh"
 
-# 事件脚本公共初始化：解析 aria2 传入的三个参数并完成 RPC 查询
+# 事件脚本公共初始化：path_type 为 completed 或 recycle，决定 TARGET_DIR 的设置
+# 必须在 GET_RPC_INFO 和 GET_FINAL_PATH 之前调用对应的路径函数
 INIT_EVENT() {
-    TASK_GID=$1
-    FILE_NUM=$2
-    FILE_PATH=$3
+    local path_type=$1
+    TASK_GID=$2
+    FILE_NUM=$3
+    FILE_PATH=$4
     GET_BASE_PATH
+    [ "${path_type}" = "recycle" ] && RECYCLE_PATH || COMPLETED_PATH
     GET_RPC_INFO
     GET_FINAL_PATH
 }

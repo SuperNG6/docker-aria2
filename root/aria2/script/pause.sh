@@ -2,8 +2,7 @@
 
 . "$(dirname "$0")/lib/all.sh"
 
-INIT_EVENT "$@"
-COMPLETED_PATH
+INIT_EVENT completed "$@"
 GUARD_EVENT
 
 if [ "${MPT}" = "true" ]; then

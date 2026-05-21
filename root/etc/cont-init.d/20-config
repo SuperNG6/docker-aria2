@@ -22,7 +22,7 @@ fi
 # 保留配置、更新修改配置文件
 if [[ -e /config/setting.conf ]]
 then
-  . /aria2/script/setting
+  . /aria2/script/lib/config.sh
   SED_CONF
 fi
 

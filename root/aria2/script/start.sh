@@ -2,8 +2,7 @@
 
 . "$(dirname "$0")/lib/all.sh"
 
-INIT_EVENT "$@"
-COMPLETED_PATH
+INIT_EVENT completed "$@"
 
 # 磁力/无路径任务跳过；路径错误退出
 [ "${FILE_NUM}" -eq 0 ] || [ -z "${FILE_PATH}" ] && exit 0
