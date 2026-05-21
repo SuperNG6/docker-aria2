@@ -55,20 +55,18 @@ root/
 │       │   ├── filter.sh       # Content filter (delete by extension/keyword/regex)
 │       │   ├── torrent.sh      # .torrent file handling (backup/rename/delete)
 │       │   ├── rpc.sh          # Aria2 JSON-RPC query functions
-│       │   └── tracker.sh      # BT tracker fetch (shared by both update scripts)
+│       │   └── tracker.sh      # BT tracker fetch (used by update-tracker.sh in both modes)
 │       ├── completed.sh        # aria2 on-download-complete hook
 │       ├── start.sh            # aria2 on-download-start hook (duplicate task detection)
 │       ├── stop.sh             # aria2 on-download-stop hook
 │       ├── pause.sh            # aria2 on-download-pause hook
-│       ├── update-tracker.sh   # Write trackers to aria2.conf (called on startup)
-│       ├── update-tracker-rpc.sh # Update trackers via RPC (called by cron)
-│       └── restart-a2b.sh      # Register aria2b restart cron (a2b variant only)
+│       └── update-tracker.sh   # Dual-mode: `file` writes to aria2.conf (startup), `rpc` pushes via JSON-RPC (cron)
 └── etc/
     ├── cont-init.d/            # s6 init scripts, run in numeric order at container start
     │   ├── 11-version          # Print version banner
     │   ├── 20-config           # Init config files and directories
     │   ├── 30-config           # Apply env vars to aria2.conf, start crond
-    │   ├── 40-config           # Set permissions, chmod scripts, register aria2b cron
+    │   ├── 40-config           # Set permissions, chmod scripts, register aria2b restart cron (a2b only, inlined)
     │   ├── 50-config           # Start darkhttpd WebUI
     │   ├── 90-custom-folders   # User customization hook (intentionally empty)
     │   └── 99-custom-scripts   # User customization hook (intentionally empty)

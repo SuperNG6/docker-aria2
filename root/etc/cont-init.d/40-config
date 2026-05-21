@@ -9,9 +9,32 @@ chown -R abc:abc \
     /www \
     /downloads
 
-# 递归赋予 lib/ 目录下所有 .sh 文件可执行权限（通配符 * 不递归子目录）
+# 递归赋予 /aria2/script 下所有 .sh 文件可执行权限（事件钩子需要被 aria2 直接执行）
 find /aria2/script -name "*.sh" -exec chmod a+x {} \;
 
-# A2B=true 时（a2b 变体）：向 crontab 注册 aria2b 定时重启任务
-# 重启间隔由 CRA2B 环境变量控制（默认 2h）
-[ "${A2B}" = "true" ] && bash /aria2/script/restart-a2b.sh
+# 向 crontab 注册 aria2b 定时重启任务（aria2b 长时间运行可能积压连接，定期重启保活）
+# CRA2B=false 则移除已有任务；CRA2B 为数字小时数（1-24），其他值回退默认 2 小时
+# pkill -x aria2b：精确匹配进程名；s6 会自动重启它（services.d/aria2b/run）
+_register_a2b_restart() {
+    local marker="restart-aria2b"
+    # 无论如何先清除旧任务，避免重复
+    crontab -l 2>/dev/null | grep -v "${marker}" | crontab -
+
+    if [ "${CRA2B}" = "false" ]; then
+        echo "CRA2B=false，已移除定时重启 aria2b 任务。"
+        return 0
+    fi
+
+    # 提取 CRA2B 数字部分（如 "2h" -> "2"）；bash 原生参数扩展，免一次 fork
+    local hours=${CRA2B//[!0-9]/}
+    if [[ ! "${hours}" =~ ^([1-9]|1[0-9]|2[0-4])$ ]]; then
+        hours=2
+        echo "CRA2B 值无效，使用默认值 2 小时。"
+    fi
+
+    (crontab -l 2>/dev/null; echo "0 */${hours} * * * pkill -x aria2b # ${marker}") | crontab -
+    echo "已设置定时重启任务：每 ${hours} 小时重启 aria2b 进程。"
+}
+
+# A2B=true 时（a2b 变体）才注册重启任务
+[ "${A2B}" = "true" ] && _register_a2b_restart

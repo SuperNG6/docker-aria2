@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # BT Tracker 获取库：从公共列表或自定义地址拉取最新 tracker 列表
-# 被 update-tracker.sh（写入配置文件）和 update-tracker-rpc.sh（RPC 动态更新）共同引用
+# 被 update-tracker.sh 在 file / rpc 两种模式下共同引用
 # 需先引入 log.sh 以使用颜色变量和 DATE_TIME()
 
 # curl 下载器，3 秒连接超时、3 秒最大时长、最多重试 2 次
