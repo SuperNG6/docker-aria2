@@ -1,4 +1,6 @@
 #!/usr/bin/with-contenv bash
+# 容器启动第一步：打印版本信息横幅
+# build-date 文件在 Dockerfile 构建阶段写入，包含 aria2、AriaNg（及 aria2b）的版本和构建日期
 
 echo "
 -------------------------------------

@@ -1,6 +1,9 @@
 #!/usr/bin/with-contenv bash
+# 容器启动第二步：初始化配置文件和目录结构
+# 首次启动时将内置默认配置复制到 /config（持久化卷）；
+# 后续启动时通过 SED_CONF 把用户已有配置合并到新模板（升级时保留旧值）
 
-# make folders
+# 创建必要的目录（卷挂载后可能不存在子目录）
 mkdir -p \
 	/config/ssl \
   /config/logs \
@@ -8,7 +11,7 @@ mkdir -p \
   /downloads/completed \
   /downloads/recycle
 
-# copy files
+# 首次启动时复制默认配置文件
 if [[ ! -e /config/aria2.conf ]]
 then
   cp /aria2/conf/aria2.conf.default /config/aria2.conf
@@ -19,7 +22,8 @@ then
   cp /aria2/conf/setting.conf /config/setting.conf
 fi
 
-# 保留配置、更新修改配置文件
+# 升级镜像时：用户已有 setting.conf，调用 SED_CONF 将当前值合并进新模板
+# 确保新增的配置项也出现在 setting.conf 中（否则新配置项只有默认值生效）
 if [[ -e /config/setting.conf ]]
 then
   . /aria2/script/lib/config.sh
@@ -42,12 +46,13 @@ then
 fi
 
 # 2021.03.15 变更：日志文件地址变更为`/config/logs`
+# 旧版日志放在 /config/ 根目录，迁移到 logs 子目录
 if [[ -e /config/move.log || -e /config/recycle.log || -e /config/delete.log || -e /config/文件过滤日志.log ]]
 then
   mv /config/*.log /config/logs/
 fi
 
-# 创建日志文件
+# 创建各功能日志文件（不存在时）
 if [[ ! -e /config/logs/move.log ]]
 then
   touch /config/logs/move.log

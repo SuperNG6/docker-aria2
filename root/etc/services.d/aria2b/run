@@ -1,10 +1,16 @@
 #!/usr/bin/with-contenv bash
+# aria2b 服务启动脚本（由 s6-overlay 管理）
+# aria2b 是一个 BT 流量优化代理，仅在 a2b 变体（VARIANT=a2b）中安装
+# A2B=true 时正常启动；A2B=false 时执行 s6-svc -d . 让 s6 停止监控本服务，
+# 避免 s6 因进程不存在而无限重启（标准的 s6-overlay v2 服务禁用方式）
 
 if [ "${A2B}" == "true" ]; then
   echo "信息：Aria2B 功能已启用。"
+  # aria2b 需要 aria2c 的 RPC 接口已就绪，等待 10 秒确保主程序完全启动
   echo "信息：等待10秒，以确保 Aria2c 主程序完全启动..."
   sleep 10
   if [ "${A2B_DISABLE_LOG}" == "true" ]; then
+    # 静默模式：丢弃 aria2b 的所有输出，减少日志噪音
     exec aria2b \
       -c "/config/aria2.conf" \
       -u "http://127.0.0.1:${PORT}/jsonrpc" \
@@ -17,5 +23,6 @@ if [ "${A2B}" == "true" ]; then
   fi
 else
   echo "信息：Aria2B 功能未启用（A2B!=true）"
+  # 通知 s6 停止监控本服务（-d = down），防止 s6 因 exec 退出而反复重启
   exec s6-svc -d .
 fi

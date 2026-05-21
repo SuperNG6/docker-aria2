@@ -1,12 +1,17 @@
 #!/usr/bin/with-contenv bash
+# 容器启动第四步：设置文件权限，并配置 aria2b 定时重启（仅 a2b 变体）
+# 必须在所有配置文件创建完成后执行（依赖 20-config、30-config 已完成）
 
-# permissions
+# 将配置目录、WebUI 目录、下载目录的所有权移交给 abc 用户
+# aria2c 进程以 abc 身份运行（services.d/aria2/run 中的 s6-setuidgid abc）
 chown -R abc:abc \
     /config \
     /www \
     /downloads
 
+# 递归赋予 lib/ 目录下所有 .sh 文件可执行权限（通配符 * 不递归子目录）
 find /aria2/script -name "*.sh" -exec chmod a+x {} \;
 
-# aria2b 重启 cron（仅在 A2B=true 时配置）
+# A2B=true 时（a2b 变体）：向 crontab 注册 aria2b 定时重启任务
+# 重启间隔由 CRA2B 环境变量控制（默认 2h）
 [ "${A2B}" = "true" ] && bash /aria2/script/restart-a2b.sh
