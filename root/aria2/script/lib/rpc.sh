@@ -9,7 +9,6 @@ RPC_TASK_INFO() {
     curl "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}"
 }
 
-# ==================================RPC删除任务==================================
 REMOVE_REPEAT_TASK() {
     sleep 3s
     RPC_ADDRESS="localhost:${PORT}/jsonrpc"
@@ -26,8 +25,6 @@ GET_RPC_RESULT() {
     RPC_RESULT="$(RPC_TASK_INFO)"
 }
 
-# ======================================================================
-
 GET_DOWNLOAD_DIR() {
     [[ -z ${RPC_RESULT} ]] && {
         echo -e "$(DATE_TIME) ${ERROR} Aria2 RPC interface error!"
@@ -35,7 +32,7 @@ GET_DOWNLOAD_DIR() {
     }
     DOWNLOAD_DIR=$(echo "${RPC_RESULT}" | jq -r '.result.dir')
     [[ -z "${DOWNLOAD_DIR}" || "${DOWNLOAD_DIR}" = "null" ]] && {
-        echo ${RPC_RESULT} | jq '.result'
+        echo "${RPC_RESULT}" | jq '.result'
         echo -e "$(DATE_TIME) ${ERROR} Failed to get download directory!"
         exit 1
     }
@@ -63,7 +60,6 @@ GET_INFO_HASH() {
         TORRENT_FILE="${DOWNLOAD_DIR}/${INFO_HASH}.torrent"
     fi
 }
-
 
 GET_RPC_INFO() {
     GET_RPC_RESULT

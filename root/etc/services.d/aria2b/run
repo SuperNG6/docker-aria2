@@ -1,0 +1,21 @@
+#!/usr/bin/with-contenv bash
+
+if [ "${A2B}" == "true" ]; then
+  echo "信息：Aria2B 功能已启用。"
+  echo "信息：等待10秒，以确保 Aria2c 主程序完全启动..."
+  sleep 10
+  if [ "${A2B_DISABLE_LOG}" == "true" ]; then
+    exec aria2b \
+      -c "/config/aria2.conf" \
+      -u "http://127.0.0.1:${PORT}/jsonrpc" \
+      -s "${SECRET}" > /dev/null 2>&1
+  else
+    exec aria2b \
+      -c "/config/aria2.conf" \
+      -u "http://127.0.0.1:${PORT}/jsonrpc" \
+      -s "${SECRET}"
+  fi
+else
+  echo "信息：Aria2B 功能未启用（A2B!=true）"
+  exec s6-svc -d .
+fi

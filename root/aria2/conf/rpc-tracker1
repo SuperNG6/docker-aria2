@@ -1,3 +1,7 @@
 # do daily/weekly/monthly maintenance
 # min   hour    day     month   weekday command
-0       5       *       *       *       bash /aria2/script/rpc_tracker.sh
+0       *       *       *       *       run-parts /etc/periodic/hourly
+0       2       *       *       *       run-parts /etc/periodic/daily
+0       3       *       *       6       run-parts /etc/periodic/weekly
+0       5       1       *       *       run-parts /etc/periodic/monthly
+0       5       *       *       *       bash /aria2/script/update-tracker-rpc.sh

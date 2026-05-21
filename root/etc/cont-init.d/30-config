@@ -32,17 +32,15 @@ else
     sed -i 's@^\(file-allocation=\).*@\1none@' /config/aria2.conf 
 fi
 
-# auto updatetracker
-if [ "$UT" == "true" ]
-then
-  bash /aria2/script/tracker.sh
+# auto update tracker
+if [ "$UT" == "true" ]; then
+  bash /aria2/script/update-tracker.sh
 fi
 
-# rpc update tracker
-if [ "$RUT" == "true" ]
-then
+# rpc update tracker cron
+if [ "$RUT" == "true" ]; then
   cp /aria2/conf/rpc-tracker1 /etc/crontabs/root
-  /usr/sbin/crond
 else
   cp /aria2/conf/rpc-tracker0 /etc/crontabs/root
 fi
+/usr/sbin/crond

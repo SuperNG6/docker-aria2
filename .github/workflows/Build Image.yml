@@ -4,9 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  # Docker Hub 镜像名称
   DOCKER_IMAGE: superng6/aria2
-  # GitHub Container Registry (ghcr.io) 镜像名称
   GHCR_IMAGE: ghcr.io/superng6/aria2
 
 jobs:
@@ -19,6 +17,9 @@ jobs:
           - linux/amd64
           - linux/arm/v7
           - linux/arm64
+        variant:
+          - standard
+          - a2b
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -29,14 +30,12 @@ jobs:
       - name: 设置 Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 登录 Docker Hub
       - name: 登录到 Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 登录 GitHub Container Registry
       - name: 登录到 GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -44,7 +43,6 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 构建并推送单架构镜像（by digest），同时推送到 Docker Hub 和 GHCR
       - name: 构建并推送单架构镜像（by digest）
         id: build
         uses: docker/build-push-action@v6
@@ -52,14 +50,16 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: ${{ matrix.platform }}
+          build-args: |
+            VARIANT=${{ matrix.variant }}
+            A2B_DEFAULT=${{ matrix.variant == 'a2b' && 'true' || 'false' }}
           tags: |-
             ${{ env.DOCKER_IMAGE }}
             ${{ env.GHCR_IMAGE }}
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          cache-from: type=gha,scope=${{ matrix.variant }}-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}-${{ matrix.platform }}
 
-      # 导出 digest
       - name: 导出 digest
         run: |
           mkdir -p /tmp/digests
@@ -67,48 +67,40 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
           echo "PLATFORM_PAIR=$(echo ${{ matrix.platform }} | tr '/' '-')" >> $GITHUB_ENV
 
-      # 上传 digest 供后续合并 
       - name: 上传 digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
           retention-days: 1
 
-  merge:
+  merge-standard:
     runs-on: ubuntu-latest
     needs: build
     permissions:
       contents: read
       packages: write
     steps:
-      # 设置版本标签
       - name: 设置版本标签
         id: set-version
-        run: |
-          VERSION_TAG=$(date +"%y-%m-%d")
-          echo "version=${VERSION_TAG}" >> $GITHUB_OUTPUT
+        run: echo "version=$(date +"%y-%m-%d")" >> $GITHUB_OUTPUT
 
-      # 下载所有 digest
-      - name: 下载 digests
+      - name: 下载 standard digests
         uses: actions/download-artifact@v4
         with:
           path: /tmp/digests
-          pattern: digests-*
+          pattern: digests-standard-*
           merge-multiple: true
 
-      # 设置 Buildx
       - name: 设置 Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 登录 Docker Hub
       - name: 登录到 Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 登录 GHCR
       - name: 登录到 GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -116,21 +108,66 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 合并 manifest 并推送到 Docker Hub 和 GHCR
-      - name: 合并 manifest 并推送
+      - name: 合并 manifest 并推送（standard）
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create \
-            -t "${{ env.DOCKER_IMAGE }}:${{ steps.set-version.outputs.version }}" \
             -t "${{ env.DOCKER_IMAGE }}:latest" \
-            -t "${{ env.GHCR_IMAGE }}:${{ steps.set-version.outputs.version }}" \
+            -t "${{ env.DOCKER_IMAGE }}:${{ steps.set-version.outputs.version }}" \
             -t "${{ env.GHCR_IMAGE }}:latest" \
+            -t "${{ env.GHCR_IMAGE }}:${{ steps.set-version.outputs.version }}" \
             $(printf '${{ env.DOCKER_IMAGE }}@sha256:%s ' *)
 
-      # 检查镜像 manifest
-      - name: 检查镜像
+      - name: 检查镜像（standard）
         run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:${{ steps.set-version.outputs.version }}
           docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:latest
-          docker buildx imagetools inspect ${{ env.GHCR_IMAGE }}:${{ steps.set-version.outputs.version }}
-          docker buildx imagetools inspect ${{ env.GHCR_IMAGE }}:latest
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:${{ steps.set-version.outputs.version }}
+
+  merge-a2b:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: 设置版本标签
+        id: set-version
+        run: echo "version=$(date +"%y-%m-%d")" >> $GITHUB_OUTPUT
+
+      - name: 下载 a2b digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-a2b-*
+          merge-multiple: true
+
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录到 Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 登录到 GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 合并 manifest 并推送（a2b）
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t "${{ env.DOCKER_IMAGE }}:a2b-latest" \
+            -t "${{ env.DOCKER_IMAGE }}:a2b-${{ steps.set-version.outputs.version }}" \
+            -t "${{ env.GHCR_IMAGE }}:a2b-latest" \
+            -t "${{ env.GHCR_IMAGE }}:a2b-${{ steps.set-version.outputs.version }}" \
+            $(printf '${{ env.DOCKER_IMAGE }}@sha256:%s ' *)
+
+      - name: 检查镜像（a2b）
+        run: |
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:a2b-latest
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:a2b-${{ steps.set-version.outputs.version }}

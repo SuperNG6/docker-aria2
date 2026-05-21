@@ -2,7 +2,6 @@
 
 SCRIPT_CONF="/config/setting.conf"
 
-# 全局配置定义：格式为 "配置项名:变量名:默认值"
 declare -a CONFIG_ITEMS=(
     "remove-task:RMTASK:rmaria"
     "move-task:MOVE:false"
@@ -16,32 +15,20 @@ declare -a CONFIG_ITEMS=(
 LOAD_CONF() {
     for config_item in "${CONFIG_ITEMS[@]}"; do
         IFS=':' read -r key var_name default_value <<< "$config_item"
-        
         local value=""
-        if [ -f "${SCRIPT_CONF}" ]; then
-            value="$(grep "^${key}=" "${SCRIPT_CONF}" 2>/dev/null | cut -d= -f2-)"
-        fi
-        
-        # 动态设置全局变量
+        [ -f "${SCRIPT_CONF}" ] && value="$(grep "^${key}=" "${SCRIPT_CONF}" 2>/dev/null | cut -d= -f2-)"
         declare -g "${var_name}"="${value:-${default_value}}"
     done
 }
 
-SED_CONF() {    
-    # 复制用户配置文件
+SED_CONF() {
     cp /aria2/conf/setting.conf /config/setting.conf.new
-    
-    # 批量更新配置项（使用当前内存中的变量值）
+    local failed=0
     for config_item in "${CONFIG_ITEMS[@]}"; do
         IFS=':' read -r key var_name default_value <<< "$config_item"
-        
-        # 获取当前变量值（不重新加载，使用内存中的值）
-        local current_value="${!var_name}"
-        sed -i "s@^\(${key}=\).*@\1${current_value}@" /config/setting.conf.new
+        sed -i "s@^\(${key}=\).*@\1${!var_name}@" /config/setting.conf.new || failed=1
     done
-
-    # 检查操作是否成功
-    if [ $? -eq 0 ]; then
+    if [ "${failed}" -eq 0 ]; then
         rm -f /config/setting.conf
         mv /config/setting.conf.new /config/setting.conf
     else

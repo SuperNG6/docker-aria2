@@ -1,9 +1,12 @@
 #!/usr/bin/with-contenv bash
 
-# permissions
+# permissions
 chown -R abc:abc \
     /config \
+    /www \
     /downloads
-  
-chmod a+x \
-  /aria2/script/*
+
+find /aria2/script -name "*.sh" -exec chmod a+x {} \;
+
+# aria2b 重启 cron（仅在 A2B=true 时配置）
+[ "${A2B}" = "true" ] && bash /aria2/script/restart-a2b.sh
