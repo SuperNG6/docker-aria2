@@ -95,6 +95,16 @@ This is used in `services.d/aria2b/run` when `A2B != true`.
 ### lib/all.sh uses BASH_SOURCE[0]
 The lib directory is resolved with `dirname "${BASH_SOURCE[0]}"`, not `$0`. This ensures the correct path when the file is sourced (not executed directly).
 
+### Library global variable naming convention
+Globals shared across libs should be named after their purpose, not their owning script. Two pre-existing conf paths follow this rule (renamed in the refactor — the older `SCRIPT_CONF` name is intentionally retired to avoid namespace collision between libs):
+- `SETTING_CONF` — `/config/setting.conf`, defined in `lib/config.sh`, consumed by `LOAD_CONF` / `SED_CONF`
+- `FILTER_CONF` — `/config/文件过滤.conf`, defined in `lib/paths.sh#GET_BASE_PATH`, consumed by `lib/filter.sh#LOAD_FILTER_CONF`
+
+When adding a new shared global, give it a name that is unique across all of `lib/` — `grep -r <NAME> root/aria2/script/lib/` before introducing it.
+
+### Lib functions don't `exit`
+Lib functions (`lib/rpc.sh`, `lib/config.sh`, ...) return non-zero and write errors to `stderr` instead of calling `exit`. Decisions to abort belong in the caller (`INIT_EVENT` does `GET_RPC_INFO || exit 1`). This keeps libs reusable in non-event contexts (e.g., `update-tracker.sh rpc` mode).
+
 ## Key Environment Variables
 
 | Variable | Default | Description |
