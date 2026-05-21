@@ -5,13 +5,13 @@
 
 # 从文件过滤配置文件读取过滤规则到全局变量
 # 支持：最小文件大小、包含/排除扩展名、关键字过滤、正则过滤
-LOAD_SCRIPT_CONF() {
-    MIN_SIZE="$(grep ^min-size "${SCRIPT_CONF}" | cut -d= -f2-)"              # 小于此大小的文件将被删除（如 100k）
-    INCLUDE_FILE="$(grep ^include-file "${SCRIPT_CONF}" | cut -d= -f2-)"      # 只保留这些扩展名（如 mp4|mkv|avi）
-    EXCLUDE_FILE="$(grep ^exclude-file "${SCRIPT_CONF}" | cut -d= -f2-)"      # 删除这些扩展名（如 txt|jpg）
-    KEYWORD_FILE="$(grep ^keyword-file "${SCRIPT_CONF}" | cut -d= -f2-)"      # 文件名包含这些关键词则删除
-    INCLUDE_FILE_REGEX="$(grep ^include-file-regex "${SCRIPT_CONF}" | cut -d= -f2-)"  # 只保留匹配此正则的文件
-    EXCLUDE_FILE_REGEX="$(grep ^exclude-file-regex "${SCRIPT_CONF}" | cut -d= -f2-)"  # 删除匹配此正则的文件
+LOAD_FILTER_CONF() {
+    MIN_SIZE="$(grep ^min-size "${FILTER_CONF}" | cut -d= -f2-)"              # 小于此大小的文件将被删除（如 100k）
+    INCLUDE_FILE="$(grep ^include-file "${FILTER_CONF}" | cut -d= -f2-)"      # 只保留这些扩展名（如 mp4|mkv|avi）
+    EXCLUDE_FILE="$(grep ^exclude-file "${FILTER_CONF}" | cut -d= -f2-)"      # 删除这些扩展名（如 txt|jpg）
+    KEYWORD_FILE="$(grep ^keyword-file "${FILTER_CONF}" | cut -d= -f2-)"      # 文件名包含这些关键词则删除
+    INCLUDE_FILE_REGEX="$(grep ^include-file-regex "${FILTER_CONF}" | cut -d= -f2-)"  # 只保留匹配此正则的文件
+    EXCLUDE_FILE_REGEX="$(grep ^exclude-file-regex "${FILTER_CONF}" | cut -d= -f2-)"  # 删除匹配此正则的文件
 }
 
 # 按过滤规则删除任务目录内不需要的文件

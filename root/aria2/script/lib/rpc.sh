@@ -5,12 +5,13 @@
 
 # 构造 aria2.tellStatus 请求体并发起查询，返回原始 JSON
 # 结果赋值给外部变量 RPC_RESULT（由 GET_RPC_RESULT 调用）
+# 用 jq 构造 payload：自动转义 SECRET / TASK_GID 中的 " \ 换行等特殊字符，杜绝 JSON 注入
 RPC_TASK_INFO() {
-    if [[ "${SECRET}" ]]; then
-        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.tellStatus","id":"NG6","params":["token:'${SECRET}'","'${TASK_GID}'"]}'
-    else
-        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.tellStatus","id":"NG6","params":["'${TASK_GID}'"]}'
-    fi
+    RPC_PAYLOAD=$(jq -nc \
+        --arg secret "${SECRET}" \
+        --arg gid "${TASK_GID}" \
+        '{jsonrpc:"2.0",method:"aria2.tellStatus",id:"NG6",
+          params:(if $secret == "" then [$gid] else ["token:" + $secret, $gid] end)}')
     curl "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}"
 }
 
@@ -19,11 +20,11 @@ RPC_TASK_INFO() {
 REMOVE_REPEAT_TASK() {
     sleep 3s
     RPC_ADDRESS="localhost:${PORT}/jsonrpc"
-    if [[ "${SECRET}" ]]; then
-        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.remove","id":"NG6","params":["token:'${SECRET}'","'${TASK_GID}'"]}'
-    else
-        RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.remove","id":"NG6","params":["'${TASK_GID}'"]}'
-    fi
+    RPC_PAYLOAD=$(jq -nc \
+        --arg secret "${SECRET}" \
+        --arg gid "${TASK_GID}" \
+        '{jsonrpc:"2.0",method:"aria2.remove",id:"NG6",
+          params:(if $secret == "" then [$gid] else ["token:" + $secret, $gid] end)}')
     curl "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}"
 }
 

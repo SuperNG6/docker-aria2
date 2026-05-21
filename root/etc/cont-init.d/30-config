@@ -6,8 +6,8 @@
 # aria2 会在对应事件发生时调用这些脚本
 sed -i 's@^\(on-download-stop=\).*@\1/aria2/script/stop.sh@' /config/aria2.conf
 sed -i 's@^\(on-download-complete=\).*@\1/aria2/script/completed.sh@' /config/aria2.conf
-sed -i "s/.*on-download-pause.*/on-download-pause=\/aria2\/script\/pause.sh/" /config/aria2.conf
-sed -i "s/.*on-download-start.*/on-download-start=\/aria2\/script\/start.sh/" /config/aria2.conf
+sed -i 's@^\(on-download-pause=\).*@\1/aria2/script/pause.sh@' /config/aria2.conf
+sed -i 's@^\(on-download-start=\).*@\1/aria2/script/start.sh@' /config/aria2.conf
 
 # 将环境变量中的端口号写入配置（PORT=RPC端口，BTPORT=BT监听端口）
 sed -i "s@^\(rpc-listen-port=\).*@\1${PORT}@" /config/aria2.conf

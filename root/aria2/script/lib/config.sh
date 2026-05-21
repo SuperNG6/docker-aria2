@@ -3,7 +3,7 @@
 # setting.conf 控制移动、删除、过滤、种子处理等行为，用户可在 WebUI 里修改
 # 本文件在被 source 时会自动调用 LOAD_CONF，把配置值注入到全局变量
 
-SCRIPT_CONF="/config/setting.conf"
+SETTING_CONF="/config/setting.conf"
 
 # 配置项定义数组，每项格式：配置文件 key:全局变量名:默认值
 # 新增配置项只需在这里追加，LOAD_CONF / SED_CONF 自动处理
@@ -23,7 +23,7 @@ LOAD_CONF() {
     for config_item in "${CONFIG_ITEMS[@]}"; do
         IFS=':' read -r key var_name default_value <<< "$config_item"
         local value=""
-        [ -f "${SCRIPT_CONF}" ] && value="$(grep "^${key}=" "${SCRIPT_CONF}" 2>/dev/null | cut -d= -f2-)"
+        [ -f "${SETTING_CONF}" ] && value="$(grep "^${key}=" "${SETTING_CONF}" 2>/dev/null | cut -d= -f2-)"
         declare -g "${var_name}"="${value:-${default_value}}"
     done
 }

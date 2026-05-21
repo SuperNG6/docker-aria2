@@ -1,20 +1,20 @@
 #!/usr/bin/with-contenv bash
 # aria2c 服务启动脚本（由 s6-overlay 管理，崩溃后自动重启）
 # s6-setuidgid abc：以非 root 的 abc 用户运行，避免下载文件权限问题
-# SECRET_TOKEN 通过命令行参数传入，而非写死在配置文件，更安全
-# --disk-cache 和 --quiet 通过环境变量注入，方便用户调整
+# 用数组装命令行参数：变量统一加引号，SECRET 含空格或特殊字符也能完整传入
+# SECRET 为空时不带 --rpc-secret 参数（aria2c 视为不启用密钥）
 
-if [[ ! -z $SECRET ]];then
-  SECRET_TOKEN="--rpc-secret=${SECRET}"
-fi
+ARGS=(
+    s6-setuidgid abc aria2c
+    --conf-path=/config/aria2.conf
+    --disk-cache="$CACHE"
+    --quiet="$QUIET"
+)
 
-exec \
-	s6-setuidgid abc aria2c \
-    --conf-path=/config/aria2.conf \
-    $SECRET_TOKEN \
-    --disk-cache=$CACHE \
-    --quiet=$QUIET \
-  > /dev/stdout \
-  2> /dev/stderr
+[ -n "$SECRET" ] && ARGS+=(--rpc-secret="$SECRET")
+
+exec "${ARGS[@]}" \
+    > /dev/stdout \
+    2> /dev/stderr
 
 echo 'Exiting aria2'

@@ -7,7 +7,7 @@ _LIB="$(dirname "${BASH_SOURCE[0]}")"
 . "${_LIB}/config.sh"  # 读取 setting.conf（LOAD_CONF 在 source 时自动执行）
 . "${_LIB}/paths.sh"   # GET_BASE_PATH、COMPLETED_PATH、RECYCLE_PATH、GET_FINAL_PATH
 . "${_LIB}/files.sh"   # RM_ARIA2、CLEAN_UP、MOVE_FILE、DELETE_FILE、MOVE_RECYCLE
-. "${_LIB}/filter.sh"  # LOAD_SCRIPT_CONF、DELETE_EXCLUDE_FILE、DELETE_EMPTY_DIR
+. "${_LIB}/filter.sh"  # LOAD_FILTER_CONF、DELETE_EXCLUDE_FILE、DELETE_EMPTY_DIR
 . "${_LIB}/torrent.sh" # HANDLE_TORRENT、CHECK_TORRENT
 . "${_LIB}/rpc.sh"     # GET_RPC_INFO 及所有 RPC 子函数
 
@@ -31,10 +31,12 @@ INIT_EVENT() {
 # 磁力链接任务（FILE_NUM=0）或路径为空时直接退出（正常情况，不是错误）
 # 路径计算失败（GET_PATH_INFO=error）时报错退出，避免对错误路径执行文件操作
 GUARD_EVENT() {
+    # 显式声明环境契约：未传参数（异常路径调用、aria2 极端情况）也不让 -eq 报错
+    : "${FILE_NUM:=0}" "${FILE_PATH:=}"
     if [ "${FILE_NUM}" -eq 0 ] || [ -z "${FILE_PATH}" ]; then
         exit 0
     elif [ "${GET_PATH_INFO}" = "error" ]; then
-        echo -e "$(DATE_TIME) ${ERROR} GID:${TASK_GID} GET TASK PATH ERROR!"
+        echo -e "$(DATE_TIME) ${ERROR} GID:${TASK_GID} GET TASK PATH ERROR!" >&2
         exit 1
     fi
 }

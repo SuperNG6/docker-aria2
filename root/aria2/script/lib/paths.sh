@@ -7,7 +7,7 @@
 GET_BASE_PATH() {
     DOWNLOAD_PATH="/downloads"               # aria2 根下载目录（容器内固定路径）
     BAK_TORRENT_DIR="/config/backup-torrent" # 种子文件备份目录
-    SCRIPT_CONF="/config/文件过滤.conf"       # 文件内容过滤规则配置文件
+    FILTER_CONF="/config/文件过滤.conf"        # 文件内容过滤规则配置文件（由 lib/filter.sh 的 LOAD_FILTER_CONF 读取）
     CF_LOG="/config/logs/文件过滤日志.log"    # 过滤操作日志
     MOVE_LOG="/config/logs/move.log"          # 移动操作日志
     DELETE_LOG="/config/logs/delete.log"      # 删除操作日志

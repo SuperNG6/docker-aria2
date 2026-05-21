@@ -16,7 +16,7 @@ CLEAN_UP() {
     RM_ARIA2
     if [ "$CF" == "true" ] && [ ${FILE_NUM} -gt 1 ] && [ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ]; then
         echo -e "$(DATE_TIME) ${INFO} 被过滤文件的任务路径: ${SOURCE_PATH}" | tee -a "${CF_LOG}"
-        LOAD_SCRIPT_CONF
+        LOAD_FILTER_CONF
         DELETE_EXCLUDE_FILE
         DELETE_EMPTY_DIR
     fi

@@ -13,12 +13,15 @@ ECHO_TRACKERS  # 打印到终端，便于查看 cron 日志
 # 构造 RPC 地址（PORT 由容器环境变量注入，默认 6800）
 RPC_ADDRESS="localhost:${PORT}/jsonrpc"
 
-# 构造 aria2.changeGlobalOption 请求体（带 token 或不带 token 两种格式）
-if [[ "${SECRET}" ]]; then
-    RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.changeGlobalOption","id":"NG6","params":["token:'${SECRET}'",{"bt-tracker":"'${TRACKER}'"}]}'
-else
-    RPC_PAYLOAD='{"jsonrpc":"2.0","method":"aria2.changeGlobalOption","id":"NG6","params":[{"bt-tracker":"'${TRACKER}'"}]}'
-fi
+# 用 jq 构造 payload：SECRET 或 TRACKER 中的 " \ 换行等字符会被正确转义，避免 JSON 解析失败
+RPC_PAYLOAD=$(jq -nc \
+    --arg secret "${SECRET}" \
+    --arg tracker "${TRACKER}" \
+    '{jsonrpc:"2.0",method:"aria2.changeGlobalOption",id:"NG6",
+      params:(if $secret == ""
+              then [{"bt-tracker": $tracker}]
+              else ["token:" + $secret, {"bt-tracker": $tracker}]
+              end)}')
 
 # 发起 RPC 调用；优先 http，自动降级为 https（自签证书用 -k 跳过验证）
 RPC_RESULT=$(curl "${RPC_ADDRESS}" -fsSd "${RPC_PAYLOAD}" || curl "https://${RPC_ADDRESS}" -kfsSd "${RPC_PAYLOAD}")
