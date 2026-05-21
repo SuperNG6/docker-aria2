@@ -12,10 +12,27 @@ The variant is selected at build time via `ARG VARIANT=standard` in the Dockerfi
 
 ## Runtime Stack
 
-- Base image: `superng6/alpine:3.22`
-- Init system: **s6-overlay v2** (not v3 — the API and service directory structure differ)
+- Base image: `superng6/alpine:3.22` — Alpine + **s6-overlay v2.2.0.3** (last v2 release, not v3)
+- Init system entrypoint: `/init` → runs `cont-init.d/` scripts then supervises `services.d/` services
 - WebUI: `darkhttpd` serving AriaNg static files from `/www`
-- Download user: `abc` (all aria2c processes run via `s6-setuidgid abc`)
+- Download user: `abc` (UID 911, GID 1000 / group `users`); all aria2c processes run via `s6-setuidgid abc`
+
+### What the base image provides
+
+The base image (`superng6/alpine`) is a fork of linuxserver's alpine base, rebuilt with the latest Alpine and s6-overlay v2.2.0.3. It already includes:
+
+- **Pre-installed packages**: `bash`, `curl`, `wget`, `ca-certificates`, `coreutils`, `procps`, `shadow`, `tzdata` — no need to install these in the Dockerfile
+- **Pre-created directories**: `/app`, `/config`, `/defaults`
+- **`abc` user**: UID 911, home `/config`, shell `/bin/false`, member of group `users` (GID 1000)
+- **`with-contenv`**: wrapper script that reads env vars from `/var/run/s6/container_environment/` and applies UMASK before exec; all `cont-init.d` and `services.d` scripts use `#!/usr/bin/with-contenv bash` as shebang to inherit container environment variables
+- **Patched `init-stage2`**: custom patch applied to `/etc/s6/init/init-stage2` for linuxserver compatibility
+
+### s6-overlay v2 vs v3
+
+This project uses **v2** (not v3). Key differences to remember:
+- Service scripts live in `/etc/services.d/<name>/run` (v3 uses `/etc/s6-overlay/s6-rc.d/`)
+- Init scripts live in `/etc/cont-init.d/` (v3 uses `/etc/s6-overlay/init.d/`)
+- To disable a service from restarting: `exec s6-svc -d .` (v3 uses `s6-rc` and type `oneshot`)
 
 ## Directory Structure
 
