@@ -1,0 +1,9 @@
+# 默认 shell：把 #!/usr/bin/with-contenv bash 等非标准 shebang 当 bash 解析
+shell=bash
+
+# SC1091：lib 通过 ${BASH_SOURCE[0]} 动态 source，shellcheck 跟踪不了，无害
+disable=SC1091
+
+# SC2034：lib 间共享全局是有意设计（paths.sh 定义 MOVE_LOG/CF_LOG/TORRENT_FILE 等，
+# 由 files.sh、filter.sh、torrent.sh 跨文件消费）；shellcheck 看不到跨文件消费方
+disable=SC2034

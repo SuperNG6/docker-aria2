@@ -1,0 +1,62 @@
+name: Shell Lint
+
+on:
+  pull_request:
+    paths:
+      - 'root/**'
+      - 'install.sh'
+      - '.shellcheckrc'
+      - '.github/workflows/Shell Lint.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'root/**'
+      - 'install.sh'
+      - '.shellcheckrc'
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 shellcheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          shellcheck --version
+
+      - name: 检查脚本
+        run: |
+          # 显式列举要检查的脚本，避免误扫 .conf / 二进制等非 shell 文件
+          # severity=warning 抓真实问题（quoting/undefined var 等），跳过 style/info 噪音
+          files=(
+              install.sh
+              root/aria2/script/lib/all.sh
+              root/aria2/script/lib/log.sh
+              root/aria2/script/lib/config.sh
+              root/aria2/script/lib/paths.sh
+              root/aria2/script/lib/files.sh
+              root/aria2/script/lib/filter.sh
+              root/aria2/script/lib/torrent.sh
+              root/aria2/script/lib/rpc.sh
+              root/aria2/script/lib/tracker.sh
+              root/aria2/script/completed.sh
+              root/aria2/script/start.sh
+              root/aria2/script/stop.sh
+              root/aria2/script/pause.sh
+              root/aria2/script/update-tracker.sh
+              root/etc/cont-init.d/11-version
+              root/etc/cont-init.d/20-config
+              root/etc/cont-init.d/30-config
+              root/etc/cont-init.d/40-config
+              root/etc/cont-init.d/50-config
+              root/etc/cont-init.d/90-custom-folders
+              root/etc/cont-init.d/99-custom-scripts
+              root/etc/services.d/aria2/run
+              root/etc/services.d/aria2b/run
+          )
+          shellcheck --severity=warning -x "${files[@]}"
