@@ -76,7 +76,9 @@ jobs:
 
   merge-standard:
     runs-on: ubuntu-latest
-    needs: build
+    needs:
+      - build
+      - smoke-test
     permissions:
       contents: read
       packages: write
@@ -127,7 +129,9 @@ jobs:
 
   merge-a2b:
     runs-on: ubuntu-latest
-    needs: build
+    needs:
+      - build
+      - smoke-test
     permissions:
       contents: read
       packages: write
@@ -179,9 +183,7 @@ jobs:
   smoke-test:
     name: 运行检查（${{ matrix.variant }}）
     runs-on: ubuntu-latest
-    needs:
-      - merge-standard
-      - merge-a2b
+    needs: build
     permissions:
       contents: read
       packages: read
@@ -190,12 +192,10 @@ jobs:
       matrix:
         include:
           - variant: standard
-            tag: dev-latest
             rpc_port: 16800
             web_port: 18080
             a2b_enabled: "false"
           - variant: a2b
-            tag: a2b-dev-latest
             rpc_port: 16801
             web_port: 18081
             a2b_enabled: "true"
@@ -210,15 +210,30 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 拉取镜像
+      - name: 下载 amd64 digest
+        uses: actions/download-artifact@v4
+        with:
+          name: digests-${{ matrix.variant }}-linux-amd64
+          path: /tmp/digest
+
+      - name: 拉取镜像（按 digest，未发布 tag）
+        id: pull
         env:
-          IMAGE: ${{ env.GHCR_IMAGE }}:${{ matrix.tag }}
-        run: docker pull "${IMAGE}"
+          GHCR_IMAGE: ${{ env.GHCR_IMAGE }}
+        run: |
+          digest=$(ls /tmp/digest | head -1)
+          if [ -z "${digest}" ]; then
+            echo "digest 文件为空，artifact 异常"
+            exit 1
+          fi
+          ref="${GHCR_IMAGE}@sha256:${digest}"
+          echo "image=${ref}" >> "$GITHUB_OUTPUT"
+          docker pull "${ref}"
 
       - name: 启动容器
         env:
           CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}
-          IMAGE: ${{ env.GHCR_IMAGE }}:${{ matrix.tag }}
+          IMAGE: ${{ steps.pull.outputs.image }}
           RPC_PORT: ${{ matrix.rpc_port }}
           WEB_PORT: ${{ matrix.web_port }}
           A2B_ENABLED: ${{ matrix.a2b_enabled }}
