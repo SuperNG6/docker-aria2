@@ -250,14 +250,18 @@ jobs:
           WEB_PORT: ${{ matrix.web_port }}
           A2B_ENABLED: ${{ matrix.a2b_enabled }}
         run: |
-          for i in {1..30}; do
+          echo "Observe container logs for 30 seconds before probing services..."
+          timeout 30s docker logs -f "${CONTAINER_NAME}" || true
+          echo "Start service probes."
+
+          for i in {1..10}; do
             if docker ps --filter "name=${CONTAINER_NAME}" --filter "status=running" --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}" \
               && curl -fsS "http://127.0.0.1:${RPC_PORT}/jsonrpc" \
                 -H 'Content-Type: application/json' \
                 -d '{"jsonrpc":"2.0","method":"aria2.getVersion","id":"smoke","params":["token:smoketoken"]}' \
-                > /tmp/aria2-rpc.json \
+                > /tmp/aria2-rpc.json 2> /tmp/aria2-rpc.err \
               && grep -q '"version"' /tmp/aria2-rpc.json \
-              && curl -fsS "http://127.0.0.1:${WEB_PORT}/" >/dev/null; then
+              && curl -fsS "http://127.0.0.1:${WEB_PORT}/" >/dev/null 2> /tmp/aria2-web.err; then
               if [ "${A2B_ENABLED}" = "true" ] && ! docker top "${CONTAINER_NAME}" | grep -q '[a]ria2b'; then
                 sleep 2
                 continue
@@ -269,7 +273,9 @@ jobs:
           done
 
           docker ps -a
-          cat /tmp/aria2-rpc.json || true
+          [ -f /tmp/aria2-rpc.json ] && cat /tmp/aria2-rpc.json || true
+          [ -f /tmp/aria2-rpc.err ] && cat /tmp/aria2-rpc.err || true
+          [ -f /tmp/aria2-web.err ] && cat /tmp/aria2-web.err || true
           docker logs "${CONTAINER_NAME}" || true
           exit 1
 
