@@ -49,21 +49,31 @@ SED_CONF() {
     fi
 }
 
+# source 本文件时立即把 env var 快照存到 _ENV_SEED_SNAPSHOT，必须在 LOAD_CONF 之前
+# 原因：LOAD_CONF 的 declare -g VAR=... 对已 export 的同名变量会**保留 export 属性
+# 同时修改值**——也就是说 LOAD_CONF 会覆盖 env var 的当前值。SEED 之后再 printenv 已
+# 读不到原始 env var 了。所以必须在 LOAD_CONF 跑之前快照
+declare -A _ENV_SEED_SNAPSHOT
+for _seed_item in "${CONFIG_ITEMS[@]}"; do
+    IFS=':' read -r _seed_key _seed_var _seed_default <<< "$_seed_item"
+    _ENV_SEED_SNAPSHOT[$_seed_var]=$(printenv "$_seed_var" 2>/dev/null || true)
+done
+unset _seed_item _seed_key _seed_var _seed_default
+
 # 仅在首次创建 setting.conf 时把环境变量作为种子值写入
 # 设计意图：
 #   - env var（如 -e MOVE=true）首次启动时被吸收为 setting.conf 的初始值
 #   - 后续启动 setting.conf 已存在，本函数不再调用，env var 不再覆盖
 #   - 用户后续通过 WebUI 或手工编辑 setting.conf 的修改始终被尊重
 #   - LOAD_CONF 仍然只读文件——避免事件钩子里 env var 静默压盖运行时配置
-# 关键实现细节：必须用 printenv 而非 ${!var_name}，否则 LOAD_CONF 设置的同名全局变量
-# 会把 env var 的值"压盖"（LOAD_CONF 在 cp 出来的模板上跑后，全局变量等于模板默认值）
+# 关键细节：用 _ENV_SEED_SNAPSHOT 快照而非 printenv 现场读，因为 LOAD_CONF 已经修改了
+# 已 export 的同名 env var 的值（declare -g 副作用）
 SEED_ENV_TO_SETTING_CONF() {
     local conf=${SETTING_CONF}
     local key var_name default_value env_value escaped
     for config_item in "${CONFIG_ITEMS[@]}"; do
         IFS=':' read -r key var_name default_value <<< "$config_item"
-        # printenv 只读真正的环境变量，跳过被 LOAD_CONF 注入的同名全局变量
-        env_value=$(printenv "${var_name}" 2>/dev/null || true)
+        env_value="${_ENV_SEED_SNAPSHOT[$var_name]-}"
         [ -z "${env_value}" ] && continue
         escaped=$(printf '%s' "${env_value}" | sed -e 's/[\&|]/\\&/g')
         sed -i "s|^\(${key}=\).*|\1${escaped}|" "${conf}"
