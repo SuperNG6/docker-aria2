@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
-# 路径计算库：确定下载根目录、目标目录、任务源路径等
-# 调用顺序很重要：GET_BASE_PATH → COMPLETED_PATH 或 RECYCLE_PATH → GET_RPC_INFO → GET_FINAL_PATH
-# 由 lib/all.sh 的 INIT_EVENT 按正确顺序调用，不建议在事件脚本里单独调用
+# 事件脚本入口：引入公共库，并定义事件初始化、前置检查和路径计算
+# 使用 BASH_SOURCE[0] 而非 $0，确保被 source 时路径仍然正确（$0 指向调用者）
+
+_LIB="$(dirname "${BASH_SOURCE[0]}")"
+. "${_LIB}/log.sh"     # 颜色常量、DATE_TIME、TASK_INFO
+. "${_LIB}/config.sh"  # 读取 setting.conf（LOAD_CONF 在 source 时自动执行）
+. "${_LIB}/files.sh"   # RM_ARIA2、CLEAN_UP、MOVE_FILE、DELETE_FILE、MOVE_RECYCLE
+. "${_LIB}/filter.sh"  # LOAD_FILTER_CONF、DELETE_EXCLUDE_FILE、DELETE_EMPTY_DIR
+. "${_LIB}/torrent.sh" # HANDLE_TORRENT、CHECK_TORRENT
+. "${_LIB}/rpc.sh"     # GET_RPC_INFO 及所有 RPC 子函数
 
 # 设置项目全局路径常量（每次事件脚本触发时调用一次）
 GET_BASE_PATH() {
@@ -78,5 +85,39 @@ GET_FINAL_PATH() {
         TASK_NAME="${RELATIVE_PATH##*/}"
         TASK_NAME="${TASK_NAME%.*}"
         GET_TARGET_PATH
+    fi
+}
+
+# 事件脚本公共初始化
+# path_type：completed（移动到已完成目录）或 recycle（移动到回收站）
+# 其余参数 $2 $3 $4 对应 aria2 传入的 GID、文件数量、第一个文件路径
+# 调用顺序：GET_BASE_PATH → 路径目录设置 → GET_RPC_INFO → GET_FINAL_PATH
+# 顺序不能打乱：GET_FINAL_PATH 依赖 TARGET_DIR（由路径函数设置）和 DOWNLOAD_DIR（由 RPC 返回）
+INIT_EVENT() {
+    local path_type=$1
+    TASK_GID=$2
+    FILE_NUM=$3
+    FILE_PATH=$4
+    GET_BASE_PATH
+    if [ "${path_type}" = "recycle" ]; then
+        RECYCLE_PATH
+    else
+        COMPLETED_PATH
+    fi
+    GET_RPC_INFO || exit 1
+    GET_FINAL_PATH
+}
+
+# 事件脚本公共前置检查
+# 磁力链接任务（FILE_NUM=0）或路径为空时直接退出（正常情况，不是错误）
+# 路径计算失败（GET_PATH_INFO=error）时报错退出，避免对错误路径执行文件操作
+GUARD_EVENT() {
+    # 显式声明环境契约：未传参数（异常路径调用、aria2 极端情况）也不让 -eq 报错
+    : "${FILE_NUM:=0}" "${FILE_PATH:=}"
+    if [ "${FILE_NUM}" -eq 0 ] || [ -z "${FILE_PATH}" ]; then
+        exit 0
+    elif [ "${GET_PATH_INFO}" = "error" ]; then
+        echo -e "$(DATE_TIME) ${ERROR} GID:${TASK_GID} GET TASK PATH ERROR!" >&2
+        exit 1
     fi
 }

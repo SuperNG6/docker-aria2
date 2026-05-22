@@ -85,7 +85,7 @@ GET_INFO_HASH() {
 }
 
 # 一次性获取所有 RPC 信息（结果、状态、下载目录、infoHash）
-# 由 lib/all.sh 的 INIT_EVENT 调用；任何致命错误返回 1，调用方决定是否中止
+# 由 lib/event.sh 的 INIT_EVENT 调用；任何致命错误返回 1，调用方决定是否中止
 # GET_INFO_HASH 返回 1（非 BT）属正常情况，不向上传播
 GET_RPC_INFO() {
     GET_RPC_RESULT   || return 1

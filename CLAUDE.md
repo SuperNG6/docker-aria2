@@ -46,21 +46,19 @@ root/
 │   │   ├── rpc-tracker0        # Crontab for RUT=false (system maintenance only)
 │   │   └── rpc-tracker1        # Crontab for RUT=true (+ daily tracker update via RPC)
 │   └── script/
-│       ├── lib/                # Shared function libraries (sourced via lib/all.sh)
-│       │   ├── all.sh          # Meta-entry: sources all libs, defines INIT_EVENT/GUARD_EVENT
+│       ├── lib/                # Shared function libraries
+│       │   ├── event.sh        # Event hook entry: sources event libs; path calculation; INIT_EVENT/GUARD_EVENT
 │       │   ├── log.sh          # Color constants, DATE_TIME(), TASK_INFO() (pass `no-target` to omit move-target line)
 │       │   ├── config.sh       # Reads/writes setting.conf; auto-runs LOAD_CONF on source
-│       │   ├── paths.sh        # Path calculation functions
 │       │   ├── files.sh        # MOVE_FILE, DELETE_FILE, MOVE_RECYCLE, RM_ARIA2
 │       │   ├── filter.sh       # Content filter (delete by extension/keyword/regex)
 │       │   ├── torrent.sh      # .torrent file handling (backup/rename/delete)
 │       │   ├── rpc.sh          # Aria2 JSON-RPC query functions
-│       │   └── tracker.sh      # BT tracker fetch (used by update-tracker.sh in both modes)
+│       │   └── tracker.sh      # Dual-mode tracker update: `file` writes config, `rpc` pushes via JSON-RPC
 │       ├── completed.sh        # aria2 on-download-complete hook
 │       ├── start.sh            # aria2 on-download-start hook (duplicate task detection)
 │       ├── stop.sh             # aria2 on-download-stop hook
-│       ├── pause.sh            # aria2 on-download-pause hook
-│       └── update-tracker.sh   # Dual-mode: `file` writes to aria2.conf (startup), `rpc` pushes via JSON-RPC (cron)
+│       └── pause.sh            # aria2 on-download-pause hook
 └── etc/
     ├── cont-init.d/            # s6 init scripts, run in numeric order at container start
     │   ├── 11-version          # Print version banner
@@ -78,7 +76,7 @@ root/
 ## Critical Patterns
 
 ### Event script call order (must not be changed)
-All event scripts source `lib/all.sh` and call `INIT_EVENT <type> "$@"`. The `type` argument (`completed` or `recycle`) determines `TARGET_DIR` before `GET_FINAL_PATH` runs. Breaking this order causes incorrect path calculation.
+All event scripts source `lib/event.sh` and call `INIT_EVENT <type> "$@"`. The `type` argument (`completed` or `recycle`) determines `TARGET_DIR` before `GET_FINAL_PATH` runs. Breaking this order causes incorrect path calculation.
 
 ```bash
 # Correct order inside INIT_EVENT:
@@ -92,18 +90,18 @@ exec s6-svc -d .
 ```
 This is used in `services.d/aria2b/run` when `A2B != true`.
 
-### lib/all.sh uses BASH_SOURCE[0]
+### lib/event.sh uses BASH_SOURCE[0]
 The lib directory is resolved with `dirname "${BASH_SOURCE[0]}"`, not `$0`. This ensures the correct path when the file is sourced (not executed directly).
 
 ### Library global variable naming convention
 Globals shared across libs should be named after their purpose, not their owning script. Two pre-existing conf paths follow this rule (renamed in the refactor — the older `SCRIPT_CONF` name is intentionally retired to avoid namespace collision between libs):
 - `SETTING_CONF` — `/config/setting.conf`, defined in `lib/config.sh`, consumed by `LOAD_CONF` / `SED_CONF`
-- `FILTER_CONF` — `/config/文件过滤.conf`, defined in `lib/paths.sh#GET_BASE_PATH`, consumed by `lib/filter.sh#LOAD_FILTER_CONF`
+- `FILTER_CONF` — `/config/文件过滤.conf`, defined in `lib/event.sh#GET_BASE_PATH`, consumed by `lib/filter.sh#LOAD_FILTER_CONF`
 
 When adding a new shared global, give it a name that is unique across all of `lib/` — `grep -r <NAME> root/aria2/script/lib/` before introducing it.
 
-### Lib functions don't `exit`
-Lib functions (`lib/rpc.sh`, `lib/config.sh`, ...) return non-zero and write errors to `stderr` instead of calling `exit`. Decisions to abort belong in the caller (`INIT_EVENT` does `GET_RPC_INFO || exit 1`). This keeps libs reusable in non-event contexts (e.g., `update-tracker.sh rpc` mode).
+### Event helper libs don't `exit`
+Event helper libs (`lib/rpc.sh`, `lib/config.sh`, ...) return non-zero and write errors to `stderr` instead of calling `exit`. Decisions to abort belong in the caller (`INIT_EVENT` does `GET_RPC_INFO || exit 1`). Standalone operational scripts such as `lib/tracker.sh` may exit directly for CLI-style failures.
 
 ## Key Environment Variables
 

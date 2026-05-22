@@ -9,7 +9,7 @@
 #    completed 后，后续 resume 找不到文件，会从头下载（除非 continue=true + 控制文件保留路径）。
 #    仅在确认"暂停 = 任务终结"语义时启用 MPT=true。
 
-. "$(dirname "$0")/lib/all.sh"
+. "$(dirname "$0")/lib/event.sh"
 
 INIT_EVENT completed "$@"  # 初始化路径（目标目录：completed）
 GUARD_EVENT                 # 磁力/无效任务跳过；路径错误退出

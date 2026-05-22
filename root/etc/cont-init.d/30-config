@@ -29,7 +29,7 @@ esac
 sed -i "s@^\(file-allocation=\).*@\1${FA_VAL}@" /config/aria2.conf
 
 # UT=true：容器启动时立即更新 BT tracker 列表（写入 aria2.conf 文件，aria2c 启动后生效）
-[ "$UT" = "true" ] && bash /aria2/script/update-tracker.sh
+[ "$UT" = "true" ] && bash /aria2/script/lib/tracker.sh
 
 # RUT=true：启用定时（每日凌晨 5 点）通过 RPC 动态更新 tracker（无需重启）
 # 无论 RUT 值如何，都启动 crond 以保证系统维护定时任务（hourly/daily/weekly/monthly）正常运行

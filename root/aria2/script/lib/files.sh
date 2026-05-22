@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 文件操作库：移动、删除、回收站、清理 .aria2 控制文件
-# 所有函数依赖 log.sh 的颜色变量和 DATE_TIME()，需通过 lib/all.sh 引入
+# 所有函数依赖 log.sh 的颜色变量和 DATE_TIME()，事件脚本通过 lib/event.sh 引入
 
 # 共用日志行写入函数：自动加时间戳和级别标签
 # 用法：log_line "${MOVE_LOG}" INFO "已移动: a -> b"

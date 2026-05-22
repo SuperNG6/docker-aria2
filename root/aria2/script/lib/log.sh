@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 日志工具库：终端颜色常量、时间戳函数、任务信息打印模板
-# 供所有事件脚本和 tracker 脚本通过 lib/all.sh 引入使用
+# 供事件脚本通过 lib/event.sh 引入；tracker 脚本也可直接 source 本文件
 
 # ANSI 颜色前缀/后缀；所有色码统一为 1;3Xm（亮色 + 加粗），让 ERROR 与 INFO/WARNING 视觉一致
 RED_FONT_PREFIX="\033[1;31m"

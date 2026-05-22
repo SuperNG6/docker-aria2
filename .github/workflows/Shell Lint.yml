@@ -35,10 +35,9 @@ jobs:
           # severity=warning 抓真实问题（quoting/undefined var 等），跳过 style/info 噪音
           files=(
               install.sh
-              root/aria2/script/lib/all.sh
+              root/aria2/script/lib/event.sh
               root/aria2/script/lib/log.sh
               root/aria2/script/lib/config.sh
-              root/aria2/script/lib/paths.sh
               root/aria2/script/lib/files.sh
               root/aria2/script/lib/filter.sh
               root/aria2/script/lib/torrent.sh
@@ -48,7 +47,6 @@ jobs:
               root/aria2/script/start.sh
               root/aria2/script/stop.sh
               root/aria2/script/pause.sh
-              root/aria2/script/update-tracker.sh
               root/etc/cont-init.d/11-version
               root/etc/cont-init.d/20-config
               root/etc/cont-init.d/30-config
