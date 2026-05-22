@@ -784,6 +784,18 @@ t_seed_env_set_values() {
 
     SETTING_CONF=/config/setting.conf
     . "$LIB/config.sh"
+    # 调试：确认 lib 是新版（含 printenv 实现）
+    if ! type SEED_ENV_TO_SETTING_CONF | grep -q printenv; then
+        ng "SEED_ENV_TO_SETTING_CONF 不含 printenv（镜像里 config.sh 是旧版？）"
+        type SEED_ENV_TO_SETTING_CONF >&2
+        cp "$backup" /config/setting.conf
+        rm -f "$backup"
+        unset MOVE RMTASK CF TOR
+        return
+    fi
+    # 调试：直接验证 printenv 在容器里能拿到 env var
+    echo "  [debug] printenv MOVE = $(printenv MOVE 2>&1)" >&2
+
     SEED_ENV_TO_SETTING_CONF
 
     local fail=""
@@ -795,7 +807,8 @@ t_seed_env_set_values() {
         ok "4 个 env var 透传成功"
     else
         ng "透传失败:$fail"
-        cat /config/setting.conf >&2
+        echo "  [debug] setting.conf 当前关键行：" >&2
+        grep -E "^(move-task|remove-task|content-filter|handle-torrent)=" /config/setting.conf >&2
     fi
 
     unset MOVE RMTASK CF TOR
