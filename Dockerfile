@@ -1,4 +1,4 @@
-FROM superng6/alpine:3.22 AS builder
+FROM superng6/alpine:3.23 AS builder
 
 # download static aria2c && AriaNg AllInOne
 RUN apk add --no-cache curl wget unzip \
@@ -7,7 +7,7 @@ RUN apk add --no-cache curl wget unzip \
     && unzip /tmp/AriaNg-${ARIANG_VER}-AllInOne.zip -d /tmp \
     && curl -fsSL https://git.io/docker-aria2c.sh | bash
 
-FROM superng6/alpine:3.22
+FROM superng6/alpine:3.23
 
 ARG VARIANT=standard
 ARG A2B_DEFAULT=false
