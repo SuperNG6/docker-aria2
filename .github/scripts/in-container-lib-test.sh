@@ -33,6 +33,9 @@ mkdir -p "$LOG_DIR"
 . "$LIB/log.sh"
 . "$LIB/files.sh"
 . "$LIB/filter.sh"
+. "$LIB/torrent.sh"
+. "$LIB/event.sh"   # 提供 GET_BASE_PATH / GET_FINAL_PATH / GET_TARGET_PATH
+. "$LIB/tracker.sh" # source guard 让其不自动跑 main
 
 # 公共全局：files/filter 库读取的"全局基础路径"
 DOWNLOAD_PATH=/downloads
@@ -412,6 +415,357 @@ t_rm_aria2() {
     fi
 }
 
+# ─────────────────── 种子文件处理用例 ───────────────────
+
+# 准备一个 .torrent 文件，echo 出路径
+_make_torrent() {
+    local name="$1"
+    local f="$TEST_ROOT/$name.torrent"
+    mkdir -p "$TEST_ROOT" "$TEST_ROOT/backup"
+    echo "fake-torrent-bytes" > "$f"
+    echo "$f"
+}
+
+t_torrent_retain() {
+    hdr "torrent: TOR=retain 保留种子原位"
+    local tf
+    tf=$(_make_torrent "abc")
+    TORRENT_FILE="$tf"
+    BAK_TORRENT_DIR="$TEST_ROOT/backup"
+    DOWNLOAD_DIR="$TEST_ROOT"
+    TASK_NAME="abc-task"
+    TOR=retain
+    HANDLE_TORRENT >/dev/null
+    [[ -f "$tf" ]] && ok "retain 保留" || ng "retain 意外删除"
+}
+
+t_torrent_delete() {
+    hdr "torrent: TOR=delete 直接删除种子"
+    local tf
+    tf=$(_make_torrent "abc")
+    TORRENT_FILE="$tf"
+    TOR=delete
+    HANDLE_TORRENT >/dev/null
+    [[ ! -f "$tf" ]] && ok "delete 删除种子" || ng "delete 未删除"
+}
+
+t_torrent_rename() {
+    hdr "torrent: TOR=rename 重命名为任务名"
+    local tf
+    tf=$(_make_torrent "abc")
+    TORRENT_FILE="$tf"
+    DOWNLOAD_DIR="$TEST_ROOT"
+    TASK_NAME="my-task"
+    TOR=rename
+    HANDLE_TORRENT >/dev/null
+    if [[ ! -f "$tf" && -f "$TEST_ROOT/my-task.torrent" ]]; then
+        ok "rename 完成"
+    else
+        ng "rename 失败"
+        ls -la "$TEST_ROOT" 2>&1 | head -5 >&2
+    fi
+}
+
+t_torrent_backup() {
+    hdr "torrent: TOR=backup 原名移到备份目录"
+    local tf
+    tf=$(_make_torrent "abc")
+    TORRENT_FILE="$tf"
+    BAK_TORRENT_DIR="$TEST_ROOT/backup"
+    TOR=backup
+    HANDLE_TORRENT >/dev/null
+    if [[ ! -f "$tf" && -f "$TEST_ROOT/backup/abc.torrent" ]]; then
+        ok "backup 移到备份目录"
+    else
+        ng "backup 失败"
+    fi
+}
+
+t_torrent_backup_rename() {
+    hdr "torrent: TOR=backup-rename 重命名+备份"
+    local tf
+    tf=$(_make_torrent "abc")
+    TORRENT_FILE="$tf"
+    BAK_TORRENT_DIR="$TEST_ROOT/backup"
+    TASK_NAME="my-task"
+    TOR=backup-rename
+    HANDLE_TORRENT >/dev/null
+    if [[ ! -f "$tf" && -f "$TEST_ROOT/backup/my-task.torrent" ]]; then
+        ok "backup-rename 重命名后备份"
+    else
+        ng "backup-rename 失败"
+    fi
+}
+
+t_torrent_unknown() {
+    hdr "torrent: TOR=未知值 保留原文件（防数据丢失）"
+    local tf
+    tf=$(_make_torrent "abc")
+    TORRENT_FILE="$tf"
+    TOR=unknown_mode_xyz
+    HANDLE_TORRENT 2>/dev/null >/dev/null
+    [[ -f "$tf" ]] && ok "未知值保留原文件" || ng "未知值意外删除/移动"
+}
+
+# ─────────────────── 路径计算用例（GET_FINAL_PATH） ───────────────────
+
+reset_path_vars() {
+    unset SOURCE_PATH TARGET_PATH TASK_NAME COMPLETED_DIR GET_PATH_INFO RELATIVE_PATH
+    DOWNLOAD_PATH=/downloads
+    TARGET_DIR=/downloads/completed
+}
+
+t_path_http_single_root() {
+    hdr "path: HTTP 单文件在 /downloads 根"
+    reset_path_vars
+    FILE_NUM=1
+    FILE_PATH=/downloads/foo.txt
+    INFO_HASH=null
+    DOWNLOAD_DIR=/downloads
+    GET_FINAL_PATH
+    if [[ "$SOURCE_PATH" == "/downloads/foo.txt" \
+        && "$TARGET_PATH" == "/downloads/completed" \
+        && "$TASK_NAME" == "foo" ]]; then
+        ok "SOURCE=文件，TARGET=completed 根"
+    else
+        ng "SOURCE=$SOURCE_PATH TARGET=$TARGET_PATH TASK=$TASK_NAME"
+    fi
+}
+
+t_path_http_single_subdir() {
+    hdr "path: HTTP 单文件在 dir=/downloads/sub"
+    reset_path_vars
+    FILE_NUM=1
+    FILE_PATH=/downloads/sub/foo.txt
+    INFO_HASH=null
+    DOWNLOAD_DIR=/downloads/sub
+    GET_FINAL_PATH
+    if [[ "$SOURCE_PATH" == "/downloads/sub/foo.txt" \
+        && "$TARGET_PATH" == "/downloads/completed/sub" ]]; then
+        ok "保留 sub 层级"
+    else
+        ng "SOURCE=$SOURCE_PATH TARGET=$TARGET_PATH"
+    fi
+}
+
+t_path_bt_single_root() {
+    hdr "path: BT 单文件直接在 DOWNLOAD_DIR 根 → 按单文件处理"
+    reset_path_vars
+    FILE_NUM=1
+    FILE_PATH=/downloads/foo.bin
+    INFO_HASH=abc123def
+    DOWNLOAD_DIR=/downloads
+    GET_FINAL_PATH
+    if [[ "$SOURCE_PATH" == "/downloads/foo.bin" ]]; then
+        ok "SOURCE=文件本身（避免误整窝端走兄弟任务）"
+    else
+        ng "SOURCE=$SOURCE_PATH"
+    fi
+}
+
+t_path_bt_single_subdir() {
+    hdr "path: BT 单文件带文件夹 → 整目录搬"
+    reset_path_vars
+    FILE_NUM=1
+    FILE_PATH=/downloads/torrent-folder/file.bin
+    INFO_HASH=abc123def
+    DOWNLOAD_DIR=/downloads
+    GET_FINAL_PATH
+    if [[ "$SOURCE_PATH" == "/downloads/torrent-folder" \
+        && "$COMPLETED_DIR" == "/downloads/completed/torrent-folder" ]]; then
+        ok "SOURCE=种子文件夹"
+    else
+        ng "SOURCE=$SOURCE_PATH COMPLETED_DIR=$COMPLETED_DIR"
+    fi
+}
+
+t_path_bt_multi() {
+    hdr "path: BT 多文件 → 整目录搬"
+    reset_path_vars
+    FILE_NUM=5
+    FILE_PATH=/downloads/multi-task/sub/file1.bin
+    INFO_HASH=abc123def
+    DOWNLOAD_DIR=/downloads
+    GET_FINAL_PATH
+    if [[ "$SOURCE_PATH" == "/downloads/multi-task" ]]; then
+        ok "SOURCE=任务根文件夹（不进 sub）"
+    else
+        ng "SOURCE=$SOURCE_PATH"
+    fi
+}
+
+t_path_out_of_bounds() {
+    hdr "path: SOURCE 越界（aria2 dir 指到 DOWNLOAD_PATH 外）"
+    reset_path_vars
+    FILE_NUM=5
+    FILE_PATH=/elsewhere/task/file.bin
+    INFO_HASH=abc123def
+    DOWNLOAD_DIR=/elsewhere
+    GET_FINAL_PATH
+    if [[ "$GET_PATH_INFO" == "error" ]]; then
+        ok "标记为 error（防越权操作）"
+    else
+        ng "未标记 error: GET_PATH_INFO=$GET_PATH_INFO SOURCE=$SOURCE_PATH"
+    fi
+}
+
+t_path_magnet_metadata() {
+    hdr "path: 磁力链元数据阶段（FILE_PATH 为空）→ 静默返回"
+    reset_path_vars
+    FILE_NUM=0
+    FILE_PATH=""
+    INFO_HASH=null
+    DOWNLOAD_DIR=/downloads
+    GET_FINAL_PATH
+    if [[ -z "$SOURCE_PATH" ]]; then
+        ok "FILE_PATH 空时不计算路径"
+    else
+        ng "意外算出 SOURCE=$SOURCE_PATH"
+    fi
+}
+
+# ─────────────────── tracker.sh 用例 ───────────────────
+
+t_tracker_file_write() {
+    hdr "tracker: _update_file 写入 aria2.conf"
+    local conf=/tmp/tracker-test.conf
+    cat > "$conf" <<EOF
+# test config
+bt-tracker=
+listen-port=6881
+EOF
+    TRACKER="udp://t1.example.com:1337,udp://t2.example.com:6969"
+    _update_file "$conf" >/dev/null
+    if grep -q "^bt-tracker=udp://t1.example.com:1337,udp://t2.example.com:6969$" "$conf"; then
+        ok "tracker 列表已写入"
+    else
+        ng "tracker 写入失败"
+        cat "$conf" >&2
+    fi
+    rm -f "$conf"
+}
+
+t_tracker_file_escape() {
+    hdr "tracker: _update_file 转义特殊字符（&, query string）"
+    local conf=/tmp/tracker-test.conf
+    echo "bt-tracker=" > "$conf"
+    TRACKER='udp://example.com/announce?key=a&b=c'
+    _update_file "$conf" >/dev/null
+    if grep -q 'bt-tracker=udp://example.com/announce?key=a&b=c' "$conf"; then
+        ok "& 字符正确转义保留"
+    else
+        ng "& 字符转义异常"
+        cat "$conf" >&2
+    fi
+    rm -f "$conf"
+}
+
+t_tracker_file_missing_line() {
+    hdr "tracker: _update_file 在缺 bt-tracker= 行时自动追加"
+    local conf=/tmp/tracker-test.conf
+    echo "listen-port=6881" > "$conf"
+    TRACKER="udp://t1.example.com:1337"
+    _update_file "$conf" >/dev/null
+    if grep -q "^bt-tracker=udp://t1.example.com:1337$" "$conf"; then
+        ok "缺行时自动追加"
+    else
+        ng "未追加 bt-tracker 行"
+    fi
+    rm -f "$conf"
+}
+
+t_tracker_rpc_success_response() {
+    hdr "tracker: _update_rpc 识别 .result==OK 为成功"
+    # mock curl 返回成功响应
+    curl() { echo '{"jsonrpc":"2.0","id":"NG6","result":"OK"}'; }
+    export -f curl
+    TRACKER="udp://t.example.com:1337"
+    PORT=6800
+    SECRET=test
+    local out
+    out=$(_update_rpc 2>&1)
+    unset -f curl
+    if echo "$out" | grep -q "更新成功"; then
+        ok "OK 响应识别为成功"
+    else
+        ng "未识别成功响应"
+        echo "$out" >&2
+    fi
+}
+
+t_tracker_rpc_fake_ok() {
+    hdr "tracker: _update_rpc 不被错误响应中的 OK 字样欺骗（B2 回归）"
+    # 错误响应里恰好含 OK 字符串
+    curl() { echo '{"jsonrpc":"2.0","id":"NG6","error":{"code":1,"message":"Token NOT OK"}}'; }
+    export -f curl
+    TRACKER="t"
+    PORT=6800
+    SECRET=wrong
+    local out
+    out=$(_update_rpc 2>&1)
+    unset -f curl
+    if echo "$out" | grep -q "RPC 接口错误"; then
+        ok "正确识别 .result 缺失"
+    else
+        ng "被错误消息中的 OK 字样欺骗"
+        echo "$out" >&2
+    fi
+}
+
+# ─────────────────── config.sh SED_CONF 用例 ───────────────────
+
+t_sedconf_preserve_old_values() {
+    hdr "config: SED_CONF 升级合并保留旧值"
+    # 备份当前 /config/setting.conf
+    local backup=/tmp/setting.conf.bak
+    cp /config/setting.conf "$backup"
+
+    # 注入"旧版用户修改过"的 setting.conf
+    cat > /config/setting.conf <<'EOF'
+# 旧版用户配置
+remove-task=recycle
+move-task=dmof
+content-filter=true
+delete-empty-dir=false
+handle-torrent=backup
+remove-repeat-task=false
+move-paused-task=true
+EOF
+    # 重新 source config.sh 触发 LOAD_CONF
+    SETTING_CONF=/config/setting.conf
+    . "$LIB/config.sh"
+
+    # 验证 LOAD_CONF 读到了旧值
+    if [[ "$RMTASK" != "recycle" || "$MOVE" != "dmof" || "$CF" != "true" \
+        || "$DET" != "false" || "$TOR" != "backup" || "$RRT" != "false" \
+        || "$MPT" != "true" ]]; then
+        ng "LOAD_CONF 读取旧值不全：RMTASK=$RMTASK MOVE=$MOVE CF=$CF DET=$DET TOR=$TOR RRT=$RRT MPT=$MPT"
+        cp "$backup" /config/setting.conf
+        return
+    fi
+
+    # SED_CONF 应该用新模板 + 旧值
+    SED_CONF
+    local fail=""
+    grep -q "^remove-task=recycle$"     /config/setting.conf || fail+=" RMTASK"
+    grep -q "^move-task=dmof$"          /config/setting.conf || fail+=" MOVE"
+    grep -q "^content-filter=true$"     /config/setting.conf || fail+=" CF"
+    grep -q "^delete-empty-dir=false$"  /config/setting.conf || fail+=" DET"
+    grep -q "^handle-torrent=backup$"   /config/setting.conf || fail+=" TOR"
+    grep -q "^remove-repeat-task=false$" /config/setting.conf || fail+=" RRT"
+    grep -q "^move-paused-task=true$"   /config/setting.conf || fail+=" MPT"
+    if [[ -z "$fail" ]]; then
+        ok "7 个旧值全部保留到新模板"
+    else
+        ng "丢失旧值:$fail"
+        cat /config/setting.conf >&2
+    fi
+
+    # 还原
+    cp "$backup" /config/setting.conf
+    rm -f "$backup"
+}
+
 # ─────────────────── 主流程 ───────────────────
 
 echo "在容器内运行库单元测试 ..."
@@ -440,6 +794,33 @@ t_move_unknown_mode
 t_delete_file
 t_move_recycle
 t_rm_aria2
+
+# torrent
+t_torrent_retain
+t_torrent_delete
+t_torrent_rename
+t_torrent_backup
+t_torrent_backup_rename
+t_torrent_unknown
+
+# path 计算
+t_path_http_single_root
+t_path_http_single_subdir
+t_path_bt_single_root
+t_path_bt_single_subdir
+t_path_bt_multi
+t_path_out_of_bounds
+t_path_magnet_metadata
+
+# tracker
+t_tracker_file_write
+t_tracker_file_escape
+t_tracker_file_missing_line
+t_tracker_rpc_success_response
+t_tracker_rpc_fake_ok
+
+# config 升级合并
+t_sedconf_preserve_old_values
 
 # 清理
 rm -rf "$TEST_ROOT" /downloads/completed /downloads/recycle

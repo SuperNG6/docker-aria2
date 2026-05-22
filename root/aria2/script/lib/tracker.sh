@@ -9,7 +9,8 @@ _D="$(dirname "${BASH_SOURCE[0]}")"
 . "${_D}/log.sh"  # 颜色变量和 DATE_TIME
 
 # curl 下载器，3 秒连接超时、3 秒最大时长、最多重试 2 次
-DOWNLOADER="curl -fsSL --connect-timeout 3 --max-time 3 --retry 2"
+# 用数组装参数：未来若 URL 含空格或加新 flag，可避免词法分割引发的隐性 bug
+DOWNLOADER=(curl -fsSL --connect-timeout 3 --max-time 3 --retry 2)
 NL=$'\n'  # 换行符，用于分隔多个自定义 URL
 
 # 获取最新 BT tracker 列表，结果存入 TRACKER 变量（逗号分隔格式，适配 aria2 bt-tracker 参数）
@@ -22,15 +23,15 @@ GET_TRACKERS() {
     if [[ -z "${CTU}" ]]; then
         echo && echo -e "$(DATE_TIME) ${INFO} 获取 BT trackers..."
         TRACKER=$(
-            ${DOWNLOADER} https://trackerslist.com/all_aria2.txt ||
-            ${DOWNLOADER} https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/all_aria2.txt ||
-            ${DOWNLOADER} https://ghp.ci/https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all_aria2.txt
+            "${DOWNLOADER[@]}" https://trackerslist.com/all_aria2.txt ||
+            "${DOWNLOADER[@]}" https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/all_aria2.txt ||
+            "${DOWNLOADER[@]}" https://ghp.ci/https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all_aria2.txt
         )
     else
         echo && echo -e "$(DATE_TIME) ${INFO} 从自定义地址获取 BT trackers: ${CTU}"
         URLS=$(echo "${CTU}" | tr "," "$NL")
         for URL in $URLS; do
-            TRACKER+="$(${DOWNLOADER} "${URL}" | tr "," "\n")$NL"
+            TRACKER+="$("${DOWNLOADER[@]}" "${URL}" | tr "," "\n")$NL"
         done
         # 去重、去空行，然后用 paste 把多行折成单行逗号分隔（适配 aria2 bt-tracker 参数）
         TRACKER="$(echo "$TRACKER" | awk NF | sort -u | paste -sd , -)"
@@ -67,6 +68,8 @@ _update_file() {
 
 # 通过 RPC 调用 aria2.changeGlobalOption 动态更新 tracker
 # 优先 http，失败自动降级为 https（自签证书用 -k 跳过验证）
+# 加 connect-timeout + max-time，防止 aria2c 卡死时 cron 任务阻塞累积
+# 用 jq 严格判定 .result=="OK"，避免错误响应里附带 "OK" 文本被误判为成功
 _update_rpc() {
     local addr="localhost:${PORT}/jsonrpc"
     local payload result
@@ -79,8 +82,9 @@ _update_rpc() {
                   then [{"bt-tracker": $tracker}]
                   else ["token:" + $secret, {"bt-tracker": $tracker}]
                   end)}')
-    result=$(curl "${addr}" -fsSd "${payload}" || curl "https://${addr}" -kfsSd "${payload}")
-    if echo "${result}" | grep -q OK; then
+    result=$(curl --connect-timeout 5 --max-time 15 "${addr}" -fsSd "${payload}" \
+        || curl --connect-timeout 5 --max-time 15 "https://${addr}" -kfsSd "${payload}")
+    if echo "${result}" | jq -e '.result == "OK"' >/dev/null 2>&1; then
         echo -e "$(DATE_TIME) ${INFO} BT trackers 更新成功!"
     else
         echo -e "$(DATE_TIME) ${ERROR} 网络故障或 Aria2 RPC 接口错误!"
@@ -101,4 +105,5 @@ main() {
     esac
 }
 
-main "$@"
+# source guard：被 source 时不自动跑 main，便于测试单独调 _update_file / _update_rpc
+[ "${BASH_SOURCE[0]}" = "${0}" ] && main "$@"

@@ -281,8 +281,23 @@ t_purge() {
         && ok "purgeDownloadResult OK" || ng "purgeDownloadResult 失败"
 }
 
+t_fa_default() {
+    hdr "12. file-allocation 默认值（B1 回归：未设 FA 时应为 falloc）"
+    if [[ -z "$CONTAINER" ]]; then
+        log "  ⚠ 未提供容器名，跳过"
+        return
+    fi
+    local val
+    val=$(docker exec "$CONTAINER" grep "^file-allocation=" /config/aria2.conf | cut -d= -f2)
+    if [[ "$val" == "falloc" ]]; then
+        ok "file-allocation=falloc"
+    else
+        ng "file-allocation=$val（B1 早期把 FA 未设时回退成 none）"
+    fi
+}
+
 t_move_e2e() {
-    hdr "12. MOVE 端到端 (move-task=true)"
+    hdr "13. MOVE 端到端 (move-task=true)"
     if [[ -z "$CONTAINER" ]]; then
         log "  ⚠ 未提供容器名，跳过 MOVE 端到端测试"
         return
@@ -361,6 +376,7 @@ t_query_lists
 t_magnet
 t_torrent_file
 t_purge
+t_fa_default
 t_move_e2e
 
 echo

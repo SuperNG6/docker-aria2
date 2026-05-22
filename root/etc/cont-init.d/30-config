@@ -21,10 +21,11 @@ sed -i "s@^\(bt-save-metadata=\).*@\1${SMD_VAL}@" /config/aria2.conf
 
 # FA 环境变量控制文件预分配方式（影响下载初始化速度和磁盘性能）
 # falloc：快速预分配（推荐 ext4/xfs），trunc：截断预分配，prealloc：慢速预分配，none：不预分配
-# 未识别的值统一回退到 none，避免把无意义字符串写入 aria2.conf
+# 未识别（含 FA 未设置）一律回退到 falloc，与 aria2.conf 默认值保持一致；
+# 早期回退到 none 是 bug，会把新容器默认的 falloc 改成 none
 case "$FA" in
     falloc|trunc|prealloc|none) FA_VAL="$FA" ;;
-    *)                          FA_VAL=none ;;
+    *)                          FA_VAL=falloc ;;
 esac
 sed -i "s@^\(file-allocation=\).*@\1${FA_VAL}@" /config/aria2.conf
 

@@ -16,5 +16,3 @@ ARGS=(
 exec "${ARGS[@]}" \
     > /dev/stdout \
     2> /dev/stderr
-
-echo 'Exiting aria2'
