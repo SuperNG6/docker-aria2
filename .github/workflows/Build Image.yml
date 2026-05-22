@@ -200,6 +200,9 @@ jobs:
             web_port: 18081
             a2b_enabled: "true"
     steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
       - name: 登录到 GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -278,6 +281,39 @@ jobs:
           [ -f /tmp/aria2-web.err ] && cat /tmp/aria2-web.err || true
           docker logs "${CONTAINER_NAME}" || true
           exit 1
+
+      - name: RPC 集成测试（${{ matrix.variant }}）
+        env:
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}
+          RPC_PORT: ${{ matrix.rpc_port }}
+        run: |
+          chmod +x .github/scripts/rpc-integration-test.sh
+          .github/scripts/rpc-integration-test.sh \
+            127.0.0.1 "${RPC_PORT}" smoketoken "${CONTAINER_NAME}" "${{ matrix.variant }}"
+
+      - name: 库单元测试（容器内·${{ matrix.variant }}）
+        env:
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}
+        run: |
+          docker cp .github/scripts/in-container-lib-test.sh \
+            "${CONTAINER_NAME}":/tmp/in-container-lib-test.sh
+          docker exec "${CONTAINER_NAME}" bash /tmp/in-container-lib-test.sh
+
+      - name: 失败时收集诊断信息
+        if: failure()
+        env:
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}
+        run: |
+          echo "=== docker ps -a ==="
+          docker ps -a
+          echo "=== docker logs (尾 200 行) ==="
+          docker logs --tail 200 "${CONTAINER_NAME}" || true
+          echo "=== /config 主要文件 ==="
+          docker exec "${CONTAINER_NAME}" sh -c "
+            cat /config/setting.conf 2>/dev/null
+            echo '--- move.log ---'; tail -50 /config/logs/move.log 2>/dev/null
+            echo '--- filter.log ---'; tail -50 /config/logs/文件过滤日志.log 2>/dev/null
+          " || true
 
       - name: 清理容器
         if: always()
