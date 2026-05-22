@@ -26,8 +26,8 @@ RUN apk add --no-cache darkhttpd curl jq findutils \
     && chmod a+x /usr/local/bin/aria2c \
     && if [ "${VARIANT}" = "a2b" ]; then \
          apk add --no-cache iptables ip6tables ipset nodejs && \
-         A2B_VER=$(curl -fsSL https://api.github.com/repos/makeding/aria2b/tags | grep 'name' | cut -d\" -f4 | head -1) && \
-         curl -fsSL "https://github.com/makeding/aria2b/releases/download/${A2B_VER}/aria2b" -o /usr/local/bin/aria2b && \
+         A2B_VER=$(curl -fsSL https://api.github.com/repos/SuperNG6/aria2b/tags | grep 'name' | cut -d\" -f4 | head -1) && \
+         curl -fsSL "https://github.com/SuperNG6/aria2b/releases/download/${A2B_VER}/aria2b" -o /usr/local/bin/aria2b && \
          chmod a+x /usr/local/bin/aria2b; \
        else \
          rm -rf /etc/services.d/aria2b; \
