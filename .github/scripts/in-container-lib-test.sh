@@ -11,7 +11,9 @@
 #
 # 退出码：0 全部通过；非零 = 失败用例数（最多 255）
 
-set -uo pipefail
+set -o pipefail
+# 不开 -u：被测库（log.sh#TASK_INFO 等）引用 FILE_PATH/TASK_TYPE 等隐式契约变量，
+# 单元测试无法在每个用例穷举设置；改用 pipefail + 显式断言保障正确性。
 
 PASS=0
 FAIL=0
@@ -147,10 +149,11 @@ t_filter_min_size() {
 }
 
 t_filter_exclude_regex() {
-    hdr "filter: exclude-file-regex（按正则删除）"
+    hdr "filter: exclude-file-regex（按正则删除，比特彗星 padding 文件示例）"
+    # 文件名复刻 setting.conf 示例：_____padding_file_<n>_____（末尾带 _）
     local task
     task=$(make_multi_task fx-rex \
-        movie.mp4:2 _____padding_file_0001.zzz:1 sub.srt:1)
+        movie.mp4:2 _____padding_file_0001_____:1 sub.srt:1)
     SOURCE_PATH="$task"
     FILE_NUM=3
     DET=false
@@ -158,7 +161,7 @@ t_filter_exclude_regex() {
     EXCLUDE_FILE_REGEX='(.*/)_+(padding)(_*)(file)(.*)(_+)'
     DELETE_EXCLUDE_FILE >/dev/null
     if [[ -f "$task/movie.mp4" && -f "$task/sub.srt" \
-        && ! -f "$task/_____padding_file_0001.zzz" ]]; then
+        && ! -f "$task/_____padding_file_0001_____" ]]; then
         ok "padding 文件已删除，其余保留"
     else
         ng "exclude-file-regex 行为异常"
