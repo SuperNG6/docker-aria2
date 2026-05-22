@@ -398,21 +398,35 @@ https://hub.docker.com/r/superng6/ariang
 | `-v 本地文件夹2:/config` |Aria2配置文件位置|
 | `-e PUID=1026` |Linux用户UID|
 | `-e PGID=100` |Linux用户GID|
-| `-e SECRET=yourtoken` |Aria2 token|
+| `-e SECRET=yourtoken` |Aria2 token（**警告**：默认值是公开 token，公网部署务必改成随机字符串）|
 | `-e CACHE=1024M` |Aria2磁盘缓存配置|
+| `-e QUIET=true` |aria2c 静默模式（屏蔽 stdout/stderr，调试时设为 false）|
 | `-e PORT=6800` | RPC通讯端口 |
 | `-e WEBUI=true` | 启用WEBUI |
 | `-e WEBUI_PORT=8080` | WEBUI端口 |
 | `-e BTPORT=32516` | DHT和BT监听端口 |
 | `-e UT=true` |启动容器时更新trackers|
 | `-e CTU=` |启动容器时更新自定义trackes地址|
-| `-e RUT=true` |每天凌晨3点更新trackers|
+| `-e RUT=true` |每天凌晨5点更新trackers|
 | `-e SMD=true` |保存磁力链接为种子文件|
-| `-e FA=` |磁盘预分配模式`none`,`falloc`,`trunc`,`prealloc`|
+| `-e FA=falloc` |磁盘预分配模式`none`,`falloc`,`trunc`,`prealloc`（默认 falloc）|
+| `-e CRA2B=2h` |aria2b 定时重启间隔小时数（仅 a2b 镜像）|
+| `-e A2B=false` |启用 aria2b 屏蔽吸血客户端（仅 a2b 镜像默认 true）|
+| `-e MOVE=` |首次启动时写入 setting.conf 的 move-task（见下表）|
+| `-e RMTASK=` |首次启动时写入 setting.conf 的 remove-task|
+| `-e CF=` |首次启动时写入 setting.conf 的 content-filter|
+| `-e DET=` |首次启动时写入 setting.conf 的 delete-empty-dir|
+| `-e TOR=` |首次启动时写入 setting.conf 的 handle-torrent|
+| `-e RRT=` |首次启动时写入 setting.conf 的 remove-repeat-task|
+| `-e MPT=` |首次启动时写入 setting.conf 的 move-paused-task|
 | `-p 6800:6800` |Aria2 RPC连接端口|
 | `-p 6881:6881` |Aria2 tcp下载端口|
 | `-p 6881:6881/udp` |Aria2 p2p udp下载端口|
 | `--restart unless-stopped` |自动重启容器|
+
+> **MOVE / RMTASK / CF / DET / TOR / RRT / MPT 的语义**：这 7 个 env var 只在**首次创建** `/config/setting.conf` 时作为种子值写入；持久化卷已有 `setting.conf` 时它们被忽略，以文件内容为准。后续修改请直接编辑 `/config/setting.conf` 或通过 WebUI（即时生效）。
+
+> **aria2c 配置覆盖**：以下 key 每次启动都被 `cont-init.d/30-config` 用对应 env var 覆盖到 `/config/aria2.conf`，**不要手工编辑这些行**（编辑了也会丢）：`on-download-*` / `rpc-listen-port` (PORT) / `dht-listen-port` (BTPORT) / `listen-port` (BTPORT) / `bt-save-metadata` (SMD) / `file-allocation` (FA) / `bt-tracker` (UT=true 时由 tracker.sh 写)。其他 aria2.conf 内容用户可自由修改并被保留。
 
 ### 自定义tracker地址
 CTU="https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/best_aria2.txt"

@@ -103,21 +103,90 @@ When adding a new shared global, give it a name that is unique across all of `li
 ### Event helper libs don't `exit`
 Event helper libs (`lib/rpc.sh`, `lib/config.sh`, ...) return non-zero and write errors to `stderr` instead of calling `exit`. Decisions to abort belong in the caller (`INIT_EVENT` does `GET_RPC_INFO || exit 1`). Standalone operational scripts such as `lib/tracker.sh` may exit directly for CLI-style failures.
 
+### Event scripts inherit env from aria2c, not via with-contenv
+Hooks (`completed.sh` / `start.sh` / `stop.sh` / `pause.sh`) use `#!/usr/bin/env bash`, not `with-contenv`. They are fork-execed by aria2c, so they inherit aria2c's environment — which was set up by `services.d/aria2/run` (which DOES use `with-contenv`). This means container env vars (PORT/SECRET/CTU/etc) are visible to hooks transitively.
+
+`lib/config.sh#LOAD_CONF` is called every time `lib/event.sh` is sourced, so setting.conf edits are picked up immediately by the next hook invocation — no aria2c restart needed.
+
+### cron path
+`cont-init.d/30-config` writes `rpc-tracker0`/`rpc-tracker1` to `/etc/crontabs/root`. This works on this Alpine base image (whether by alpine-baselayout symlink or busybox crond `-c` override is configured in the base image). Do not "fix" this to `/var/spool/cron/crontabs/` — the existing path is intentional. `40-config` uses `crontab -l` / `crontab -` for aria2b restart cron, which writes to `/var/spool/cron/crontabs/` — both paths coexist in this image without conflict.
+
+### `services.d` runtime env
+`services.d/aria2/run` and `services.d/aria2b/run` both use `#!/usr/bin/with-contenv bash`, so they see the full container env. `aria2c` is launched with `s6-setuidgid abc` (UID 911 / group users). `aria2b` (a2b variant only) polls aria2c's RPC up to 30s before launching itself.
+
+### `QUIET=true` silences stderr too
+The default `QUIET=true` passes `--quiet=true` to aria2c, which silences both stdout and stderr. If aria2c fails to start (port conflict, bad config), the failure is invisible in `docker logs`. Set `-e QUIET=false` to debug startup problems.
+
 ## Key Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VARIANT` | `standard` | Build-time: `standard` or `a2b` |
-| `A2B` | `false` | Runtime: enable aria2b (set to `true` in a2b image via `A2B_DEFAULT`) |
-| `UT` | `true` | Update trackers on startup |
-| `RUT` | `true` | Update trackers daily via RPC cron |
-| `MOVE` | `false` | Move completed files (see setting.conf) |
-| `RMTASK` | `rmaria` | On stop: `rmaria` / `recycle` / `delete` |
-| `SECRET` | `yourtoken` | RPC secret token |
-| `PORT` | `6800` | RPC listen port |
-| `BTPORT` | `32516` | BT/DHT listen port |
-| `CRA2B` | `2h` | aria2b restart interval (a2b variant) |
-| `CTU` | _(empty)_ | Custom tracker URLs (comma-separated) |
+Three categories by how they reach the runtime:
+
+### 1. Directly read by `services.d` / `cont-init.d` (active env vars)
+
+| Variable | Default | Where consumed | Description |
+|----------|---------|----------------|-------------|
+| `VARIANT` | `standard` | Dockerfile ARG | Build-time: `standard` or `a2b` |
+| `A2B` | `false` (a2b: `true` via `A2B_DEFAULT`) | `services.d/aria2b/run`, `cont-init.d/40-config` | Enable aria2b service + cron restart |
+| `A2B_DISABLE_LOG` | `false` | `services.d/aria2b/run` | Pipe aria2b output to /dev/null |
+| `SECRET` | `yourtoken` | `services.d/aria2/run`, `lib/rpc.sh`, tracker cron | RPC token (⚠ default is public — banner warns on `yourtoken`) |
+| `PORT` | `6800` | `30-config` → aria2.conf, `lib/rpc.sh` | RPC listen port |
+| `BTPORT` | `32516` | `30-config` → aria2.conf (listen-port + dht-listen-port) | BT/DHT port |
+| `WEBUI` | `true` | `50-config` | Enable darkhttpd serving /www |
+| `WEBUI_PORT` | `8080` | `50-config` | WebUI listen port |
+| `UT` | `true` | `30-config` | Update trackers on startup (writes aria2.conf) |
+| `RUT` | `true` | `30-config` | Daily cron tracker update via RPC (5am) |
+| `SMD` | `true` | `30-config` → aria2.conf `bt-save-metadata` | Save magnet metadata to .torrent |
+| `FA` | `falloc` | `30-config` → aria2.conf `file-allocation` | Disk pre-alloc: `falloc`/`trunc`/`prealloc`/`none` (unset → `falloc`) |
+| `CACHE` | `128M` | `services.d/aria2/run` | aria2c `--disk-cache` |
+| `QUIET` | `true` | `services.d/aria2/run` | aria2c `--quiet` (true also silences stderr; set `false` to debug) |
+| `CRA2B` | `2h` | `40-config` | aria2b restart cron interval hours (a2b variant) |
+| `CTU` | _(empty)_ | `lib/tracker.sh#GET_TRACKERS` | Custom tracker URLs (comma-separated) |
+| `TZ` | `Asia/Shanghai` | base image | Timezone (also affects `date` in scripts) |
+| `PUID` / `PGID` | `1026` / `100` | base image (10-adduser) | abc user id mapping for /downloads ownership |
+
+### 2. setting.conf seed env vars (only effective on first run)
+
+| Variable | Default | Maps to setting.conf key | Effective when |
+|----------|---------|--------------------------|----------------|
+| `MOVE` | `false` | `move-task` | `/config/setting.conf` does not yet exist |
+| `RMTASK` | `rmaria` | `remove-task` | (same) |
+| `CF` | `false` | `content-filter` | (same) |
+| `DET` | `true` | `delete-empty-dir` | (same) |
+| `TOR` | `backup-rename` | `handle-torrent` | (same) |
+| `RRT` | `true` | `remove-repeat-task` | (same) |
+| `MPT` | `false` | `move-paused-task` | (same) |
+
+**Critical semantics**: these 7 env vars are absorbed by `cont-init.d/20-config` → `SEED_ENV_TO_SETTING_CONF` **only on the first container start** (when `/config/setting.conf` doesn't exist). On subsequent starts the persistent setting.conf wins — env var changes have no effect. To change at runtime, edit `/config/setting.conf` directly or via WebUI (changes take effect immediately, no restart).
+
+This is intentional. Letting env vars override at every start would silently shadow user edits to setting.conf and break the "edit setting.conf, it takes effect now" contract that event hooks rely on (`lib/config.sh#LOAD_CONF` always reads from file).
+
+## aria2.conf rewrite policy
+
+`cont-init.d/30-config` rewrites these aria2.conf keys on **every** startup using env vars. **Do not hand-edit these lines** — they are overwritten:
+
+| aria2.conf key | Source env var |
+|----------------|----------------|
+| `on-download-stop` | hardcoded path `/aria2/script/stop.sh` |
+| `on-download-complete` | hardcoded path `/aria2/script/completed.sh` |
+| `on-download-pause` | hardcoded path `/aria2/script/pause.sh` |
+| `on-download-start` | hardcoded path `/aria2/script/start.sh` |
+| `rpc-listen-port` | `PORT` |
+| `dht-listen-port` | `BTPORT` |
+| `listen-port` | `BTPORT` (same port, different protocol) |
+| `bt-save-metadata` | `SMD` |
+| `file-allocation` | `FA` (unset → `falloc`) |
+| `bt-tracker` | `UT=true` triggers `tracker.sh file` to rewrite |
+
+If any of these keys are missing from a user's old aria2.conf, `30-config` appends them as empty lines first so the subsequent `sed` replacement always lands (added 2026-05 to recover from silent failures on legacy configs). All other aria2.conf content is preserved across upgrades.
+
+## setting.conf upgrade policy
+
+`cont-init.d/20-config` handles setting.conf with two paths:
+
+- **First start** (`/config/setting.conf` doesn't exist): `cp /aria2/conf/setting.conf /config/setting.conf` then `SEED_ENV_TO_SETTING_CONF` writes env vars in as seed values.
+- **Subsequent start** (`/config/setting.conf` exists): `LOAD_CONF` reads existing values into globals, then `SED_CONF` copies the latest template to `setting.conf.new`, sed-replaces each known key with the existing-value, and atomically swaps. This preserves the user's settings while picking up any newly added template keys.
+
+User's manual edits to setting.conf are preserved across image upgrades; env var changes are NOT propagated after first run.
 
 ## Build and CI
 

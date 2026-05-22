@@ -16,3 +16,17 @@ https://github.com/SuperNG6/docker-aria2
 https://sleele.com/2019/09/27/docker-aria2的最佳实践
 
 -------------------------------------"
+
+# 默认 SECRET 是公开 token，暴露在公网上会被恶意接管 RPC（列任务、改 dir、注入下载）
+# 检测到默认值时打红字警告，提示用户立刻 -e SECRET=<随机串> 重启容器
+if [ "${SECRET}" = "yourtoken" ]; then
+    RED="\033[1;31m"
+    YELLOW="\033[1;33m"
+    RESET="\033[0m"
+    echo -e "
+${RED}⚠ 警告：正在使用默认 SECRET=yourtoken${RESET}
+${YELLOW}该 token 是公开的，任何人都可以通过 RPC 接管你的 aria2。${RESET}
+${YELLOW}请立刻用一个随机字符串重启容器：-e SECRET=<random_string>${RESET}
+${YELLOW}生成随机串：openssl rand -hex 24${RESET}
+"
+fi

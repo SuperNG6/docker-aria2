@@ -4,6 +4,13 @@
 # 统一用 ^\(key=\).* 锚定模式：只替换值，永不误匹配注释行
 # 钩子路径 + 端口号合并到单次 sed -i，省 6 个 sed 进程
 
+# 缺 key 兜底：若用户用了非常旧的 aria2.conf 缺这些 key，sed 静默不动会让钩子失效；
+# 先确认每条 key 存在，不在则追加空值行，让后续 sed 能命中
+for k in on-download-stop on-download-complete on-download-pause on-download-start \
+         rpc-listen-port dht-listen-port listen-port bt-save-metadata file-allocation; do
+    grep -q "^${k}=" /config/aria2.conf || echo "${k}=" >> /config/aria2.conf
+done
+
 # 写入下载事件钩子脚本路径 + RPC/BT 端口
 sed -i \
     -e 's@^\(on-download-stop=\).*@\1/aria2/script/stop.sh@' \

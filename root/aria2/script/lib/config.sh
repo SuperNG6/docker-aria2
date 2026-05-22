@@ -49,5 +49,25 @@ SED_CONF() {
     fi
 }
 
+# 仅在首次创建 setting.conf 时把环境变量作为种子值写入
+# 设计意图：
+#   - env var（如 -e MOVE=true）首次启动时被吸收为 setting.conf 的初始值
+#   - 后续启动 setting.conf 已存在，本函数不再调用，env var 不再覆盖
+#   - 用户后续通过 WebUI 或手工编辑 setting.conf 的修改始终被尊重
+#   - LOAD_CONF 仍然只读文件——避免事件钩子里 env var 静默压盖运行时配置
+# 未设的 env var 不动 setting.conf 对应行，保留默认值
+SEED_ENV_TO_SETTING_CONF() {
+    local conf=${SETTING_CONF}
+    local key var_name default_value env_value escaped
+    for config_item in "${CONFIG_ITEMS[@]}"; do
+        IFS=':' read -r key var_name default_value <<< "$config_item"
+        # 间接引用：${!var_name-} 在 env var 未设时为空（兼容 set -u）
+        env_value="${!var_name-}"
+        [ -z "${env_value}" ] && continue
+        escaped=$(printf '%s' "${env_value}" | sed -e 's/[\&|]/\\&/g')
+        sed -i "s|^\(${key}=\).*|\1${escaped}|" "${conf}"
+    done
+}
+
 # source 本文件时立即加载配置（使变量在后续函数中可用）
 LOAD_CONF

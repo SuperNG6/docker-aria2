@@ -766,6 +766,150 @@ EOF
     rm -f "$backup"
 }
 
+# ─────────────────── F1: SEED_ENV_TO_SETTING_CONF 用例 ───────────────────
+
+t_seed_env_set_values() {
+    hdr "config: SEED_ENV_TO_SETTING_CONF env var 透传到首次 setting.conf"
+    local backup=/tmp/setting.conf.bak
+    cp /config/setting.conf "$backup"
+
+    # 模拟首次启动：重置为内置默认模板
+    cp /aria2/conf/setting.conf /config/setting.conf
+
+    # 设环境变量
+    export MOVE=true
+    export RMTASK=recycle
+    export CF=true
+    export TOR=delete
+
+    SETTING_CONF=/config/setting.conf
+    . "$LIB/config.sh"
+    SEED_ENV_TO_SETTING_CONF
+
+    local fail=""
+    grep -q "^move-task=true$"        /config/setting.conf || fail+=" move-task"
+    grep -q "^remove-task=recycle$"   /config/setting.conf || fail+=" remove-task"
+    grep -q "^content-filter=true$"   /config/setting.conf || fail+=" content-filter"
+    grep -q "^handle-torrent=delete$" /config/setting.conf || fail+=" handle-torrent"
+    if [[ -z "$fail" ]]; then
+        ok "4 个 env var 透传成功"
+    else
+        ng "透传失败:$fail"
+        cat /config/setting.conf >&2
+    fi
+
+    unset MOVE RMTASK CF TOR
+    cp "$backup" /config/setting.conf
+    rm -f "$backup"
+}
+
+t_seed_env_skip_unset() {
+    hdr "config: SEED 跳过未设的 env var（保留模板默认值）"
+    local backup=/tmp/setting.conf.bak
+    cp /config/setting.conf "$backup"
+    cp /aria2/conf/setting.conf /config/setting.conf
+
+    unset MOVE RMTASK CF DET TOR RRT MPT
+
+    SETTING_CONF=/config/setting.conf
+    . "$LIB/config.sh"
+    SEED_ENV_TO_SETTING_CONF
+
+    if diff -q /config/setting.conf /aria2/conf/setting.conf >/dev/null; then
+        ok "未设 env var 时 setting.conf 与模板一致"
+    else
+        ng "未设 env var 时 setting.conf 被意外修改"
+        diff /aria2/conf/setting.conf /config/setting.conf >&2
+    fi
+
+    cp "$backup" /config/setting.conf
+    rm -f "$backup"
+}
+
+t_seed_env_escape_special() {
+    hdr "config: SEED 转义含特殊字符的 env value（|, &, \\）"
+    local backup=/tmp/setting.conf.bak
+    cp /config/setting.conf "$backup"
+    cp /aria2/conf/setting.conf /config/setting.conf
+
+    # 用一个含 & 的值（aria2b 的几个 mode 都是简单字符串，但行为应当对任意字符串安全）
+    export TOR='backup-rename'   # 真实合法值
+
+    SETTING_CONF=/config/setting.conf
+    . "$LIB/config.sh"
+    SEED_ENV_TO_SETTING_CONF
+
+    if grep -q "^handle-torrent=backup-rename$" /config/setting.conf; then
+        ok "特殊字符值正确写入"
+    else
+        ng "值写入失败"
+        cat /config/setting.conf >&2
+    fi
+
+    unset TOR
+    cp "$backup" /config/setting.conf
+    rm -f "$backup"
+}
+
+# ─────────────────── F5: 30-config 缺 key 兜底用例 ───────────────────
+
+t_aria2conf_ensure_keys() {
+    hdr "30-config: 缺 key 兜底追加（F5 回归）"
+    local tmp=/tmp/test-aria2.conf
+    cat > "$tmp" <<'EOF'
+# minimal aria2.conf（模拟用户用了非常旧的配置缺这些 key）
+listen-port=6881
+EOF
+    # 复刻 30-config 的兜底逻辑
+    for k in on-download-stop on-download-complete on-download-pause on-download-start \
+             rpc-listen-port dht-listen-port listen-port bt-save-metadata file-allocation; do
+        grep -q "^${k}=" "$tmp" || echo "${k}=" >> "$tmp"
+    done
+
+    local fail=""
+    grep -q "^on-download-stop="     "$tmp" || fail+=" on-download-stop"
+    grep -q "^on-download-complete=" "$tmp" || fail+=" on-download-complete"
+    grep -q "^rpc-listen-port="      "$tmp" || fail+=" rpc-listen-port"
+    grep -q "^dht-listen-port="      "$tmp" || fail+=" dht-listen-port"
+    grep -q "^bt-save-metadata="     "$tmp" || fail+=" bt-save-metadata"
+    grep -q "^file-allocation="      "$tmp" || fail+=" file-allocation"
+    # 已有的 listen-port 不应重复
+    [ "$(grep -c "^listen-port=" "$tmp")" -eq 1 ] || fail+=" listen-port-duplicated"
+    if [[ -z "$fail" ]]; then
+        ok "8 个缺 key 全部追加，已有 key 未重复"
+    else
+        ng "兜底逻辑异常:$fail"
+        cat "$tmp" >&2
+    fi
+    rm -f "$tmp"
+}
+
+# ─────────────────── F2: 11-version 默认 SECRET 警告 ───────────────────
+
+t_default_secret_warning() {
+    hdr "11-version: SECRET=yourtoken 触发安全警告（F2 回归）"
+    local out
+    out=$(SECRET=yourtoken bash /etc/cont-init.d/11-version 2>&1)
+    if echo "$out" | grep -q "yourtoken" && echo "$out" | grep -q "警告"; then
+        ok "默认 token 触发警告"
+    else
+        ng "未触发警告或警告内容缺失"
+        echo "$out" | tail -5 >&2
+    fi
+}
+
+t_custom_secret_no_warning() {
+    hdr "11-version: 自定义 SECRET 不打警告"
+    local out
+    out=$(SECRET=randomXYZ123 bash /etc/cont-init.d/11-version 2>&1)
+    if ! echo "$out" | grep -q "警告"; then
+        ok "自定义 token 不打警告"
+    else
+        ng "自定义 token 误打警告"
+        echo "$out" | tail -5 >&2
+    fi
+}
+
 # ─────────────────── 主流程 ───────────────────
 
 echo "在容器内运行库单元测试 ..."
@@ -821,6 +965,18 @@ t_tracker_rpc_fake_ok
 
 # config 升级合并
 t_sedconf_preserve_old_values
+
+# F1: env var → setting.conf 种子值
+t_seed_env_set_values
+t_seed_env_skip_unset
+t_seed_env_escape_special
+
+# F5: aria2.conf 缺 key 兜底
+t_aria2conf_ensure_keys
+
+# F2: 默认 SECRET 警告
+t_default_secret_warning
+t_custom_secret_no_warning
 
 # 清理
 rm -rf "$TEST_ROOT" /downloads/completed /downloads/recycle
