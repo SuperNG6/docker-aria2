@@ -126,6 +126,7 @@ Build is triggered manually via `workflow_dispatch`. The GitHub Actions matrix:
 - **Platforms**: `linux/amd64`, `linux/arm/v7`, `linux/arm64`
 - Dev branch `standard` images are pushed as `:dev-latest` and `:dev-<yy-mm-dd>`
 - Dev branch `a2b` images are pushed as `:a2b-dev-latest` and `:a2b-dev-<yy-mm-dd>`
+- After manifests are pushed, CI inspects Docker Hub and GHCR manifests, then pulls GHCR dev tags to smoke-test container startup, aria2 RPC, WebUI access, and the aria2b process on amd64. The a2b smoke test runs with `A2B=true`, `NET_ADMIN`, and `/lib/modules` mounted when available.
 
 ## Development Branch
 

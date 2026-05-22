@@ -122,6 +122,8 @@ jobs:
         run: |
           docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:dev-latest
           docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:dev-${{ steps.set-version.outputs.version }}
+          docker buildx imagetools inspect ${{ env.GHCR_IMAGE }}:dev-latest
+          docker buildx imagetools inspect ${{ env.GHCR_IMAGE }}:dev-${{ steps.set-version.outputs.version }}
 
   merge-a2b:
     runs-on: ubuntu-latest
@@ -171,3 +173,106 @@ jobs:
         run: |
           docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:a2b-dev-latest
           docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:a2b-dev-${{ steps.set-version.outputs.version }}
+          docker buildx imagetools inspect ${{ env.GHCR_IMAGE }}:a2b-dev-latest
+          docker buildx imagetools inspect ${{ env.GHCR_IMAGE }}:a2b-dev-${{ steps.set-version.outputs.version }}
+
+  smoke-test:
+    name: 运行检查（${{ matrix.variant }}）
+    runs-on: ubuntu-latest
+    needs:
+      - merge-standard
+      - merge-a2b
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: standard
+            tag: dev-latest
+            rpc_port: 16800
+            web_port: 18080
+            a2b_enabled: "false"
+          - variant: a2b
+            tag: a2b-dev-latest
+            rpc_port: 16801
+            web_port: 18081
+            a2b_enabled: "true"
+    steps:
+      - name: 登录到 GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 拉取镜像
+        env:
+          IMAGE: ${{ env.GHCR_IMAGE }}:${{ matrix.tag }}
+        run: docker pull "${IMAGE}"
+
+      - name: 启动容器
+        env:
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}
+          IMAGE: ${{ env.GHCR_IMAGE }}:${{ matrix.tag }}
+          RPC_PORT: ${{ matrix.rpc_port }}
+          WEB_PORT: ${{ matrix.web_port }}
+          A2B_ENABLED: ${{ matrix.a2b_enabled }}
+        run: |
+          docker_args=(
+            -d
+            --name "${CONTAINER_NAME}"
+            -p "${RPC_PORT}:6800"
+            -p "${WEB_PORT}:8080"
+            -e SECRET=smoketoken
+            -e UT=false
+            -e RUT=false
+            -e WEBUI=true
+            -e PORT=6800
+            -e WEBUI_PORT=8080
+            -e "A2B=${A2B_ENABLED}"
+          )
+
+          if [ "${A2B_ENABLED}" = "true" ]; then
+            docker_args+=(--cap-add NET_ADMIN)
+            if [ -d /lib/modules ]; then
+              docker_args+=(-v /lib/modules:/lib/modules:ro)
+            fi
+          fi
+
+          docker run "${docker_args[@]}" "${IMAGE}"
+
+      - name: 等待并检查服务
+        env:
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}
+          RPC_PORT: ${{ matrix.rpc_port }}
+          WEB_PORT: ${{ matrix.web_port }}
+          A2B_ENABLED: ${{ matrix.a2b_enabled }}
+        run: |
+          for i in {1..30}; do
+            if docker ps --filter "name=${CONTAINER_NAME}" --filter "status=running" --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}" \
+              && curl -fsS "http://127.0.0.1:${RPC_PORT}/jsonrpc" \
+                -H 'Content-Type: application/json' \
+                -d '{"jsonrpc":"2.0","method":"aria2.getVersion","id":"smoke","params":["token:smoketoken"]}' \
+                > /tmp/aria2-rpc.json \
+              && grep -q '"version"' /tmp/aria2-rpc.json \
+              && curl -fsS "http://127.0.0.1:${WEB_PORT}/" >/dev/null; then
+              if [ "${A2B_ENABLED}" = "true" ] && ! docker top "${CONTAINER_NAME}" | grep -q '[a]ria2b'; then
+                sleep 2
+                continue
+              fi
+              echo "Smoke test passed"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          docker ps -a
+          cat /tmp/aria2-rpc.json || true
+          docker logs "${CONTAINER_NAME}" || true
+          exit 1
+
+      - name: 清理容器
+        if: always()
+        run: docker rm -f "aria2-smoke-${{ matrix.variant }}" || true
