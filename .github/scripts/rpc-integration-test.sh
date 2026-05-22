@@ -32,15 +32,17 @@ ok()  { echo "  ✓ $*"; PASS=$((PASS + 1)); }
 ng()  { echo "  ✗ $*"; FAIL=$((FAIL + 1)); FAILED+=("$*"); }
 
 # rpc <method> <params-json-array>
-# params 是 JSON 数组（不含 token），函数会自动在头部插入 token 字段
+# params 是 JSON 数组（不含 token），函数自动在头部插入 token 字段。
+# 通过 stdin 把 params 传给 jq、把构造好的 body 传给 curl，绕开 Linux
+# MAX_ARG_STRLEN (128KB) 单参数限制——.torrent 经 base64 后可达数百 KB。
 rpc() {
-    local method="$1" params="${2:-[]}" full body
-    full=$(jq -nc --arg t "$TOKEN" --argjson p "$params" '[$t] + $p')
-    body=$(jq -nc --arg m "$method" --argjson p "$full" \
-        '{jsonrpc:"2.0",id:"t",method:$m,params:$p}')
-    curl -fsS --max-time 15 "$RPC_URL" \
-        -H 'Content-Type: application/json' \
-        -d "$body"
+    local method="$1" params="${2:-[]}"
+    printf '%s' "$params" \
+        | jq -nc --arg t "$TOKEN" --arg m "$method" \
+            'input as $p | {jsonrpc:"2.0",id:"t",method:$m,params:([$t] + $p)}' \
+        | curl -fsS --max-time 30 "$RPC_URL" \
+            -H 'Content-Type: application/json' \
+            --data-binary @-
 }
 
 # wait_status <gid> <expected> <timeout_s>：状态一致返回 0，否则在超时/错误时返回 1
