@@ -112,16 +112,16 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create \
-            -t "${{ env.DOCKER_IMAGE }}:latest" \
-            -t "${{ env.DOCKER_IMAGE }}:${{ steps.set-version.outputs.version }}" \
-            -t "${{ env.GHCR_IMAGE }}:latest" \
-            -t "${{ env.GHCR_IMAGE }}:${{ steps.set-version.outputs.version }}" \
+            -t "${{ env.DOCKER_IMAGE }}:dev-latest" \
+            -t "${{ env.DOCKER_IMAGE }}:dev-${{ steps.set-version.outputs.version }}" \
+            -t "${{ env.GHCR_IMAGE }}:dev-latest" \
+            -t "${{ env.GHCR_IMAGE }}:dev-${{ steps.set-version.outputs.version }}" \
             $(printf '${{ env.DOCKER_IMAGE }}@sha256:%s ' *)
 
       - name: 检查镜像（standard）
         run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:latest
-          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:${{ steps.set-version.outputs.version }}
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:dev-latest
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:dev-${{ steps.set-version.outputs.version }}
 
   merge-a2b:
     runs-on: ubuntu-latest
@@ -161,13 +161,13 @@ jobs:
         working-directory: /tmp/digests
         run: |
           docker buildx imagetools create \
-            -t "${{ env.DOCKER_IMAGE }}:a2b-latest" \
-            -t "${{ env.DOCKER_IMAGE }}:a2b-${{ steps.set-version.outputs.version }}" \
-            -t "${{ env.GHCR_IMAGE }}:a2b-latest" \
-            -t "${{ env.GHCR_IMAGE }}:a2b-${{ steps.set-version.outputs.version }}" \
+            -t "${{ env.DOCKER_IMAGE }}:a2b-dev-latest" \
+            -t "${{ env.DOCKER_IMAGE }}:a2b-dev-${{ steps.set-version.outputs.version }}" \
+            -t "${{ env.GHCR_IMAGE }}:a2b-dev-latest" \
+            -t "${{ env.GHCR_IMAGE }}:a2b-dev-${{ steps.set-version.outputs.version }}" \
             $(printf '${{ env.DOCKER_IMAGE }}@sha256:%s ' *)
 
       - name: 检查镜像（a2b）
         run: |
-          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:a2b-latest
-          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:a2b-${{ steps.set-version.outputs.version }}
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:a2b-dev-latest
+          docker buildx imagetools inspect ${{ env.DOCKER_IMAGE }}:a2b-dev-${{ steps.set-version.outputs.version }}

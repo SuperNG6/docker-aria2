@@ -124,8 +124,8 @@ Event helper libs (`lib/rpc.sh`, `lib/config.sh`, ...) return non-zero and write
 Build is triggered manually via `workflow_dispatch`. The GitHub Actions matrix:
 - **Variants**: `standard`, `a2b`
 - **Platforms**: `linux/amd64`, `linux/arm/v7`, `linux/arm64`
-- `standard` images are pushed as `:latest` and `:<yy-mm-dd>`
-- `a2b` images are pushed as `:a2b-latest` and `:a2b-<yy-mm-dd>`
+- Dev branch `standard` images are pushed as `:dev-latest` and `:dev-<yy-mm-dd>`
+- Dev branch `a2b` images are pushed as `:a2b-dev-latest` and `:a2b-dev-<yy-mm-dd>`
 
 ## Development Branch
 
