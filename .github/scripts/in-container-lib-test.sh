@@ -241,6 +241,7 @@ t_move_false() {
     mkdir -p "$(dirname "$f")"
     echo data > "$f"
     SOURCE_PATH="$TEST_ROOT/mv-false"
+    FILE_PATH="$f"  # 模拟 aria2 传给钩子的"首个文件路径"，让 TASK_INFO 日志完整
     TARGET_PATH="/downloads/completed/__lib_test__"
     TASK_NAME="mv-false"
     FILE_NUM=1
@@ -262,6 +263,7 @@ t_move_true_single() {
     mkdir -p "$TEST_ROOT"
     echo data > "$f"
     SOURCE_PATH="$f"
+    FILE_PATH="$f"  # 单文件任务：FILE_PATH 与 SOURCE_PATH 同值
     TARGET_PATH="/downloads/completed/__lib_test__"
     TASK_NAME="mv-true"
     FILE_NUM=1
@@ -285,6 +287,7 @@ t_move_true_dir() {
     echo a > "$task/a.mp4"
     echo b > "$task/b.mp4"
     SOURCE_PATH="$task"
+    FILE_PATH="$task/a.mp4"  # 多文件任务：FILE_PATH 是第一个文件
     TARGET_PATH="/downloads/completed/__lib_test__"
     TASK_NAME="mv-dir"
     FILE_NUM=2
@@ -308,6 +311,7 @@ t_move_dmof_root_single() {
     local f=/downloads/mv-dmof-root.txt
     echo data > "$f"
     SOURCE_PATH="$f"
+    FILE_PATH="$f"
     TARGET_PATH="/downloads/completed"
     TASK_NAME="mv-dmof-root"
     FILE_NUM=1
@@ -331,6 +335,7 @@ t_move_dmof_subdir_single() {
     local f="$sub/file.mp4"
     echo data > "$f"
     SOURCE_PATH="$f"
+    FILE_PATH="$f"
     TARGET_PATH="/downloads/completed/__lib_test__/sub"
     TASK_NAME="file"
     FILE_NUM=1
@@ -353,6 +358,7 @@ t_move_unknown_mode() {
     mkdir -p "$TEST_ROOT"
     echo data > "$f"
     SOURCE_PATH="$f"
+    FILE_PATH="$f"
     TARGET_PATH="/downloads/completed/__lib_test__"
     TASK_NAME="mv-unknown"
     FILE_NUM=1
@@ -375,6 +381,7 @@ t_delete_file() {
     mkdir -p "$task"
     echo data > "$task/a.bin"
     SOURCE_PATH="$task"
+    FILE_PATH="$task/a.bin"
     TARGET_PATH=""
     TASK_NAME="del"
     FILE_NUM=1
@@ -393,6 +400,7 @@ t_move_recycle() {
     mkdir -p "$task"
     echo data > "$task/a.bin"
     SOURCE_PATH="$task"
+    FILE_PATH="$task/a.bin"
     TARGET_PATH="/downloads/recycle/__lib_test__"
     TASK_NAME="rec"
     FILE_NUM=1

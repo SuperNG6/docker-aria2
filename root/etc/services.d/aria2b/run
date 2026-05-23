@@ -13,11 +13,16 @@ fi
 echo "信息：Aria2B 功能已启用。"
 # aria2b 需要 aria2c 的 RPC 接口已就绪，poll 至多 30 秒直至 RPC 响应
 # 早期固定 sleep 10 在 RPC 慢启动时仍可能抢跑；改 poll 既快又稳
+# payload 用 jq 构造：SECRET 含 " \ 换行等特殊字符也能安全转义，与 lib/rpc.sh 风格统一
 echo "信息：等待 Aria2c RPC 就绪 ..."
+PROBE_PAYLOAD=$(jq -nc \
+    --arg secret "${SECRET}" \
+    '{jsonrpc:"2.0",id:"a2b-wait",method:"aria2.getVersion",
+      params:(if $secret == "" then [] else ["token:" + $secret] end)}')
 for i in $(seq 1 30); do
     if curl -fsS --max-time 1 "http://127.0.0.1:${PORT}/jsonrpc" \
         -H 'Content-Type: application/json' \
-        -d "{\"jsonrpc\":\"2.0\",\"id\":\"a2b-wait\",\"method\":\"aria2.getVersion\",\"params\":[\"token:${SECRET}\"]}" \
+        -d "${PROBE_PAYLOAD}" \
         >/dev/null 2>&1; then
         echo "信息：Aria2c RPC 已就绪（${i}s）"
         break
