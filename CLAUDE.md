@@ -202,21 +202,21 @@ Three categories by how they reach the runtime:
 | `TZ` | `Asia/Shanghai` | base image | Timezone (also affects `date` in scripts) |
 | `PUID` / `PGID` | `1026` / `100` | base image (10-adduser) | abc user id mapping for /downloads ownership |
 
-### 2. setting.conf seed env vars (only effective on first run)
+### 2. setting.conf 控制的附加功能开关（**不接受 env var**）
 
-| Variable | Default | Maps to setting.conf key | Effective when |
-|----------|---------|--------------------------|----------------|
-| `MOVE` | `false` | `move-task` | `/config/setting.conf` does not yet exist |
-| `RMTASK` | `rmaria` | `remove-task` | (same) |
-| `CF` | `false` | `content-filter` | (same) |
-| `DET` | `true` | `delete-empty-dir` | (same) |
-| `TOR` | `backup-rename` | `handle-torrent` | (same) |
-| `RRT` | `true` | `remove-repeat-task` | (same) |
-| `MPT` | `false` | `move-paused-task` | (same) |
+| setting.conf key | Default | Reader |
+|------------------|---------|--------|
+| `move-task` | `false` | `lib/files.sh#MOVE_FILE` (via `MOVE` global) |
+| `remove-task` | `rmaria` | `lib/files.sh` (via `RMTASK` global) |
+| `content-filter` | `false` | `lib/filter.sh` (via `CF` global) |
+| `delete-empty-dir` | `true` | `lib/filter.sh#DELETE_EMPTY_DIR` (via `DET` global) |
+| `handle-torrent` | `backup-rename` | `lib/torrent.sh` (via `TOR` global) |
+| `remove-repeat-task` | `true` | `start.sh` (via `RRT` global) |
+| `move-paused-task` | `false` | `pause.sh` (via `MPT` global) |
 
-**Critical semantics**: these 7 env vars are absorbed by `cont-init.d/20-config` → `SEED_ENV_TO_SETTING_CONF` **only on the first container start** (when `/config/setting.conf` doesn't exist). On subsequent starts the persistent setting.conf wins — env var changes have no effect. To change at runtime, edit `/config/setting.conf` directly or via WebUI (changes take effect immediately, no restart).
+**Design contract — single source of truth**: these keys are read **only** from `/config/setting.conf` (via `lib/config.sh#LOAD_CONF`). They are intentionally **not** controlled by env vars. To change behavior, edit `/config/setting.conf` directly or via WebUI — `LOAD_CONF` runs at every event-hook invocation, so changes take effect immediately, no container restart needed.
 
-This is intentional. Letting env vars override at every start would silently shadow user edits to setting.conf and break the "edit setting.conf, it takes effect now" contract that event hooks rely on (`lib/config.sh#LOAD_CONF` always reads from file).
+Why no env-var seeding: master always treated setting.conf as the sole interface. An earlier refactor attempted to add `SEED_ENV_TO_SETTING_CONF` (first-run seed only) under the name "F1 fix", but the half-effective semantics ("env var works only on first container creation") proved a footgun — users would `docker run -e MOVE=true` on the second restart, see no change, and conclude the container was broken. The seed mechanism was reverted on 2026-05-23 to restore master's single-interface design.
 
 ## aria2.conf rewrite policy
 
@@ -241,10 +241,10 @@ These 9 keys are assumed present in `/config/aria2.conf` (the bundled `aria2.con
 
 `cont-init.d/20-config` handles setting.conf with two paths:
 
-- **First start** (`/config/setting.conf` doesn't exist): `cp /aria2/conf/setting.conf /config/setting.conf` then `SEED_ENV_TO_SETTING_CONF` writes env vars in as seed values.
+- **First start** (`/config/setting.conf` doesn't exist): `cp /aria2/conf/setting.conf /config/setting.conf`. The template ships with sensible defaults; users tune values via WebUI or hand-edit.
 - **Subsequent start** (`/config/setting.conf` exists): `LOAD_CONF` reads existing values into globals, then `SED_CONF` copies the latest template to `setting.conf.new`, sed-replaces each known key with the existing-value, and atomically swaps. This preserves the user's settings while picking up any newly added template keys.
 
-User's manual edits to setting.conf are preserved across image upgrades; env var changes are NOT propagated after first run.
+User's manual edits to setting.conf are preserved across image upgrades. Env vars never participate — see [setting.conf 控制的附加功能开关](#2-settingconf-控制的附加功能开关不接受-env-var) above for the design rationale.
 
 ## Build and CI
 
@@ -279,16 +279,13 @@ Test groups:
 - **path** (7): HTTP single root/subdir, BT single root/subdir, BT multi, out-of-bounds error, magnet empty FILE_PATH
 - **RRT** (3): completed 同名 → 删本地；TASK_STATUS=error 时跳过；RRT=false 时不动
 - **tracker** (8): file write / sed escape / missing-line append / RPC success-response parse / RPC fake-OK in error response (B2 regression) / `main file` E2E / `main rpc` E2E / CTU custom-URL dedup
-- **config** (4): SED_CONF upgrade preserve / SEED_ENV_TO_SETTING_CONF set / skip-unset / escape
+- **config** (1): SED_CONF upgrade preserve
 - **11-version** (2): default SECRET warning / custom SECRET no warning (F2 regression)
 - **log demo** (2): 大批量过滤删除（CF=true，~26 文件）/ 整任务删除（DELETE_FILE，25 文件目录）—— 不抑制 stdout，CI artifact 中可肉眼检查 docker logs 输出格式（颜色、TASK_INFO 横幅、log 文件无 ANSI 码）
 
 Move/delete/recycle tests set `FILE_PATH` alongside `SOURCE_PATH` so the `TASK_INFO` banner ("首个文件位置") prints non-empty — mirrors aria2's hook contract where `$3` is the first-file path. New move-mode tests should follow the same pattern.
 
 `in-container-lib-test.sh` deliberately runs **without `set -u`** — `log.sh#TASK_INFO` references implicit-contract variables (FILE_PATH, TASK_TYPE) that individual unit tests can't always pre-set. Use `pipefail` + explicit assertions instead.
-
-### When test scripts source lib/config.sh, watch for snapshot timing
-`lib/config.sh` snapshots env vars to `_ENV_SEED_SNAPSHOT` at source time, *before* `LOAD_CONF` runs. If a test `export`s an env var, it must do so **before** the `. "$LIB/config.sh"` line. Re-sourcing inside a test function re-runs the snapshot — so tests that need fresh seed values can re-export then re-source.
 
 ## Common commands
 
@@ -339,7 +336,7 @@ The original `aria2b` branch had monolithic scripts. The refactor (`dev-refactor
 | Before (`aria2b` branch) | After (`dev-refactor-20260521`) |
 |--------------------------|---------------------------------|
 | `script/core` — log/path/file/move all in one file | `lib/{log,event,files,filter,torrent}.sh` |
-| `script/setting` — LOAD_CONF + SED_CONF | `lib/config.sh` (plus `SEED_ENV_TO_SETTING_CONF`) |
+| `script/setting` — LOAD_CONF + SED_CONF | `lib/config.sh` (LOAD_CONF + SED_CONF; CONFIG_ITEMS array drives both) |
 | `script/rpc_info` — RPC payload via string interp | `lib/rpc.sh` — payload via `jq -nc` (safe against JSON injection) |
 | `script/tracker.sh` (file mode) + `script/rpc_tracker.sh` (rpc mode) | `lib/tracker.sh` (both modes; `main "$@"` dispatch + source guard) |
 | `script/cron-restart-a2b.sh` standalone | Inlined into `cont-init.d/40-config` `_register_a2b_restart` |
@@ -365,7 +362,7 @@ Documented here so future deep dives don't miss them:
 - B1 (May 2026): `30-config` `FA` unset case fell to `*) FA_VAL=none` — overrode aria2.conf default `falloc`. Fixed
 - B2 (May 2026): `tracker.sh#_update_rpc` used `grep -q OK` — error responses containing "OK" string falsely identified as success. Fixed (uses `jq -e '.result == "OK"'`)
 - B3 (May 2026): `tracker.sh#_update_rpc` curl had no timeout — cron tasks could pile up indefinitely. Fixed
-- F1 (May 2026): env vars `MOVE/RMTASK/CF/DET/TOR/RRT/MPT` were dead — README documented them as env vars, but only setting.conf was ever read. Fixed by `SEED_ENV_TO_SETTING_CONF` (first-run seed only)
+- F1 (May 2026, **REVERTED 2026-05-23**): a refactor briefly added `SEED_ENV_TO_SETTING_CONF` to make `MOVE/RMTASK/CF/DET/TOR/RRT/MPT` env vars take effect on first container start (claiming the original README "documented them as env vars but the code never read them"). The fix was reverted after re-reading the original README — those 7 vars were **never** in master's env table; setting.conf has always been the sole interface. The half-effective semantics ("env works only the first time") was a footgun. The 3 SEED unit tests were also removed.
 - F2 (May 2026): default `SECRET=yourtoken` was a public exposure risk. Added red-banner warning in `11-version` when default is in use
 - F6 (May 2026): `50-config` darkhttpd failure was silent. Fixed (now echoes success/failure)
 
@@ -386,7 +383,7 @@ For future reviews — this is what survived intact, what got cleaned up structu
 
 **Startup pipeline (cont-init.d)** — many fixes:
 - `11-version`: added SECRET=yourtoken warning (F2)
-- `20-config`: split first-run vs upgrade paths; added `SEED_ENV_TO_SETTING_CONF` for env-var seeding (F1)
+- `20-config`: first-run copies template, subsequent runs `SED_CONF` merges. setting.conf is the **sole** interface for behavior vars (see F1 reversal note above)
 - `30-config`: anchored sed patterns, FA default fixed to falloc (B1), crond always starts
 - `40-config`: cron-restart-a2b.sh inlined; `pkill -x` for exact-match process kill
 - `50-config`: success/failure echo for darkhttpd (F6)
@@ -395,7 +392,6 @@ For future reviews — this is what survived intact, what got cleaned up structu
 
 ### Things to NOT change (intentional design from refactor)
 - `lib/event.sh` uses `BASH_SOURCE[0]` (not `$0`) to resolve `_LIB` — required because event hooks `source` it
-- `lib/config.sh` snapshots env vars to `_ENV_SEED_SNAPSHOT` **before** `LOAD_CONF` runs — `declare -g VAR=val` modifies the value of already-exported env vars in place. Snapshot must capture pre-LOAD_CONF values for `SEED_ENV_TO_SETTING_CONF` to work
 - `completed.sh` runs `MOVE_FILE &` in background, `CHECK_TORRENT` in foreground — large cross-disk moves block aria2c's hook fork; backgrounding releases aria2c quickly while s6/PID-1 reaps the move's orphan
 - `lib/tracker.sh` source guard `[ "${BASH_SOURCE[0]}" = "${0}" ] && main "$@"` allows tests to source-and-call-functions without triggering `main`
 - aria2b/run uses `for i in $(seq 1 30)` to poll RPC at 1s intervals — fixed `sleep 10` was racy on slow systems

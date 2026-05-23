@@ -95,6 +95,15 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
 
+## 2026/05/23
+
+      1、重构脚本层：单脚本 `script/core` / `script/setting` 拆为 `lib/{event,log,config,files,filter,torrent,rpc,tracker}.sh`
+      2、镜像分两个 variant：`standard`（aria2c 单服务）与 `a2b`（aria2c + aria2b 屏蔽吸血客户端），通过 `--build-arg VARIANT=` 选择
+      3、默认 `SECRET=yourtoken` 启动时输出红色安全警告横幅
+      4、修复若干潜在 bug：BT 重复任务种子处理、SECRET 含特殊字符导致 RPC payload 注入、cron-restart-a2b 误杀同名进程、`bt-tracker` 行缺失时 sed 静默失效、`file-allocation` 默认值被 env 覆盖等
+      5、附加功能（move/recycle/filter/torrent/RRT/MPT 等）回归原版设计契约：**仅通过 `/config/setting.conf` 配置**，env var 不参与
+      6、CI 工作流升级：`actions/*` v4→v6/v7/v8，`docker/*` v3→v4，`docker/build-push-action` v6→v7
+
 ## 2025/08/12
 
       1、更新 baseimage-alpine 3.22
@@ -412,19 +421,13 @@ https://hub.docker.com/r/superng6/ariang
 | `-e FA=falloc` |磁盘预分配模式`none`,`falloc`,`trunc`,`prealloc`（默认 falloc）|
 | `-e CRA2B=2h` |aria2b 定时重启间隔小时数（仅 a2b 镜像）|
 | `-e A2B=false` |启用 aria2b 屏蔽吸血客户端（仅 a2b 镜像默认 true）|
-| `-e MOVE=` |首次启动时写入 setting.conf 的 move-task（见下表）|
-| `-e RMTASK=` |首次启动时写入 setting.conf 的 remove-task|
-| `-e CF=` |首次启动时写入 setting.conf 的 content-filter|
-| `-e DET=` |首次启动时写入 setting.conf 的 delete-empty-dir|
-| `-e TOR=` |首次启动时写入 setting.conf 的 handle-torrent|
-| `-e RRT=` |首次启动时写入 setting.conf 的 remove-repeat-task|
-| `-e MPT=` |首次启动时写入 setting.conf 的 move-paused-task|
+| `-e A2B_DISABLE_LOG=false` |aria2b 静默模式：true 关闭 aria2b 日志输出（仅 a2b 镜像）|
 | `-p 6800:6800` |Aria2 RPC连接端口|
 | `-p 6881:6881` |Aria2 tcp下载端口|
 | `-p 6881:6881/udp` |Aria2 p2p udp下载端口|
 | `--restart unless-stopped` |自动重启容器|
 
-> **MOVE / RMTASK / CF / DET / TOR / RRT / MPT 的语义**：这 7 个 env var 只在**首次创建** `/config/setting.conf` 时作为种子值写入；持久化卷已有 `setting.conf` 时它们被忽略，以文件内容为准。后续修改请直接编辑 `/config/setting.conf` 或通过 WebUI（即时生效）。
+> **附加功能配置**：`MOVE / RMTASK / CF / DET / TOR / RRT / MPT` 等附加功能开关一律在 `/config/setting.conf` 配置（持久化、即时生效），不接受 env var。详见下文 `/config/setting.conf 配置说明`。
 
 > **aria2c 配置覆盖**：以下 key 每次启动都被 `cont-init.d/30-config` 用对应 env var 覆盖到 `/config/aria2.conf`，**不要手工编辑这些行**（编辑了也会丢）：`on-download-*` / `rpc-listen-port` (PORT) / `dht-listen-port` (BTPORT) / `listen-port` (BTPORT) / `bt-save-metadata` (SMD) / `file-allocation` (FA) / `bt-tracker` (UT=true 时由 tracker.sh 写)。其他 aria2.conf 内容用户可自由修改并被保留。
 

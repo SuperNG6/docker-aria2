@@ -37,4 +37,6 @@ _register_a2b_restart() {
 }
 
 # A2B=true 时（a2b 变体）才注册重启任务
-[ "${A2B}" = "true" ] && _register_a2b_restart
+if [ "${A2B}" = "true" ]; then
+    _register_a2b_restart
+fi

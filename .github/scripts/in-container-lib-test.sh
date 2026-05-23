@@ -1085,92 +1085,6 @@ EOF
     rm -f "$backup"
 }
 
-# ─────────────────── F1: SEED_ENV_TO_SETTING_CONF 用例 ───────────────────
-
-t_seed_env_set_values() {
-    hdr "config: SEED_ENV_TO_SETTING_CONF env var 透传到首次 setting.conf"
-    local backup=/tmp/setting.conf.bak
-    cp /config/setting.conf "$backup"
-
-    # 模拟首次启动：重置为内置默认模板
-    cp /aria2/conf/setting.conf /config/setting.conf
-
-    # 设环境变量（必须在 source config.sh 之前，让 snapshot 能捕获到）
-    export MOVE=true
-    export RMTASK=recycle
-    export CF=true
-    export TOR=delete
-
-    SETTING_CONF=/config/setting.conf
-    . "$LIB/config.sh"
-    SEED_ENV_TO_SETTING_CONF
-
-    local fail=""
-    grep -q "^move-task=true$"        /config/setting.conf || fail+=" move-task"
-    grep -q "^remove-task=recycle$"   /config/setting.conf || fail+=" remove-task"
-    grep -q "^content-filter=true$"   /config/setting.conf || fail+=" content-filter"
-    grep -q "^handle-torrent=delete$" /config/setting.conf || fail+=" handle-torrent"
-    if [[ -z "$fail" ]]; then
-        ok "4 个 env var 透传成功"
-    else
-        ng "透传失败:$fail"
-        echo "  [debug] setting.conf 当前关键行：" >&2
-        grep -E "^(move-task|remove-task|content-filter|handle-torrent)=" /config/setting.conf >&2
-    fi
-
-    unset MOVE RMTASK CF TOR
-    cp "$backup" /config/setting.conf
-    rm -f "$backup"
-}
-
-t_seed_env_skip_unset() {
-    hdr "config: SEED 跳过未设的 env var（保留模板默认值）"
-    local backup=/tmp/setting.conf.bak
-    cp /config/setting.conf "$backup"
-    cp /aria2/conf/setting.conf /config/setting.conf
-
-    unset MOVE RMTASK CF DET TOR RRT MPT
-
-    SETTING_CONF=/config/setting.conf
-    . "$LIB/config.sh"
-    SEED_ENV_TO_SETTING_CONF
-
-    if diff -q /config/setting.conf /aria2/conf/setting.conf >/dev/null; then
-        ok "未设 env var 时 setting.conf 与模板一致"
-    else
-        ng "未设 env var 时 setting.conf 被意外修改"
-        diff /aria2/conf/setting.conf /config/setting.conf >&2
-    fi
-
-    cp "$backup" /config/setting.conf
-    rm -f "$backup"
-}
-
-t_seed_env_escape_special() {
-    hdr "config: SEED 转义含特殊字符的 env value（|, &, \\）"
-    local backup=/tmp/setting.conf.bak
-    cp /config/setting.conf "$backup"
-    cp /aria2/conf/setting.conf /config/setting.conf
-
-    # 用一个含 & 的值（aria2b 的几个 mode 都是简单字符串，但行为应当对任意字符串安全）
-    export TOR='backup-rename'   # 真实合法值
-
-    SETTING_CONF=/config/setting.conf
-    . "$LIB/config.sh"
-    SEED_ENV_TO_SETTING_CONF
-
-    if grep -q "^handle-torrent=backup-rename$" /config/setting.conf; then
-        ok "特殊字符值正确写入"
-    else
-        ng "值写入失败"
-        cat /config/setting.conf >&2
-    fi
-
-    unset TOR
-    cp "$backup" /config/setting.conf
-    rm -f "$backup"
-}
-
 # ─────────────────── F2: 11-version 默认 SECRET 警告 ───────────────────
 
 t_default_secret_warning() {
@@ -1261,11 +1175,6 @@ t_tracker_ctu_dedup
 
 # config 升级合并
 t_sedconf_preserve_old_values
-
-# F1: env var → setting.conf 种子值
-t_seed_env_set_values
-t_seed_env_skip_unset
-t_seed_env_escape_special
 
 # F2: 默认 SECRET 警告
 t_default_secret_warning

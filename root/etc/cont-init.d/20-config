@@ -14,16 +14,13 @@ mkdir -p \
 # aria2.conf：首次启动复制默认；已存在则保留用户配置
 [ -e /config/aria2.conf ] || cp /aria2/conf/aria2.conf.default /config/aria2.conf
 
-# setting.conf：首次启动复制默认 + 吸收 env var 作为种子值；已存在则合并到新模板（保留旧值 + 引入新键）
-# env var 仅在首次启动时一次性吸收；后续以 /config/setting.conf 为准
-# 注：首次启动 cp 后的文件就是新模板本身，无需再做一次 SED_CONF
-if [ ! -e /config/setting.conf ]; then
-    cp /aria2/conf/setting.conf /config/setting.conf
-    . /aria2/scripts/lib/config.sh
-    SEED_ENV_TO_SETTING_CONF
-else
+# setting.conf：首次启动复制默认；已存在则合并到新模板（保留旧值 + 引入新键）
+# 注：setting.conf 是用户行为配置的唯一接口，env var 不在此参与（修改请走 WebUI 或直接编辑文件）
+if [ -e /config/setting.conf ]; then
     . /aria2/scripts/lib/config.sh
     SED_CONF
+else
+    cp /aria2/conf/setting.conf /config/setting.conf
 fi
 
 # 文件过滤.conf：首次启动复制默认
