@@ -253,7 +253,7 @@ Build is triggered manually via `workflow_dispatch`. The GitHub Actions matrix:
 - **Platforms**: `linux/amd64`, `linux/arm/v7`, `linux/arm64`
 - Dev branch `standard` images are pushed as `:dev-latest` and `:dev-<yy-mm-dd>`
 - Dev branch `a2b` images are pushed as `:a2b-dev-latest` and `:a2b-dev-<yy-mm-dd>`
-- Workflow order: `build` (push by digest, no user-visible tag) → `smoke-test` (pulls by sha256 digest on amd64 only, since GH runners are amd64; arm variants are validated by build success alone) → `merge-standard` / `merge-a2b` (only runs if smoke-test passed, then promotes the digests to `:dev-latest` and `:dev-<date>` tags). Failed tests never publish a user-visible tag.
+- Workflow order: `build` (push by digest, no user-visible tag) → `smoke-test` (pulls by sha256 digest on amd64 only, since GH runners are amd64; arm variants are validated by build success alone) → `merge` (variant matrix: standard / a2b; only runs if smoke-test passed, then promotes the digests to `:dev-latest` / `:dev-<date>` for standard and `:a2b-dev-latest` / `:a2b-dev-<date>` for a2b). Failed tests never publish a user-visible tag.
 - The a2b smoke test runs with `A2B=true`, `--cap-add NET_ADMIN`, and `-v /lib/modules:/lib/modules:ro` when available.
 - `buildx` cache is intentionally disabled — the Dockerfile pulls AriaNg / aria2c / aria2b via `curl + grep latest tag`, and GHA cache would freeze versions on stale layers.
 
