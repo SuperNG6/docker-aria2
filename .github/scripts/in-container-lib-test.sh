@@ -464,17 +464,23 @@ t_log_demo_bulk_filter() {
     done
     echo "nested-junk" > "$task/sub-empty/leftover.txt"
 
+    # CLEAN_UP 内部会调 LOAD_FILTER_CONF 从 ${FILTER_CONF} 读规则，
+    # 直接 export EXCLUDE_FILE 会被它清掉——必须写到临时 FILTER_CONF 文件
+    local tmp_filter_conf=/tmp/lib-test-filter.conf
+    cat > "$tmp_filter_conf" <<'EOF'
+exclude-file=txt
+EOF
+    FILTER_CONF="$tmp_filter_conf"
+
     SOURCE_PATH="$task"
     FILE_PATH="$task/sub-keep/movie-1.mp4"
     FILE_NUM=31
     CF=true
     DET=true
     : > "$CF_LOG"
-    reset_filter_vars
-    EXCLUDE_FILE="txt"
 
     echo "    ─────────── ↓↓↓ 实际终端输出（含颜色）↓↓↓ ───────────"
-    CLEAN_UP  # 跑完整链路：RM_ARIA2 + 过滤删除 + 空目录清理
+    CLEAN_UP  # 跑完整链路：RM_ARIA2 + LOAD_FILTER_CONF + 过滤删除 + 空目录清理
     echo "    ─────────── ↑↑↑ 实际终端输出 结束 ↑↑↑ ───────────"
 
     # 行为断言：所有 .txt 被删，.mp4 保留，空子目录消失
@@ -492,14 +498,19 @@ t_log_demo_bulk_filter() {
         ng "DET 未生效，空目录残留"
     fi
     # CF_LOG 记录：rm -v 原生 `removed 'path'` 行数应 >= 26
+    # 注意：grep -c 无匹配会输出 "0" 并返回 1；用 `|| true` 抑制 exit code
+    # 不能用 `|| echo 0`，否则会把两次输出叠加成 "0\n0" 触发算术错误
     local rm_lines
-    rm_lines=$(grep -c "^removed " "$CF_LOG" 2>/dev/null || echo 0)
+    rm_lines=$(grep -c "^removed " "$CF_LOG" 2>/dev/null || true)
+    rm_lines=${rm_lines:-0}
     if [[ "$rm_lines" -ge 26 ]]; then
         ok "filter.log 记录了 ${rm_lines} 行 removed 条目"
     else
         ng "filter.log 行数偏少：${rm_lines}"
         head -10 "$CF_LOG" >&2
     fi
+
+    rm -f "$tmp_filter_conf"
 }
 
 t_log_demo_bulk_delete() {
