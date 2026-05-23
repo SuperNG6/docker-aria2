@@ -253,7 +253,76 @@ Build is triggered manually via `workflow_dispatch`. The GitHub Actions matrix:
 - **Platforms**: `linux/amd64`, `linux/arm/v7`, `linux/arm64`
 - Dev branch `standard` images are pushed as `:dev-latest` and `:dev-<yy-mm-dd>`
 - Dev branch `a2b` images are pushed as `:a2b-dev-latest` and `:a2b-dev-<yy-mm-dd>`
-- After manifests are pushed, CI inspects Docker Hub and GHCR manifests, then pulls GHCR dev tags to smoke-test container startup, aria2 RPC, WebUI access, and the aria2b process on amd64. The a2b smoke test runs with `A2B=true`, `NET_ADMIN`, and `/lib/modules` mounted when available.
+- Workflow order: `build` (push by digest, no user-visible tag) → `smoke-test` (pulls by sha256 digest on amd64 only, since GH runners are amd64; arm variants are validated by build success alone) → `merge-standard` / `merge-a2b` (only runs if smoke-test passed, then promotes the digests to `:dev-latest` and `:dev-<date>` tags). Failed tests never publish a user-visible tag.
+- The a2b smoke test runs with `A2B=true`, `--cap-add NET_ADMIN`, and `-v /lib/modules:/lib/modules:ro` when available.
+- `buildx` cache is intentionally disabled — the Dockerfile pulls AriaNg / aria2c / aria2b via `curl + grep latest tag`, and GHA cache would freeze versions on stale layers.
+
+## Tests
+
+Two test scripts live under `.github/scripts/`. Both run automatically as part of the smoke-test job; they can also be invoked locally against a running container.
+
+### `rpc-integration-test.sh` (host-side, 12 cases)
+Talks to aria2's JSON-RPC over the mapped port. Covers: getVersion, getGlobalStat, changeGlobalOption / getGlobalOption, HTTP single-source / multi-source / with options, pause-unpause-remove, tellActive/Waiting/Stopped, magnet (Big Buck Bunny — well-seeded test torrent, verifies entering `active` only — no full download), .torrent submission (latest Ubuntu 24.04 LTS live-server torrent, base64 encoded → `addTorrent`), purgeDownloadResult, **file-allocation default assertion** (B1 regression), **MOVE end-to-end** (`docker exec` to flip move-task=true → submit download → verify file lands in `/downloads/completed/`).
+
+The `rpc()` helper pipes params to `jq` via stdin to bypass Linux `MAX_ARG_STRLEN` (128KB per-arg) — base64 of a .torrent can exceed this. Don't refactor it back to `--argjson`.
+
+Usage: `rpc-integration-test.sh <host> <port> <secret> [container-name] [variant]`. Container name is optional but required for MOVE E2E.
+
+### `in-container-lib-test.sh` (in-container, 47 cases)
+`docker cp` into the running container, then `docker exec bash /tmp/in-container-lib-test.sh`. Sources `lib/{log,files,filter,torrent,event,tracker}.sh` directly and invokes the functions with hand-crafted globals.
+
+Test groups:
+- **filter** (8): exclude-file / include-file / keyword / min-size / regex / single-file skip / root-dir skip / DET empty-dir cleanup
+- **move** (6): MOVE=false / true single-file / true multi-dir / dmof root-single / dmof subdir-single / unknown-value safe-no-op
+- **delete/recycle/.aria2** (3)
+- **torrent** (6): retain / delete / rename / backup / backup-rename / unknown safe-keep
+- **path** (7): HTTP single root/subdir, BT single root/subdir, BT multi, out-of-bounds error, magnet empty FILE_PATH
+- **tracker** (5): file write / sed escape / missing-line append / RPC success / RPC fake-OK in error response (B2 regression)
+- **config** (4): SED_CONF upgrade preserve / SEED_ENV_TO_SETTING_CONF set / skip-unset / escape
+- **aria2.conf** (1): ensure-key prepass (F5 regression)
+- **11-version** (2): default SECRET warning / custom SECRET no warning (F2 regression)
+
+`in-container-lib-test.sh` deliberately runs **without `set -u`** — `log.sh#TASK_INFO` references implicit-contract variables (FILE_PATH, TASK_TYPE) that individual unit tests can't always pre-set. Use `pipefail` + explicit assertions instead.
+
+### When test scripts source lib/config.sh, watch for snapshot timing
+`lib/config.sh` snapshots env vars to `_ENV_SEED_SNAPSHOT` at source time, *before* `LOAD_CONF` runs. If a test `export`s an env var, it must do so **before** the `. "$LIB/config.sh"` line. Re-sourcing inside a test function re-runs the snapshot — so tests that need fresh seed values can re-export then re-source.
+
+## Common commands
+
+```bash
+# Local syntax preflight (run before push)
+bash -n .github/scripts/rpc-integration-test.sh
+bash -n .github/scripts/in-container-lib-test.sh
+bash -n root/aria2/script/lib/*.sh
+bash -n root/etc/cont-init.d/*-* root/etc/services.d/*/run
+python3 -c "import yaml; yaml.safe_load(open('.github/workflows/Build Image.yml'))"
+
+# Trigger a CI build of the current branch
+gh workflow run "Build Image.yml" --ref "$(git rev-parse --abbrev-ref HEAD)"
+
+# Watch the latest run
+gh run list --workflow="Build Image.yml" --branch "$(git rev-parse --abbrev-ref HEAD)" --limit 3
+gh run view <run-id> --log-failed   # pulls only failed steps' logs
+
+# Local smoke-test a built image (replace IMAGE)
+IMAGE=ghcr.io/superng6/aria2:dev-latest
+docker run -d --name aria2-local -p 16800:6800 -p 18080:8080 \
+    -e SECRET=smoketoken -e UT=false -e RUT=false "${IMAGE}"
+.github/scripts/rpc-integration-test.sh 127.0.0.1 16800 smoketoken aria2-local standard
+docker cp .github/scripts/in-container-lib-test.sh aria2-local:/tmp/
+docker exec aria2-local bash /tmp/in-container-lib-test.sh
+docker rm -f aria2-local
+
+# a2b variant locally (needs NET_ADMIN + modules)
+docker run -d --name aria2b-local --cap-add NET_ADMIN \
+    -v /lib/modules:/lib/modules:ro \
+    -p 16801:6800 -p 18081:8080 \
+    -e A2B=true -e SECRET=smoketoken -e UT=false -e RUT=false \
+    ghcr.io/superng6/aria2:a2b-dev-latest
+
+# Compare current vs pre-refactor aria2b branch (for any single file)
+git show aria2b:root/aria2/script/<file>
+```
 
 ## Development Branch
 
