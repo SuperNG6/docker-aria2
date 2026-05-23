@@ -11,29 +11,30 @@
 #   backup        - 原名移动到 /config/backup-torrent 目录
 #   backup-rename - 重命名为 任务名.torrent 并移动到 /config/backup-torrent 目录（默认值）
 # 未知值时打印警告并保留原文件，避免静默丢失数据
+# 颜色规约：种子文件路径用紫色（与 TASK_INFO 紫色字段一致），未知值用黄色
 HANDLE_TORRENT() {
     case "${TOR}" in
         retain)
             return
             ;;
         delete)
-            echo -e "$(DATE_TIME) ${INFO} 已删除种子文件: ${TORRENT_FILE}"
+            echo -e "$(DATE_TIME) ${INFO} 已删除种子文件: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX}"
             rm -f "${TORRENT_FILE}"
             ;;
         rename)
-            echo -e "$(DATE_TIME) ${INFO} 重命名种子文件: ${TORRENT_FILE} -> ${DOWNLOAD_DIR}/${TASK_NAME}.torrent"
+            echo -e "$(DATE_TIME) ${INFO} 重命名种子文件: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX} -> ${LIGHT_PURPLE_FONT_PREFIX}${DOWNLOAD_DIR}/${TASK_NAME}.torrent${FONT_COLOR_SUFFIX}"
             mv -f "${TORRENT_FILE}" "${DOWNLOAD_DIR}/${TASK_NAME}.torrent"
             ;;
         backup)
-            echo -e "$(DATE_TIME) ${INFO} 备份种子文件: ${TORRENT_FILE} -> ${BAK_TORRENT_DIR}/"
+            echo -e "$(DATE_TIME) ${INFO} 备份种子文件: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX} -> ${LIGHT_PURPLE_FONT_PREFIX}${BAK_TORRENT_DIR}/${FONT_COLOR_SUFFIX}"
             mv -f "${TORRENT_FILE}" "${BAK_TORRENT_DIR}/"
             ;;
         backup-rename)
-            echo -e "$(DATE_TIME) ${INFO} 重命名并备份种子文件: ${TORRENT_FILE} -> ${BAK_TORRENT_DIR}/${TASK_NAME}.torrent"
+            echo -e "$(DATE_TIME) ${INFO} 重命名并备份种子文件: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX} -> ${LIGHT_PURPLE_FONT_PREFIX}${BAK_TORRENT_DIR}/${TASK_NAME}.torrent${FONT_COLOR_SUFFIX}"
             mv -f "${TORRENT_FILE}" "${BAK_TORRENT_DIR}/${TASK_NAME}.torrent"
             ;;
         *)
-            echo -e "$(DATE_TIME) ${WARNING} 未知的 TOR 值: ${TOR}（保留原文件不处理）" >&2
+            echo -e "$(DATE_TIME) ${WARNING} 未知的 TOR 值: ${YELLOW_FONT_PREFIX}${TOR}${FONT_COLOR_SUFFIX}（保留原文件不处理）" >&2
             ;;
     esac
 }

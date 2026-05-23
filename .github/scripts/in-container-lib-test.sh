@@ -23,7 +23,7 @@ ok()  { echo "  ✓ $*"; PASS=$((PASS + 1)); }
 ng()  { echo "  ✗ $*"; FAIL=$((FAIL + 1)); FAILED+=("$*"); }
 hdr() { echo; echo "──── $* ────"; }
 
-LIB=/aria2/script/lib
+LIB=/aria2/scripts/lib
 TEST_ROOT=/downloads/__lib_test__
 LOG_DIR=/tmp/lib-test-logs
 mkdir -p "$LOG_DIR"

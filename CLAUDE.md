@@ -156,7 +156,7 @@ Globals shared across libs should be named after their purpose, not their owning
 - `SETTING_CONF` — `/config/setting.conf`, defined in `lib/config.sh`, consumed by `LOAD_CONF` / `SED_CONF`
 - `FILTER_CONF` — `/config/文件过滤.conf`, defined in `lib/event.sh#GET_BASE_PATH`, consumed by `lib/filter.sh#LOAD_FILTER_CONF`
 
-When adding a new shared global, give it a name that is unique across all of `lib/` — `grep -r <NAME> root/aria2/script/lib/` before introducing it.
+When adding a new shared global, give it a name that is unique across all of `lib/` — `grep -r <NAME> root/aria2/scripts/lib/` before introducing it.
 
 ### Event helper libs don't `exit`
 Event helper libs (`lib/rpc.sh`, `lib/config.sh`, ...) return non-zero and write errors to `stderr` instead of calling `exit`. Decisions to abort belong in the caller (`INIT_EVENT` does `GET_RPC_INFO || exit 1`). Standalone operational scripts such as `lib/tracker.sh` may exit directly for CLI-style failures.
@@ -224,10 +224,10 @@ This is intentional. Letting env vars override at every start would silently sha
 
 | aria2.conf key | Source env var |
 |----------------|----------------|
-| `on-download-stop` | hardcoded path `/aria2/script/stop.sh` |
-| `on-download-complete` | hardcoded path `/aria2/script/completed.sh` |
-| `on-download-pause` | hardcoded path `/aria2/script/pause.sh` |
-| `on-download-start` | hardcoded path `/aria2/script/start.sh` |
+| `on-download-stop` | hardcoded path `/aria2/scripts/stop.sh` |
+| `on-download-complete` | hardcoded path `/aria2/scripts/completed.sh` |
+| `on-download-pause` | hardcoded path `/aria2/scripts/pause.sh` |
+| `on-download-start` | hardcoded path `/aria2/scripts/start.sh` |
 | `rpc-listen-port` | `PORT` |
 | `dht-listen-port` | `BTPORT` |
 | `listen-port` | `BTPORT` (same port, different protocol) |
@@ -293,7 +293,7 @@ Test groups:
 # Local syntax preflight (run before push)
 bash -n .github/scripts/rpc-integration-test.sh
 bash -n .github/scripts/in-container-lib-test.sh
-bash -n root/aria2/script/lib/*.sh
+bash -n root/aria2/scripts/lib/*.sh
 bash -n root/etc/cont-init.d/*-* root/etc/services.d/*/run
 python3 -c "import yaml; yaml.safe_load(open('.github/workflows/Build Image.yml'))"
 
@@ -321,7 +321,7 @@ docker run -d --name aria2b-local --cap-add NET_ADMIN \
     ghcr.io/superng6/aria2:a2b-dev-latest
 
 # Compare current vs pre-refactor aria2b branch (for any single file)
-git show aria2b:root/aria2/script/<file>
+git show aria2b:root/aria2/scripts/<file>
 ```
 
 ## Development Branch

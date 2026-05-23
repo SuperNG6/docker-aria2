@@ -19,10 +19,10 @@ mkdir -p \
 # 注：首次启动 cp 后的文件就是新模板本身，无需再做一次 SED_CONF
 if [ ! -e /config/setting.conf ]; then
     cp /aria2/conf/setting.conf /config/setting.conf
-    . /aria2/script/lib/config.sh
+    . /aria2/scripts/lib/config.sh
     SEED_ENV_TO_SETTING_CONF
 else
-    . /aria2/script/lib/config.sh
+    . /aria2/scripts/lib/config.sh
     SED_CONF
 fi
 

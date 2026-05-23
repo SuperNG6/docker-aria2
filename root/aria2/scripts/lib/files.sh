@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # 文件操作库：移动、删除、回收站、清理 .aria2 控制文件
 # 所有函数依赖 log.sh 的颜色变量和 DATE_TIME()，事件脚本通过 lib/event.sh 引入
+#
+# 颜色规约（与 TASK_INFO 一致，让 docker logs 中关键信息一眼可见）：
+#   绿色 LIGHT_GREEN：正常路径（SOURCE_PATH / TARGET_PATH / 数值）
+#   黄色 YELLOW：警示路径（move-failed 退路目录、未知值）
+#   紫色 LIGHT_PURPLE：种子相关（TORRENT_FILE，与 TASK_INFO 紫色字段一致）
 
 # 共用日志行写入函数：自动加时间戳和级别标签
+# 注意：写入磁盘日志文件的内容**不要带 ANSI 颜色码**，否则 cat /config/logs/*.log 看是乱码
 # 用法：log_line "${MOVE_LOG}" INFO "已移动: a -> b"
 log_line() {
     local file=$1 level=$2 msg=$3
@@ -13,7 +19,7 @@ log_line() {
 RM_ARIA2() {
     if [ -e "${SOURCE_PATH}.aria2" ]; then
         rm -f "${SOURCE_PATH}.aria2"
-        echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${SOURCE_PATH}.aria2"
+        echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}.aria2${FONT_COLOR_SUFFIX}"
     fi
 }
 
@@ -22,7 +28,8 @@ RM_ARIA2() {
 CLEAN_UP() {
     RM_ARIA2
     if [ "$CF" = "true" ] && [ "${FILE_NUM}" -gt 1 ] && [ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ]; then
-        echo -e "$(DATE_TIME) ${INFO} 被过滤文件的任务路径: ${SOURCE_PATH}" | tee -a "${CF_LOG}"
+        echo -e "$(DATE_TIME) ${INFO} 被过滤文件的任务路径: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
+        log_line "${CF_LOG}" INFO "被过滤文件的任务路径: ${SOURCE_PATH}"
         LOAD_FILTER_CONF
         DELETE_EXCLUDE_FILE
         DELETE_EMPTY_DIR
@@ -44,7 +51,7 @@ _CHECK_SPACE() {
     (( available >= required )) && return 0
     required_gb=$(awk "BEGIN {printf \"%.2f\", ${required}/1024/1024/1024}")
     available_gb=$(awk "BEGIN {printf \"%.2f\", ${available}/1024/1024/1024}")
-    echo -e "$(DATE_TIME) ${ERROR} 目标磁盘空间不足！需 ${required_gb} GB，可用 ${available_gb} GB" >&2
+    echo -e "$(DATE_TIME) ${ERROR} 目标磁盘空间不足！需 ${LIGHT_GREEN_FONT_PREFIX}${required_gb}${FONT_COLOR_SUFFIX} GB，可用 ${LIGHT_GREEN_FONT_PREFIX}${available_gb}${FONT_COLOR_SUFFIX} GB" >&2
     log_line "${MOVE_LOG}" ERROR "目标磁盘空间不足。需:${required_gb}G 可用:${available_gb}G 源:${src} -> 目标:${dst}"
     return 1
 }
@@ -57,10 +64,10 @@ _MOVE_TO_FAILED() {
     local fail_dir="${DOWNLOAD_PATH}/move-failed"
     mkdir -p "${fail_dir}"
     if mv -f "${SOURCE_PATH}" "${fail_dir}"; then
-        echo -e "$(DATE_TIME) ${INFO} ${reason}已将文件移动至: ${SOURCE_PATH} -> ${fail_dir}"
+        echo -e "$(DATE_TIME) ${INFO} ${reason}已将文件移动至: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX} -> ${YELLOW_FONT_PREFIX}${fail_dir}${FONT_COLOR_SUFFIX}"
         log_line "${MOVE_LOG}" INFO "${reason}已将文件移动至: ${SOURCE_PATH} -> ${fail_dir}"
     else
-        echo -e "$(DATE_TIME) ${ERROR} 移动到 ${fail_dir} 依然失败: ${SOURCE_PATH}"
+        echo -e "$(DATE_TIME) ${ERROR} 移动到 ${YELLOW_FONT_PREFIX}${fail_dir}${FONT_COLOR_SUFFIX} 依然失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${MOVE_LOG}" ERROR "移动到 ${fail_dir} 依然失败: ${SOURCE_PATH}"
     fi
 }
@@ -98,7 +105,7 @@ MOVE_FILE() {
     if _IS_CROSS_DEVICE "${SOURCE_PATH}" "${TARGET_PATH}"; then
         echo -e "$(DATE_TIME) ${INFO} 检测到跨磁盘移动，正在检查目标磁盘空间..."
         if ! _CHECK_SPACE "${SOURCE_PATH}" "${TARGET_PATH}"; then
-            echo -e "$(DATE_TIME) ${WARNING} 尝试将任务移动到: ${DOWNLOAD_PATH}/move-failed"
+            echo -e "$(DATE_TIME) ${WARNING} 尝试将任务移动到: ${YELLOW_FONT_PREFIX}${DOWNLOAD_PATH}/move-failed${FONT_COLOR_SUFFIX}"
             _MOVE_TO_FAILED "因目标磁盘空间不足，"
             return 1
         fi
@@ -107,10 +114,10 @@ MOVE_FILE() {
 
     # 执行移动；失败回退到 move-failed 目录
     if mv -f "${SOURCE_PATH}" "${TARGET_PATH}"; then
-        echo -e "$(DATE_TIME) ${INFO} 已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
+        echo -e "$(DATE_TIME) ${INFO} 已移动文件至目标文件夹: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX} -> ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${MOVE_LOG}" INFO "已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
     else
-        echo -e "$(DATE_TIME) ${ERROR} 文件移动失败: ${SOURCE_PATH}"
+        echo -e "$(DATE_TIME) ${ERROR} 文件移动失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${MOVE_LOG}" ERROR "文件移动失败: ${SOURCE_PATH}"
         _MOVE_TO_FAILED
     fi
@@ -122,10 +129,10 @@ DELETE_FILE() {
     TASK_INFO no-target    # 删除场景无目标路径，传 no-target 隐藏对应行
     echo -e "$(DATE_TIME) ${INFO} 下载已停止，开始删除文件..."
     if rm -rf "${SOURCE_PATH}"; then
-        echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${SOURCE_PATH}"
+        echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${DELETE_LOG}" INFO "文件删除成功: ${SOURCE_PATH}"
     else
-        echo -e "$(DATE_TIME) ${ERROR} delete failed: ${SOURCE_PATH}"
+        echo -e "$(DATE_TIME) ${ERROR} 文件删除失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${DELETE_LOG}" ERROR "文件删除失败: ${SOURCE_PATH}"
     fi
 }
@@ -138,19 +145,19 @@ MOVE_RECYCLE() {
     echo -e "$(DATE_TIME) ${INFO} 开始移动已下载的任务至回收站 ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
     mkdir -p "${TARGET_PATH}"
     if mv -f "${SOURCE_PATH}" "${TARGET_PATH}"; then
-        echo -e "$(DATE_TIME) ${INFO} 已移至回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
+        echo -e "$(DATE_TIME) ${INFO} 已移至回收站: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX} -> ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${RECYCLE_LOG}" INFO "成功移动文件到回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
         return
     fi
 
     # 移到回收站失败，降级为删除
-    echo -e "$(DATE_TIME) ${ERROR} 移动文件到回收站失败: ${SOURCE_PATH}"
-    echo -e "$(DATE_TIME) ${INFO} 尝试删除文件: ${SOURCE_PATH}"
+    echo -e "$(DATE_TIME) ${ERROR} 移动文件到回收站失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
+    echo -e "$(DATE_TIME) ${INFO} 尝试删除文件: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
     if rm -rf "${SOURCE_PATH}"; then
-        echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${SOURCE_PATH}"
+        echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${RECYCLE_LOG}" WARNING "移动文件到回收站失败，已删除文件: ${SOURCE_PATH}"
     else
-        echo -e "$(DATE_TIME) ${ERROR} 删除文件也失败: ${SOURCE_PATH}"
+        echo -e "$(DATE_TIME) ${ERROR} 删除文件也失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${RECYCLE_LOG}" ERROR "移动到回收站和删除文件都失败: ${SOURCE_PATH}"
     fi
 }

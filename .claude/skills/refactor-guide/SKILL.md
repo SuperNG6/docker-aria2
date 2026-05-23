@@ -40,7 +40,7 @@ docker-aria2 是 [SuperNG6/docker-aria2](https://github.com/SuperNG6/docker-aria
 老 `aria2b` 分支是单 monolithic 风格（[git show aria2b:root/aria2/script/](https://github.com/SuperNG6/docker-aria2/tree/aria2b/root/aria2/script)）：
 
 ```
-root/aria2/script/
+root/aria2/script/            # 老分支里目录名就是 script（无 s），当前分支已重命名为 scripts
 ├── core              # 颜色 + log + path + file 全在一个文件
 ├── setting           # LOAD_CONF + SED_CONF
 ├── rpc_info          # RPC payload 字符串拼接（JSON 注入漏洞）
@@ -209,7 +209,7 @@ exec aria2c --conf=... $SECRET_TOKEN
 
 ### 6.1 改前：本地预检
 ```bash
-bash -n root/aria2/script/lib/*.sh
+bash -n root/aria2/scripts/lib/*.sh
 bash -n root/etc/cont-init.d/*-* root/etc/services.d/*/run
 bash -n .github/scripts/*.sh
 python3 -c "import yaml; yaml.safe_load(open('.github/workflows/Build Image.yml'))"

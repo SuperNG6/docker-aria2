@@ -9,8 +9,8 @@ chown -R abc:abc \
     /www \
     /downloads
 
-# 递归赋予 /aria2/script 下所有 .sh 文件可执行权限（事件钩子需要被 aria2 直接执行）
-find /aria2/script -name "*.sh" -exec chmod a+x {} \;
+# 递归赋予 /aria2/scripts 下所有 .sh 文件可执行权限（事件钩子需要被 aria2 直接执行）
+find /aria2/scripts -name "*.sh" -exec chmod a+x {} \;
 
 # 向 crontab 注册 aria2b 定时重启任务（aria2b 长时间运行可能积压连接，定期重启保活）
 # CRA2B=false 则移除已有任务；CRA2B 为数字小时数（1-24），其他值回退默认 2 小时
