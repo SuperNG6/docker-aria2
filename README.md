@@ -431,6 +431,19 @@ https://hub.docker.com/r/superng6/ariang
 ### 自定义tracker地址
 CTU="https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/best_aria2.txt"
 
+### 上游组件
+
+本镜像由三部分组合而成，遇到问题时可以分别去对应仓库提 issue：
+
+| 组件 | 仓库 | 当前版本 |
+|------|------|----------|
+| 基础镜像 | [SuperNG6/docker-baseimage-alpine](https://github.com/SuperNG6/docker-baseimage-alpine) | Alpine 3.23 + s6-overlay v2.2.0.3 |
+| aria2c 二进制 | [P3TERX/Aria2-Pro-Core](https://github.com/P3TERX/Aria2-Pro-Core)（通过 `https://git.io/docker-aria2c.sh`） | 1.37.0 |
+| AriaNg WebUI | [mayswind/AriaNg](https://github.com/mayswind/AriaNg) | 构建时拉最新 tag |
+| aria2b（仅 a2b 镜像） | [SuperNG6/aria2b](https://github.com/SuperNG6/aria2b) | v2.1.0+（构建时拉最新 tag） |
+
+aria2b 是 Node.js 程序，启动需要 `--cap-add NET_ADMIN`（用 iptables + ipset 屏蔽吸血客户端）。它会从 `/config/aria2.conf` 读以 `ab-` 为前缀的扩展配置项（如 `ab-bt-scan-interval`、`ab-bt-ban-timeout` 等），用户可以在 aria2.conf 里自定义屏蔽参数。详见 aria2b 仓库 README。
+
 ### `/config/setting.conf` 配置说明(推荐使用)
 推荐使用`setting.conf`进行本镜像附加功能选项设置
 ````

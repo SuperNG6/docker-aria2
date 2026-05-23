@@ -10,22 +10,71 @@ docker-aria2 is an Alpine Linux Docker image running aria2 + AriaNg WebUI. It sh
 
 The variant is selected at build time via `ARG VARIANT=standard` in the Dockerfile. The GitHub Actions workflow builds both variants in a single `variant × platform` matrix.
 
+The active development branch is **`dev-refactor-20260521`**. It refactored the original `aria2b` branch from a monolithic-script layout into a modular `lib/` layout. The `aria2b` branch is preserved for reference — see [Refactor history](#refactor-history-pre-refactor-aria2b-branch--current-dev-refactor) for the diff.
+
+## External dependencies (read these to understand the runtime)
+
+This image composes three upstream projects. Don't assume legacy behavior — check the actual upstream when in doubt:
+
+### Base image: [SuperNG6/docker-baseimage-alpine](https://github.com/SuperNG6/docker-baseimage-alpine)
+
+Fork of linuxserver/docker-baseimage-alpine, rebuilt with the latest Alpine point release and **s6-overlay v2.2.0.3** (last v2 release; the fork intentionally does not upgrade to v3).
+
+What the base image provides (do NOT re-add these in this Dockerfile):
+- **Packages**: `bash`, `curl`, `wget`, `ca-certificates`, `coreutils`, `procps`, `shadow`, `tzdata`. `coreutils` matters — it provides GNU `du -b`, GNU `df --output=avail -B1`, GNU `stat -c %d` that `lib/files.sh#_CHECK_SPACE` relies on
+- **`abc` user**: UID 911 / primary group `abc` (UID-paired, via `useradd -U`) / supplementary group `users` (GID 1000). Home `/config`, shell `/bin/false`. `chown abc:abc` works because UID 911 has its own group named `abc`
+- **Directories**: `/app`, `/config`, `/defaults`
+- **`with-contenv` wrapper**: `/usr/bin/with-contenv` reads env from `/var/run/s6/container_environment/` and applies `UMASK` before exec. Note the base image **renames the original to `/usr/bin/with-contenvb`** and replaces `/usr/bin/with-contenv` with a custom one — this is intentional, do not touch it
+- **`init-stage2` patch**: `patch/etc/s6/init/init-stage2.patch` is applied to make linuxserver-style init scripts work. Don't try to undo or re-patch
+- **s6-overlay tarball arch mapping** (`install.sh`):  amd64→amd64, arm64→aarch64, arm→arm, 386→x86, ppc64le→ppc64le
+
+Provided cont-init scripts you can rely on (from `root/etc/cont-init.d/`):
+- `01-envfile` — base image's env-file loader (runs before our `11-version`)
+- `10-adduser` — creates the `abc` user with the requested `PUID`/`PGID`, then prints the GID/UID banner
+
+### aria2b: [SuperNG6/aria2b](https://github.com/SuperNG6/aria2b)
+
+Node.js script that watches aria2's RPC and bans leeching BT clients (迅雷 / 影音先锋 / QQ 旋风 / 百度网盘) via `iptables` + `ipset`. **Linux-only**, requires Node 22+. Only used in the **a2b variant**.
+
+Current pinned version: **v2.1.0** (May 2026). Dockerfile pulls the **latest tag** at build time from GitHub Releases — keep build cache off (see `Build and CI` below) so version bumps are picked up automatically.
+
+What it reads from aria2.conf (parasitic config — keys prefixed with `ab-`):
+- `rpc-secret` — auto-shared
+- `ab-bt-ban-client-keywords`, `ab-bt-noprogress-keywords`, `ab-bt-noprogress-piece`, `ab-bt-noprogress-wait`, `ab-bt-scan-interval`, `ab-bt-ban-timeout`, `ab-rpc-no-verify`, `ab-rpc-ca`, `ab-rpc-cert`, `ab-rpc-key`
+
+CLI flags `services.d/aria2b/run` passes:
+- `-c /config/aria2.conf` — config file (so users can configure aria2b via aria2.conf)
+- `-u http://127.0.0.1:${PORT}/jsonrpc` — RPC URL
+- `-s "${SECRET}"` — RPC secret
+
+Default block keywords (`-b` flag): `XL,SD,XF,QD,BN` (Xunlei, Xfplay, QQ Xuanfeng, Baidu Netdisk). Default scan interval: 5000ms. IPv6 supported when `/proc/net/if_inet6` exists (uses `bt_blacklist6` + `ip6tables`).
+
+a2b variant requires runtime privileges: `--cap-add NET_ADMIN` and optionally `-v /lib/modules:/lib/modules:ro` (for kernel modules on hosts where they need to be loaded).
+
+**v2.0.0 had a critical bug**: `scanTimer.unref()` caused Node to exit silently after each scan, which under s6 supervision turned into a ~10s restart loop. **v2.1.0 fixes this** (release 2026-05-22) plus 7 other bugs including:
+- "Unknown" keyword not actually blocking unknown clients (B2)
+- `startsWith('127.')` host check bypassable by `127.0.0.1.evil.com` (B3)
+- All-numeric secret losing leading zeros (B4)
+- Bare `--noprogress-wait` parsed as `1` (B5)
+- RPC timeout not covering connect phase (C1)
+- HTTP 3xx treated as success (C2)
+- SIGTERM not destroying rpcClient → 30s shutdown delay (C3)
+
+Always pin **>= v2.1.0** in this image.
+
 ## Runtime Stack
 
-- Base image: `superng6/alpine:3.22` — Alpine + **s6-overlay v2.2.0.3** (last v2 release, not v3)
+- Base image: `superng6/alpine:3.23` — Alpine + **s6-overlay v2.2.0.3** (last v2 release, not v3)
 - Init system entrypoint: `/init` → runs `cont-init.d/` scripts then supervises `services.d/` services
 - WebUI: `darkhttpd` serving AriaNg static files from `/www`
-- Download user: `abc` (UID 911, GID 1000 / group `users`); all aria2c processes run via `s6-setuidgid abc`
+- Download user: `abc` (UID 911 / group `users` GID 1000); all aria2c processes run via `s6-setuidgid abc`
 
-### What the base image provides
+### What this Dockerfile adds on top of the base image
 
-The base image (`superng6/alpine`) is a fork of linuxserver's alpine base, rebuilt with the latest Alpine and s6-overlay v2.2.0.3. It already includes:
-
-- **Pre-installed packages**: `bash`, `curl`, `wget`, `ca-certificates`, `coreutils`, `procps`, `shadow`, `tzdata` — no need to install these in the Dockerfile
-- **Pre-created directories**: `/app`, `/config`, `/defaults`
-- **`abc` user**: UID 911, home `/config`, shell `/bin/false`, member of group `users` (GID 1000)
-- **`with-contenv`**: wrapper script that reads env vars from `/var/run/s6/container_environment/` and applies UMASK before exec; all `cont-init.d` and `services.d` scripts use `#!/usr/bin/with-contenv bash` as shebang to inherit container environment variables
-- **Patched `init-stage2`**: custom patch applied to `/etc/s6/init/init-stage2` for linuxserver compatibility
+- **Packages**: `darkhttpd`, `curl`, `jq`, `findutils` (a2b additionally: `iptables`, `ip6tables`, `ipset`, `nodejs`)
+- **Binaries**: `aria2c` (built via [P3TERX/Aria2-Pro-Core](https://git.io/docker-aria2c.sh)), `aria2b` (a2b only, pinned to latest GH release from `SuperNG6/aria2b`)
+- **AriaNg AllInOne**: static HTML/JS, served by darkhttpd from `/www`
+- **`root/` overlay**: aria2 default conf, scripts, cont-init.d, services.d
 
 ### s6-overlay v2 vs v3
 
@@ -200,6 +249,46 @@ Build is triggered manually via `workflow_dispatch`. The GitHub Actions matrix:
 ## Development Branch
 
 Active refactoring work happens on `dev-refactor-20260521`. Do not modify cont-init.d filenames — the numeric prefix order is an s6-overlay convention. The files `90-custom-folders` and `99-custom-scripts` are intentionally empty customization hooks.
+
+## Refactor history (pre-refactor `aria2b` branch → current `dev-refactor`)
+
+The original `aria2b` branch had monolithic scripts. The refactor (`dev-refactor-20260521`) split the script layer into `lib/`, fixed several real bugs, and added the `VARIANT` mechanism (standard vs a2b). Knowing what changed helps when reading old issues or PRs.
+
+### Structural changes
+| Before (`aria2b` branch) | After (`dev-refactor-20260521`) |
+|--------------------------|---------------------------------|
+| `script/core` — log/path/file/move all in one file | `lib/{log,event,files,filter,torrent}.sh` |
+| `script/setting` — LOAD_CONF + SED_CONF | `lib/config.sh` (plus `SEED_ENV_TO_SETTING_CONF`) |
+| `script/rpc_info` — RPC payload via string interp | `lib/rpc.sh` — payload via `jq -nc` (safe against JSON injection) |
+| `script/tracker.sh` (file mode) + `script/rpc_tracker.sh` (rpc mode) | `lib/tracker.sh` (both modes; `main "$@"` dispatch + source guard) |
+| `script/cron-restart-a2b.sh` standalone | Inlined into `cont-init.d/40-config` `_register_a2b_restart` |
+| Single image, A2B baked in | `ARG VARIANT={standard,a2b}` × `linux/{amd64,arm/v7,arm64}` matrix |
+
+### Bugs fixed by refactor (silently existed in the old `aria2b` branch)
+- `core#HANDLE_TORRENT rename` did `mv ... "${TASK_NAME}.torrent"` with no target dir — landed in aria2c cwd. Refactor adds `${DOWNLOAD_DIR}/` prefix
+- `setting#SED_CONF` used an `elif` chain for empty-value defaults — only the first empty key got its default applied. Refactor uses a per-key loop
+- `services.d/aria2b/run` when `A2B!=true` just `echo`'d and exited — s6 saw the service exit and restarted it forever. Refactor uses `exec s6-svc -d .` to properly disable the service
+- `rpc_info#RPC_PAYLOAD` built JSON via string concatenation — SECRET containing `"` `\` newline broke the payload. Refactor uses `jq -nc --arg`
+- `cron-restart-a2b.sh` killed via `ps -ef | grep aria2b | xargs kill -9` — could match unrelated processes named `aria2b*`. Refactor uses `pkill -x aria2b` for exact match
+- 30-config used pattern `.*on-download-pause.*` that also matched commented lines. Refactor anchors with `^\(key=\).*`
+- Typo `WARRING` → `WARNING`
+
+### Bugs that survived the refactor (caught later in deep review)
+Documented here so future deep dives don't miss them:
+- B1 (May 2026): `30-config` `FA` unset case fell to `*) FA_VAL=none` — overrode aria2.conf default `falloc`. Fixed
+- B2 (May 2026): `tracker.sh#_update_rpc` used `grep -q OK` — error responses containing "OK" string falsely identified as success. Fixed (uses `jq -e '.result == "OK"'`)
+- B3 (May 2026): `tracker.sh#_update_rpc` curl had no timeout — cron tasks could pile up indefinitely. Fixed
+- F1 (May 2026): env vars `MOVE/RMTASK/CF/DET/TOR/RRT/MPT` were dead — README documented them as env vars, but only setting.conf was ever read. Fixed by `SEED_ENV_TO_SETTING_CONF` (first-run seed only)
+- F2 (May 2026): default `SECRET=yourtoken` was a public exposure risk. Added red-banner warning in `11-version` when default is in use
+- F5 (May 2026): `30-config` sed assumed keys existed in aria2.conf — legacy configs missing those keys had hooks silently disabled. Fixed by ensure-key prepass
+- F6 (May 2026): `50-config` darkhttpd failure was silent. Fixed (now echoes success/failure)
+
+### Things to NOT change (intentional design from refactor)
+- `lib/event.sh` uses `BASH_SOURCE[0]` (not `$0`) to resolve `_LIB` — required because event hooks `source` it
+- `lib/config.sh` snapshots env vars to `_ENV_SEED_SNAPSHOT` **before** `LOAD_CONF` runs — `declare -g VAR=val` modifies the value of already-exported env vars in place. Snapshot must capture pre-LOAD_CONF values for `SEED_ENV_TO_SETTING_CONF` to work
+- `completed.sh` runs `MOVE_FILE &` in background, `CHECK_TORRENT` in foreground — large cross-disk moves block aria2c's hook fork; backgrounding releases aria2c quickly while s6/PID-1 reaps the move's orphan
+- `lib/tracker.sh` source guard `[ "${BASH_SOURCE[0]}" = "${0}" ] && main "$@"` allows tests to source-and-call-functions without triggering `main`
+- aria2b/run uses `for i in $(seq 1 30)` to poll RPC at 1s intervals — fixed `sleep 10` was racy on slow systems
 
 ## Persistent Config (mounted at /config)
 

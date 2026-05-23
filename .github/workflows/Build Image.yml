@@ -57,8 +57,8 @@ jobs:
             ${{ env.DOCKER_IMAGE }}
             ${{ env.GHCR_IMAGE }}
           outputs: type=image,push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=${{ matrix.variant }}-${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}-${{ matrix.platform }}
+          # 不启用 buildx cache：项目本身很轻量，且 Dockerfile 里的 aria2b/AriaNg/aria2c
+          # 拉的是 GitHub Releases 最新版（curl + grep），缓存命中会让用户拿到旧版本
 
       - name: 导出 digest
         run: |
