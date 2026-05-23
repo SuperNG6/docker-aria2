@@ -266,11 +266,17 @@ The original `aria2b` branch had monolithic scripts. The refactor (`dev-refactor
 
 ### Bugs fixed by refactor (silently existed in the old `aria2b` branch)
 - `core#HANDLE_TORRENT rename` did `mv ... "${TASK_NAME}.torrent"` with no target dir — landed in aria2c cwd. Refactor adds `${DOWNLOAD_DIR}/` prefix
+- `core#HANDLE_TORRENT rename` echoed "已删除种子文件" but actually does a rename — misleading log. Refactor echoes "重命名种子文件"
 - `setting#SED_CONF` used an `elif` chain for empty-value defaults — only the first empty key got its default applied. Refactor uses a per-key loop
-- `services.d/aria2b/run` when `A2B!=true` just `echo`'d and exited — s6 saw the service exit and restarted it forever. Refactor uses `exec s6-svc -d .` to properly disable the service
-- `rpc_info#RPC_PAYLOAD` built JSON via string concatenation — SECRET containing `"` `\` newline broke the payload. Refactor uses `jq -nc --arg`
-- `cron-restart-a2b.sh` killed via `ps -ef | grep aria2b | xargs kill -9` — could match unrelated processes named `aria2b*`. Refactor uses `pkill -x aria2b` for exact match
-- 30-config used pattern `.*on-download-pause.*` that also matched commented lines. Refactor anchors with `^\(key=\).*`
+- `services.d/aria2b/run` when `A2B!=true` just `echo`'d and exited — s6 saw the service exit and restarted it forever (10s loop). Refactor uses `exec s6-svc -d .` to properly disable the service
+- `services.d/aria2/run` interpolated `$SECRET_TOKEN` without quotes — `SECRET` containing whitespace word-split. Refactor uses bash array
+- `rpc_info#RPC_PAYLOAD` built JSON via string concatenation — SECRET containing `"` `\` newline broke the payload (effectively a JSON-injection vector). Refactor uses `jq -nc --arg`
+- `cron-restart-a2b.sh` killed via `ps -ef | grep aria2b | xargs kill -9` — would also kill any process named `aria2b*` (e.g. helpers). Refactor uses `pkill -x aria2b` for exact match
+- `30-config` used pattern `.*on-download-pause.*` and `.*on-download-start.*` that also matched commented lines — could overwrite `#on-download-pause=` comments with the hook path. Refactor anchors with `^\(key=\).*`
+- `30-config` started `crond` only when `RUT=true` — meant `RUT=false` users had no cron at all, so aria2b restart cron (registered in 40-config) and Alpine periodic (hourly/daily/weekly/monthly) silently did nothing. Refactor always starts crond
+- `tracker.sh#ADD_TRACKERS` checked `[ -z $(grep "bt-tracker=" $ARIA2_CONF) ]` — no quotes, no anchor; matched commented `#bt-tracker=` lines, so when the live `bt-tracker=` line was missing nothing got appended and the subsequent `sed` `^\(bt-tracker=\)` matched nothing, leaving trackers empty. Refactor uses `grep -q "^bt-tracker=" || echo "bt-tracker=" >> "${conf}"`
+- `start.sh` did `rm -rf SOURCE_PATH` for repeat-task removal but never ran `CHECK_TORRENT` first — magnet-saved `.torrent` files (in `/downloads/<infoHash>.torrent`) survived and could re-trigger downloads. Refactor inserts `CHECK_TORRENT` before the delete so the torrent is handled per `TOR` config
+- `start.sh` invoked `REMOVE_REPEAT_TASK` without checking return — silent failure meant the local files were deleted but aria2c could keep downloading into a new copy. Refactor warns on failure (still `exit 0` since local cleanup happened)
 - Typo `WARRING` → `WARNING`
 
 ### Bugs that survived the refactor (caught later in deep review)
@@ -282,6 +288,30 @@ Documented here so future deep dives don't miss them:
 - F2 (May 2026): default `SECRET=yourtoken` was a public exposure risk. Added red-banner warning in `11-version` when default is in use
 - F5 (May 2026): `30-config` sed assumed keys existed in aria2.conf — legacy configs missing those keys had hooks silently disabled. Fixed by ensure-key prepass
 - F6 (May 2026): `50-config` darkhttpd failure was silent. Fixed (now echoes success/failure)
+
+### Subsystem-by-subsystem comparison (deep dive)
+
+For future reviews — this is what survived intact, what got cleaned up structurally, and what was a genuine bug. Run this same checklist when comparing future refactors.
+
+**File move (`MOVE_FILE`)** — *functionally identical*. Refactor pulled `_IS_CROSS_DEVICE`, `_CHECK_SPACE`, `_MOVE_TO_FAILED` into helpers but cross-disk space check, mv-failed fallback, and the `MOVE=false/true/dmof` branching all match the old `core` script exactly. No regression.
+
+**File filter (`DELETE_EXCLUDE_FILE`)** — *functionally identical*. Refactor pulled the 6 find pipes into a `_filter_rule` helper. Same FILE_NUM>1 guard, same anti-root-delete guard, same `min-size/include-file/exclude-file/keyword-file/include-file-regex/exclude-file-regex` rules. No regression.
+
+**Download event hooks** — refactor improvements, no regressions:
+- `completed.sh`: backgrounded `MOVE_FILE &` (was sync — large cross-disk moves blocked aria2c's hook fork)
+- `stop.sh`: case/case dispatch instead of elif chain; semantics identical
+- `start.sh`: added `CHECK_TORRENT` before `rm -rf SOURCE_PATH` (RRT path) so magnet `.torrent` is properly handled by TOR config; added warning when `REMOVE_REPEAT_TASK` RPC call fails
+- `pause.sh`: identical (MPT=true → MOVE=true → MOVE_FILE)
+- Refactor's `INIT_EVENT` exits 1 when RPC fails. Old `rpc_info#GET_RPC_RESULT` had `exit 1` inside `GET_DOWNLOAD_DIR` but at slightly different points; net behavior similar
+
+**Startup pipeline (cont-init.d)** — many fixes:
+- `11-version`: added SECRET=yourtoken warning (F2)
+- `20-config`: split first-run vs upgrade paths; added `SEED_ENV_TO_SETTING_CONF` for env-var seeding (F1)
+- `30-config`: anchored sed patterns, FA default fixed to falloc (B1), ensure-key prepass (F5), crond always starts
+- `40-config`: cron-restart-a2b.sh inlined; `pkill -x` for exact-match process kill
+- `50-config`: success/failure echo for darkhttpd (F6)
+
+**Services** — `services.d/aria2/run` switched to bash array (`SECRET` with spaces now safe); `services.d/aria2b/run` uses `exec s6-svc -d .` to disable cleanly, polls aria2c RPC instead of `sleep 10`.
 
 ### Things to NOT change (intentional design from refactor)
 - `lib/event.sh` uses `BASH_SOURCE[0]` (not `$0`) to resolve `_LIB` — required because event hooks `source` it
