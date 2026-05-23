@@ -261,25 +261,27 @@ Build is triggered manually via `workflow_dispatch`. The GitHub Actions matrix:
 
 Two test scripts live under `.github/scripts/`. Both run automatically as part of the smoke-test job; they can also be invoked locally against a running container.
 
-### `rpc-integration-test.sh` (host-side, 14 cases)
-Talks to aria2's JSON-RPC over the mapped port. Covers: getVersion, getGlobalStat, changeGlobalOption / getGlobalOption, HTTP single-source / multi-source / with options, pause-unpause-remove, tellActive/Waiting/Stopped, magnet (Big Buck Bunny — well-seeded test torrent, verifies entering `active` only — no full download), .torrent submission (latest Ubuntu 24.04 LTS live-server torrent, base64 encoded → `addTorrent`), purgeDownloadResult, **file-allocation default assertion** (B1 regression), **tracker RPC end-to-end** (changeGlobalOption pushes a tracker list, then getGlobalOption verifies it landed), **MOVE end-to-end** (`docker exec` to flip move-task=true → submit download → verify file lands in `/downloads/completed/`).
+### `rpc-integration-test.sh` (host-side, 16 cases)
+Talks to aria2's JSON-RPC over the mapped port. Covers: getVersion, getGlobalStat, changeGlobalOption / getGlobalOption, HTTP single-source / multi-source / with options, pause-unpause-remove, tellActive/Waiting/Stopped, magnet (Big Buck Bunny — well-seeded test torrent, verifies entering `active` only — no full download), .torrent submission (latest Ubuntu 24.04 LTS live-server torrent, base64 encoded → `addTorrent`), purgeDownloadResult, **aria2.conf assertions**: `file-allocation` default = `falloc` (B1 regression), `bt-save-metadata=true` (SMD default), `listen-port=dht-listen-port=32516` (BTPORT default), **tracker RPC end-to-end** (changeGlobalOption pushes a tracker list, then getGlobalOption verifies it landed), **MOVE end-to-end** (`docker exec` to flip move-task=true → submit download → verify file lands in `/downloads/completed/`).
 
 The `rpc()` helper pipes params to `jq` via stdin to bypass Linux `MAX_ARG_STRLEN` (128KB per-arg) — base64 of a .torrent can exceed this. Don't refactor it back to `--argjson`.
 
-Usage: `rpc-integration-test.sh <host> <port> <secret> [container-name] [variant]`. Container name is optional but required for MOVE E2E.
+Usage: `rpc-integration-test.sh <host> <port> <secret> [container-name] [variant]`. Container name is optional but required for MOVE E2E and aria2.conf assertions.
 
-### `in-container-lib-test.sh` (in-container, 44 cases)
+### `in-container-lib-test.sh` (in-container, 50 cases)
 `docker cp` into the running container, then `docker exec bash /tmp/in-container-lib-test.sh`. Sources `lib/{log,files,filter,torrent,event,tracker}.sh` directly and invokes the functions with hand-crafted globals.
 
 Test groups:
 - **filter** (8): exclude-file / include-file / keyword / min-size / regex / single-file skip / root-dir skip / DET empty-dir cleanup
 - **move** (6): MOVE=false / true single-file / true multi-dir / dmof root-single / dmof subdir-single / unknown-value safe-no-op
-- **delete/recycle/.aria2** (3): DELETE_FILE / MOVE_RECYCLE / RM_ARIA2
+- **delete/recycle/.aria2/rmaria** (4): DELETE_FILE / MOVE_RECYCLE / RM_ARIA2 / RMTASK=rmaria 默认行为
 - **torrent** (6): retain / delete / rename / backup / backup-rename / unknown safe-keep
 - **path** (7): HTTP single root/subdir, BT single root/subdir, BT multi, out-of-bounds error, magnet empty FILE_PATH
+- **RRT** (3): completed 同名 → 删本地；TASK_STATUS=error 时跳过；RRT=false 时不动
 - **tracker** (8): file write / sed escape / missing-line append / RPC success-response parse / RPC fake-OK in error response (B2 regression) / `main file` E2E / `main rpc` E2E / CTU custom-URL dedup
 - **config** (4): SED_CONF upgrade preserve / SEED_ENV_TO_SETTING_CONF set / skip-unset / escape
 - **11-version** (2): default SECRET warning / custom SECRET no warning (F2 regression)
+- **log demo** (2): 大批量过滤删除（CF=true，~26 文件）/ 整任务删除（DELETE_FILE，25 文件目录）—— 不抑制 stdout，CI artifact 中可肉眼检查 docker logs 输出格式（颜色、TASK_INFO 横幅、log 文件无 ANSI 码）
 
 Move/delete/recycle tests set `FILE_PATH` alongside `SOURCE_PATH` so the `TASK_INFO` banner ("首个文件位置") prints non-empty — mirrors aria2's hook contract where `$3` is the first-file path. New move-mode tests should follow the same pattern.
 

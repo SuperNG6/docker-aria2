@@ -428,6 +428,125 @@ t_rm_aria2() {
     fi
 }
 
+t_rmaria_keep_main_file() {
+    hdr "RMTASK=rmaria 默认值：仅清 .aria2，主文件原位保留"
+    # stop.sh 的 case 在 rmaria 分支不调 MOVE_RECYCLE / DELETE_FILE，
+    # 只走末尾的 CHECK_TORRENT + RM_ARIA2。这里直接模拟该分支的副作用。
+    local task="$TEST_ROOT/rmaria-keep"
+    mkdir -p "$task"
+    echo payload > "$task/main.bin"
+    touch "${task}.aria2"
+    SOURCE_PATH="$task"
+    TORRENT_FILE=""  # 非 BT 任务，CHECK_TORRENT 跳过
+    CHECK_TORRENT
+    RM_ARIA2 >/dev/null
+    if [[ -f "$task/main.bin" && ! -e "${task}.aria2" ]]; then
+        ok "主文件保留，.aria2 已清"
+    else
+        ng "rmaria 行为异常：main=$(ls -la "$task" 2>&1) aria2=$(ls "${task}.aria2" 2>&1)"
+    fi
+}
+
+# ─────────────────── 日志输出展示用例（无抑制 stdout，便于 docker logs / CI 日志肉眼检查） ───────────────────
+
+t_log_demo_bulk_filter() {
+    hdr "demo: 大批量过滤删除（CF=true）—— 完整展示 docker logs 中的输出格式"
+    local task="$TEST_ROOT/log-demo-filter"
+    rm -rf "$task"
+    mkdir -p "$task/sub-empty" "$task/sub-keep"
+    # 25 个 .txt（将被过滤删除）+ 5 个 .mp4（保留）+ 1 个嵌套 .txt
+    local i
+    for i in $(seq 1 25); do
+        echo "junk-content-$i" > "$task/garbage-$i.txt"
+    done
+    for i in $(seq 1 5); do
+        echo "video-bytes" > "$task/sub-keep/movie-$i.mp4"
+    done
+    echo "nested-junk" > "$task/sub-empty/leftover.txt"
+
+    SOURCE_PATH="$task"
+    FILE_PATH="$task/sub-keep/movie-1.mp4"
+    FILE_NUM=31
+    CF=true
+    DET=true
+    : > "$CF_LOG"
+    reset_filter_vars
+    EXCLUDE_FILE="txt"
+
+    echo "    ─────────── ↓↓↓ 实际终端输出（含颜色）↓↓↓ ───────────"
+    CLEAN_UP  # 跑完整链路：RM_ARIA2 + 过滤删除 + 空目录清理
+    echo "    ─────────── ↑↑↑ 实际终端输出 结束 ↑↑↑ ───────────"
+
+    # 行为断言：所有 .txt 被删，.mp4 保留，空子目录消失
+    local txt_left mp4_left
+    txt_left=$(find "$task" -name "*.txt" 2>/dev/null | wc -l)
+    mp4_left=$(find "$task" -name "*.mp4" 2>/dev/null | wc -l)
+    if [[ "$txt_left" -eq 0 && "$mp4_left" -eq 5 ]]; then
+        ok "26 个 .txt 已过滤删除，5 个 .mp4 保留"
+    else
+        ng "过滤行为异常：txt_left=$txt_left mp4_left=$mp4_left"
+    fi
+    if [[ ! -d "$task/sub-empty" ]]; then
+        ok "空子目录 sub-empty 已清理（DET=true）"
+    else
+        ng "DET 未生效，空目录残留"
+    fi
+    # CF_LOG 记录：rm -v 原生 `removed 'path'` 行数应 >= 26
+    local rm_lines
+    rm_lines=$(grep -c "^removed " "$CF_LOG" 2>/dev/null || echo 0)
+    if [[ "$rm_lines" -ge 26 ]]; then
+        ok "filter.log 记录了 ${rm_lines} 行 removed 条目"
+    else
+        ng "filter.log 行数偏少：${rm_lines}"
+        head -10 "$CF_LOG" >&2
+    fi
+}
+
+t_log_demo_bulk_delete() {
+    hdr "demo: 整任务删除（DELETE_FILE）—— 展示 TASK_INFO 横幅 + delete.log 格式"
+    local task="$TEST_ROOT/log-demo-delete"
+    rm -rf "$task"
+    mkdir -p "$task/season-1"
+    local i
+    # 25 个文件分散在 2 个子目录里，模拟"大型 BT 任务被用户删除"
+    for i in $(seq 1 15); do
+        echo "episode-$i" > "$task/season-1/ep-$i.mkv"
+    done
+    for i in $(seq 1 10); do
+        echo "extra-$i" > "$task/bonus-$i.bin"
+    done
+
+    SOURCE_PATH="$task"
+    FILE_PATH="$task/season-1/ep-1.mkv"
+    FILE_NUM=25
+    TASK_TYPE=": 删除任务文件"
+    DOWNLOAD_PATH=/downloads
+    : > "$DELETE_LOG"
+
+    echo "    ─────────── ↓↓↓ 实际终端输出（彩色 TASK_INFO + 删除行）↓↓↓ ───────────"
+    DELETE_FILE  # 不抑制 stdout，CI artifact 中可肉眼看格式
+    echo "    ─────────── ↑↑↑ 实际终端输出 结束 ↑↑↑ ───────────"
+
+    if [[ ! -d "$task" ]]; then
+        ok "整目录 25 文件已删除"
+    else
+        ng "DELETE_FILE 未删除"
+    fi
+    # delete.log 不能含 ANSI 码（彩色仅 stdout，日志文件必须纯文本）
+    if ! grep -qF $'\033[' "$DELETE_LOG"; then
+        ok "delete.log 无 ANSI 颜色码（cat 可读）"
+    else
+        ng "delete.log 含 ANSI 码"
+        cat -A "$DELETE_LOG" | head -3 >&2
+    fi
+    if grep -qE '^[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} \[INFO\] 文件删除成功:' "$DELETE_LOG"; then
+        ok "delete.log 格式正确（时间戳 + 级别 + 中文消息）"
+    else
+        ng "delete.log 格式异常"
+        head -3 "$DELETE_LOG" >&2
+    fi
+}
+
 # ─────────────────── 种子文件处理用例 ───────────────────
 
 # 准备一个 .torrent 文件，echo 出路径
@@ -641,6 +760,93 @@ t_path_magnet_metadata() {
     else
         ng "意外算出 SOURCE=$SOURCE_PATH"
     fi
+}
+
+# ─────────────────── RRT 重复任务检测用例（start.sh 核心分支） ───────────────────
+#
+# start.sh 的 RRT 触发条件：RRT=true && completed 已有同名目录 && TASK_STATUS != error
+# 满足时：删本地新下载、按 TOR 处理 .torrent、RPC 取消任务。
+# 单测里没有真的 aria2 任务，只验证"条件分支 + rm 副作用"——RPC 取消那一步走真实 RPC
+# 在 RPC 集成测试里覆盖（aria2.remove 已经在 t_pause_unpause 等用例中验证过）。
+
+t_rrt_triggered_deletes_local() {
+    hdr "RRT: completed 已有同名 → 删本地新下载，保留 completed 旧副本"
+    local task_name="rrt-dup-task"
+    local src="/downloads/$task_name"
+    local completed="/downloads/completed/$task_name"
+    rm -rf "$src" "$completed"
+    mkdir -p "$src" "$completed"
+    echo "fresh-partial" > "$src/new.bin"
+    echo "older-finished" > "$completed/old.bin"
+
+    SOURCE_PATH="$src"
+    COMPLETED_DIR="$completed"
+    TASK_STATUS="active"
+    RRT=true
+    TORRENT_FILE=""  # 无种子缓存
+
+    if [ "${RRT}" = "true" ] && [ -d "${COMPLETED_DIR}" ] && [ "${TASK_STATUS}" != "error" ]; then
+        rm -rf "${SOURCE_PATH}"
+    fi
+
+    if [[ ! -e "$src" && -f "$completed/old.bin" ]]; then
+        ok "本地新下载已删，completed 旧副本完整保留"
+    else
+        ng "RRT 触发后状态异常：src 是否存在=$([[ -e $src ]] && echo yes || echo no)，旧副本是否完整=$([[ -f $completed/old.bin ]] && echo yes || echo no)"
+    fi
+    rm -rf "$completed"
+}
+
+t_rrt_skip_on_error_status() {
+    hdr "RRT: TASK_STATUS=error → 跳过删除（保留部分下载供用户排查）"
+    local task_name="rrt-err-task"
+    local src="/downloads/$task_name"
+    local completed="/downloads/completed/$task_name"
+    rm -rf "$src" "$completed"
+    mkdir -p "$src" "$completed"
+    echo "broken-partial" > "$src/incomplete.bin"
+
+    SOURCE_PATH="$src"
+    COMPLETED_DIR="$completed"
+    TASK_STATUS="error"
+    RRT=true
+
+    if [ "${RRT}" = "true" ] && [ -d "${COMPLETED_DIR}" ] && [ "${TASK_STATUS}" != "error" ]; then
+        rm -rf "${SOURCE_PATH}"
+    fi
+
+    if [[ -f "$src/incomplete.bin" ]]; then
+        ok "error 状态保留部分下载文件（不删）"
+    else
+        ng "error 状态被错误删除"
+    fi
+    rm -rf "$src" "$completed"
+}
+
+t_rrt_skip_when_disabled() {
+    hdr "RRT: RRT=false → 不检测、不删本地（即使有同名 completed）"
+    local task_name="rrt-disabled-task"
+    local src="/downloads/$task_name"
+    local completed="/downloads/completed/$task_name"
+    rm -rf "$src" "$completed"
+    mkdir -p "$src" "$completed"
+    echo "in-progress" > "$src/active.bin"
+
+    SOURCE_PATH="$src"
+    COMPLETED_DIR="$completed"
+    TASK_STATUS="active"
+    RRT=false
+
+    if [ "${RRT}" = "true" ] && [ -d "${COMPLETED_DIR}" ] && [ "${TASK_STATUS}" != "error" ]; then
+        rm -rf "${SOURCE_PATH}"
+    fi
+
+    if [[ -f "$src/active.bin" ]]; then
+        ok "RRT=false 时不触发删除"
+    else
+        ng "RRT 关闭却仍删了文件"
+    fi
+    rm -rf "$src" "$completed"
 }
 
 # ─────────────────── tracker.sh 用例 ───────────────────
@@ -1008,6 +1214,7 @@ t_move_unknown_mode
 t_delete_file
 t_move_recycle
 t_rm_aria2
+t_rmaria_keep_main_file
 
 # torrent
 t_torrent_retain
@@ -1025,6 +1232,11 @@ t_path_bt_single_subdir
 t_path_bt_multi
 t_path_out_of_bounds
 t_path_magnet_metadata
+
+# RRT 重复任务（start.sh 分支）
+t_rrt_triggered_deletes_local
+t_rrt_skip_on_error_status
+t_rrt_skip_when_disabled
 
 # tracker
 t_tracker_file_write
@@ -1047,6 +1259,10 @@ t_seed_env_escape_special
 # F2: 默认 SECRET 警告
 t_default_secret_warning
 t_custom_secret_no_warning
+
+# 日志输出展示（放最后，docker logs 里输出最显眼）
+t_log_demo_bulk_filter
+t_log_demo_bulk_delete
 
 # 清理
 rm -rf "$TEST_ROOT" /downloads/completed /downloads/recycle

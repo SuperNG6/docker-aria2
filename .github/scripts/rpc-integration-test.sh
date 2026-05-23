@@ -296,8 +296,39 @@ t_fa_default() {
     fi
 }
 
+t_smd_default() {
+    hdr "13. bt-save-metadata 默认值（SMD=true 默认 → aria2.conf 应为 true）"
+    if [[ -z "$CONTAINER" ]]; then
+        log "  ⚠ 未提供容器名，跳过"
+        return
+    fi
+    local val
+    val=$(docker exec "$CONTAINER" grep "^bt-save-metadata=" /config/aria2.conf | cut -d= -f2)
+    if [[ "$val" == "true" ]]; then
+        ok "bt-save-metadata=true"
+    else
+        ng "bt-save-metadata=$val（默认 SMD=true 期望写入 true）"
+    fi
+}
+
+t_btport_default() {
+    hdr "14. BTPORT 默认值（32516 同时写入 listen-port 与 dht-listen-port）"
+    if [[ -z "$CONTAINER" ]]; then
+        log "  ⚠ 未提供容器名，跳过"
+        return
+    fi
+    local lp dp
+    lp=$(docker exec "$CONTAINER" grep "^listen-port=" /config/aria2.conf | cut -d= -f2)
+    dp=$(docker exec "$CONTAINER" grep "^dht-listen-port=" /config/aria2.conf | cut -d= -f2)
+    if [[ "$lp" == "32516" && "$dp" == "32516" ]]; then
+        ok "listen-port=32516 dht-listen-port=32516"
+    else
+        ng "端口值偏离期望：listen=$lp dht=$dp"
+    fi
+}
+
 t_tracker_rpc_e2e() {
-    hdr "13. tracker RPC E2E（changeGlobalOption bt-tracker 真生效）"
+    hdr "15. tracker RPC E2E（changeGlobalOption bt-tracker 真生效）"
     # 验证：aria2c 接受 RPC 改 bt-tracker 后，读回值确实变了
     # 这是 tracker.sh rpc 模式（cron 跑的）依赖的底层 RPC 能力
     local before after marker
@@ -324,7 +355,7 @@ t_tracker_rpc_e2e() {
 }
 
 t_move_e2e() {
-    hdr "14. MOVE 端到端 (move-task=true)"
+    hdr "16. MOVE 端到端 (move-task=true)"
     if [[ -z "$CONTAINER" ]]; then
         log "  ⚠ 未提供容器名，跳过 MOVE 端到端测试"
         return
@@ -412,6 +443,8 @@ t_magnet
 t_torrent_file
 t_purge
 t_fa_default
+t_smd_default
+t_btport_default
 t_tracker_rpc_e2e
 t_move_e2e
 
