@@ -72,9 +72,18 @@ Always pin **>= v2.1.0** in this image.
 ### What this Dockerfile adds on top of the base image
 
 - **Packages**: `darkhttpd`, `curl`, `jq`, `findutils` (a2b additionally: `iptables`, `ip6tables`, `ipset`, `nodejs`)
-- **Binaries**: `aria2c` (built via [P3TERX/Aria2-Pro-Core](https://git.io/docker-aria2c.sh)), `aria2b` (a2b only, pinned to latest GH release from `SuperNG6/aria2b`)
+- **Binaries**: `aria2c` (downloaded from [SuperNG6/Aria2-Pro-Core](https://github.com/SuperNG6/Aria2-Pro-Core) releases — static build, latest CI tag), `aria2b` (a2b only, pinned to latest GH release from `SuperNG6/aria2b`)
 - **AriaNg AllInOne**: static HTML/JS, served by darkhttpd from `/www`
 - **`root/` overlay**: aria2 default conf, scripts, cont-init.d, services.d
+
+Arch detection in the builder stage uses `uname -m` (buildx + QEMU runs the builder *as* the target arch, so `uname` is reliable without needing `ARG TARGETARCH`). Mapping:
+
+| `uname -m` | Aria2-Pro-Core asset |
+|------------|----------------------|
+| `x86_64` | `aria2-static-linux-x86_64.tar.gz` |
+| `aarch64` | `aria2-static-linux-arm64.tar.gz` |
+| `armv7l` / `armv6l` | `aria2-static-linux-armhf.tar.gz` |
+| `i386` / `i686` | `aria2-static-linux-i386.tar.gz` |
 
 ### s6-overlay v2 vs v3
 

@@ -1,11 +1,21 @@
 FROM superng6/alpine:3.23 AS builder
 
-# download static aria2c && AriaNg AllInOne
+# download static aria2c (SuperNG6/Aria2-Pro-Core) && AriaNg AllInOne
+# 用 uname -m 检测构建环境的 CPU 架构（buildx with QEMU 时构建器本身就是目标架构）
 RUN apk add --no-cache curl wget unzip \
     && ARIANG_VER=$(wget -qO- https://api.github.com/repos/mayswind/AriaNg/tags | grep 'name' | cut -d\" -f4 | head -1 ) \
     && wget -P /tmp https://github.com/mayswind/AriaNg/releases/download/${ARIANG_VER}/AriaNg-${ARIANG_VER}-AllInOne.zip \
     && unzip /tmp/AriaNg-${ARIANG_VER}-AllInOne.zip -d /tmp \
-    && curl -fsSL https://git.io/docker-aria2c.sh | bash
+    && case "$(uname -m)" in \
+         x86_64)        ARIA2_ARCH=x86_64 ;; \
+         aarch64)       ARIA2_ARCH=arm64 ;; \
+         armv7l|armv6l) ARIA2_ARCH=armhf ;; \
+         i386|i686)     ARIA2_ARCH=i386 ;; \
+         *) echo "unsupported arch: $(uname -m)"; exit 1 ;; \
+       esac \
+    && ARIA2_REL=$(wget -qO- https://api.github.com/repos/SuperNG6/Aria2-Pro-Core/releases/latest | grep '"tag_name"' | cut -d\" -f4) \
+    && wget -O /tmp/aria2.tar.gz "https://github.com/SuperNG6/Aria2-Pro-Core/releases/download/${ARIA2_REL}/aria2-static-linux-${ARIA2_ARCH}.tar.gz" \
+    && tar -xzf /tmp/aria2.tar.gz -C /usr/local/bin
 
 FROM superng6/alpine:3.23
 

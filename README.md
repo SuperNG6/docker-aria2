@@ -438,7 +438,7 @@ CTU="https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/best_aria2.t
 | 组件 | 仓库 | 当前版本 |
 |------|------|----------|
 | 基础镜像 | [SuperNG6/docker-baseimage-alpine](https://github.com/SuperNG6/docker-baseimage-alpine) | Alpine 3.23 + s6-overlay v2.2.0.3 |
-| aria2c 二进制 | [P3TERX/Aria2-Pro-Core](https://github.com/P3TERX/Aria2-Pro-Core)（通过 `https://git.io/docker-aria2c.sh`） | 1.37.0 |
+| aria2c 二进制 | [SuperNG6/Aria2-Pro-Core](https://github.com/SuperNG6/Aria2-Pro-Core) | 构建时拉 latest release（aria2 1.37.0 + OpenSSL 3.5） |
 | AriaNg WebUI | [mayswind/AriaNg](https://github.com/mayswind/AriaNg) | 构建时拉最新 tag |
 | aria2b（仅 a2b 镜像） | [SuperNG6/aria2b](https://github.com/SuperNG6/aria2b) | v2.1.0+（构建时拉最新 tag） |
 
