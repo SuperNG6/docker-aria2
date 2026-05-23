@@ -296,8 +296,35 @@ t_fa_default() {
     fi
 }
 
+t_tracker_rpc_e2e() {
+    hdr "13. tracker RPC E2E（changeGlobalOption bt-tracker 真生效）"
+    # 验证：aria2c 接受 RPC 改 bt-tracker 后，读回值确实变了
+    # 这是 tracker.sh rpc 模式（cron 跑的）依赖的底层 RPC 能力
+    local before after marker
+    before=$(rpc aria2.getGlobalOption '[]' | jq -r '.result["bt-tracker"] // ""')
+    marker="udp://rpc-e2e-marker.test:9999/announce"
+
+    # 用 jq 转义保证 marker 中的特殊字符不破 JSON
+    local payload
+    payload=$(jq -nc --arg t "$marker" '[{"bt-tracker": $t}]')
+    rpc aria2.changeGlobalOption "$payload" | jq -e '.result == "OK"' >/dev/null \
+        || { ng "changeGlobalOption 调用本身失败"; return; }
+    ok "changeGlobalOption 返回 OK"
+
+    after=$(rpc aria2.getGlobalOption '[]' | jq -r '.result["bt-tracker"] // ""')
+    if [[ "$after" == "$marker" ]]; then
+        ok "getGlobalOption 读回新值正确"
+    else
+        ng "bt-tracker 期望='$marker' 实际='$after'"
+    fi
+
+    # 恢复 before（用 jq 安全构造）
+    payload=$(jq -nc --arg t "$before" '[{"bt-tracker": $t}]')
+    rpc aria2.changeGlobalOption "$payload" >/dev/null
+}
+
 t_move_e2e() {
-    hdr "13. MOVE 端到端 (move-task=true)"
+    hdr "14. MOVE 端到端 (move-task=true)"
     if [[ -z "$CONTAINER" ]]; then
         log "  ⚠ 未提供容器名，跳过 MOVE 端到端测试"
         return
@@ -333,15 +360,23 @@ t_move_e2e() {
     fi
     ok "下载完成"
 
-    # MOVE_FILE 是后台 fork 执行（completed.sh 异步），给它点时间
-    sleep 8
+    # MOVE_FILE 是后台异步执行（completed.sh 用 `MOVE_FILE &`）；
+    # 用 poll 替代固定 sleep，避免误报（系统慢但最终成功的情况）
+    local moved=0 elapsed
+    for elapsed in $(seq 1 30); do
+        if docker exec "$CONTAINER" sh -c "
+            [ ! -f /downloads/$fname ] && [ -f /downloads/completed/$fname ]
+        " 2>/dev/null; then
+            moved=1
+            break
+        fi
+        sleep 1
+    done
 
-    if docker exec "$CONTAINER" sh -c "
-        [ ! -f /downloads/$fname ] && [ -f /downloads/completed/$fname ]
-    "; then
-        ok "/downloads/$fname → /downloads/completed/$fname"
+    if [[ "$moved" == "1" ]]; then
+        ok "/downloads/$fname → /downloads/completed/$fname（poll ${elapsed}s 内完成）"
     else
-        ng "MOVE 未生效"
+        ng "MOVE 未生效（poll 30s 超时）"
         docker exec "$CONTAINER" sh -c "
             echo '--- /downloads ---'; ls -la /downloads/
             echo '--- /downloads/completed ---'; ls -la /downloads/completed/ 2>/dev/null || true
@@ -377,6 +412,7 @@ t_magnet
 t_torrent_file
 t_purge
 t_fa_default
+t_tracker_rpc_e2e
 t_move_e2e
 
 echo

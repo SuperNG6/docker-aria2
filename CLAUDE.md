@@ -364,7 +364,6 @@ Documented here so future deep dives don't miss them:
 - B3 (May 2026): `tracker.sh#_update_rpc` curl had no timeout — cron tasks could pile up indefinitely. Fixed
 - F1 (May 2026): env vars `MOVE/RMTASK/CF/DET/TOR/RRT/MPT` were dead — README documented them as env vars, but only setting.conf was ever read. Fixed by `SEED_ENV_TO_SETTING_CONF` (first-run seed only)
 - F2 (May 2026): default `SECRET=yourtoken` was a public exposure risk. Added red-banner warning in `11-version` when default is in use
-- F5 (May 2026): `30-config` sed assumed keys existed in aria2.conf — legacy configs missing those keys had hooks silently disabled. Fixed by ensure-key prepass
 - F6 (May 2026): `50-config` darkhttpd failure was silent. Fixed (now echoes success/failure)
 
 ### Subsystem-by-subsystem comparison (deep dive)
@@ -385,7 +384,7 @@ For future reviews — this is what survived intact, what got cleaned up structu
 **Startup pipeline (cont-init.d)** — many fixes:
 - `11-version`: added SECRET=yourtoken warning (F2)
 - `20-config`: split first-run vs upgrade paths; added `SEED_ENV_TO_SETTING_CONF` for env-var seeding (F1)
-- `30-config`: anchored sed patterns, FA default fixed to falloc (B1), ensure-key prepass (F5), crond always starts
+- `30-config`: anchored sed patterns, FA default fixed to falloc (B1), crond always starts
 - `40-config`: cron-restart-a2b.sh inlined; `pkill -x` for exact-match process kill
 - `50-config`: success/failure echo for darkhttpd (F6)
 

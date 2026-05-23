@@ -134,7 +134,7 @@ t_filter_keyword() {
 }
 
 t_filter_min_size() {
-    hdr "filter: min-size=5k（删除小于阈值的文件）"
+    hdr "filter: min-size=5k（删除小于阈值的文件，含临界值断言）"
     local task
     task=$(make_multi_task fx-min big.bin:10 small.bin:3 mid.bin:5)
     SOURCE_PATH="$task"
@@ -143,10 +143,12 @@ t_filter_min_size() {
     reset_filter_vars
     MIN_SIZE="5k"
     DELETE_EXCLUDE_FILE >/dev/null
-    if [[ -f "$task/big.bin" && ! -f "$task/small.bin" ]]; then
-        ok "<5KB 文件已删除 (big.bin 保留)"
+    # 加强断言：mid.bin (5KB) 必须保留——find -size -5k 是 strictly less than，恰好 5KB 不命中
+    # 之前只断言 big/small 会让"误删 mid.bin"也通过
+    if [[ -f "$task/big.bin" && ! -f "$task/small.bin" && -f "$task/mid.bin" ]]; then
+        ok "<5KB 已删除，big/mid 保留（mid.bin 临界值不命中）"
     else
-        ng "min-size 行为异常"
+        ng "min-size 异常: big=$(test -f "$task/big.bin" && echo +||echo -) small=$(test -f "$task/small.bin" && echo +||echo -) mid=$(test -f "$task/mid.bin" && echo +||echo -)"
         ls -la "$task" >&2
     fi
 }
@@ -173,7 +175,7 @@ t_filter_exclude_regex() {
 }
 
 t_filter_skip_single_file() {
-    hdr "filter: FILE_NUM=1 时跳过（防误删单文件任务）"
+    hdr "filter: FILE_NUM=1 时跳过（防误删单文件任务，含日志负断言）"
     local task
     task=$(make_multi_task fx-single only.txt:1)
     SOURCE_PATH="$task"
@@ -181,16 +183,18 @@ t_filter_skip_single_file() {
     DET=false
     reset_filter_vars
     EXCLUDE_FILE="txt"
-    DELETE_EXCLUDE_FILE >/dev/null
-    if [[ -f "$task/only.txt" ]]; then
-        ok "单文件任务被正确跳过"
+    # 捕获输出做负断言：函数应当 silent return，不应打"删除不需要的文件"
+    local out
+    out=$(DELETE_EXCLUDE_FILE 2>&1)
+    if [[ -f "$task/only.txt" ]] && ! echo "$out" | grep -q "删除不需要的文件"; then
+        ok "单文件任务安静跳过（无误导日志）"
     else
-        ng "单文件任务被错误过滤"
+        ng "单文件任务异常：file=$(test -f "$task/only.txt" && echo +||echo -) 输出='$out'"
     fi
 }
 
 t_filter_skip_root() {
-    hdr "filter: SOURCE_PATH==DOWNLOAD_PATH 时跳过（防误删根目录）"
+    hdr "filter: SOURCE_PATH==DOWNLOAD_PATH 时跳过（防误删根目录，含日志负断言）"
     # 在 /downloads 根放个哨兵文件，过滤器必须拒绝在根目录执行
     local sentinel=/downloads/__sentinel_$RANDOM.txt
     echo data > "$sentinel"
@@ -199,11 +203,12 @@ t_filter_skip_root() {
     DET=false
     reset_filter_vars
     EXCLUDE_FILE="txt"
-    DELETE_EXCLUDE_FILE >/dev/null 2>&1
-    if [[ -f "$sentinel" ]]; then
-        ok "对根目录的过滤已被安全跳过"
+    local out
+    out=$(DELETE_EXCLUDE_FILE 2>&1)
+    if [[ -f "$sentinel" ]] && ! echo "$out" | grep -q "删除不需要的文件"; then
+        ok "根目录过滤安静跳过（无误导日志）"
     else
-        ng "过滤器在根目录执行了删除！"
+        ng "过滤器在根目录执行了删除或打了误导日志！sentinel=$(test -f "$sentinel" && echo +||echo -) 输出='$out'"
     fi
     rm -f "$sentinel"
 }
@@ -498,13 +503,19 @@ t_torrent_backup_rename() {
 }
 
 t_torrent_unknown() {
-    hdr "torrent: TOR=未知值 保留原文件（防数据丢失）"
+    hdr "torrent: TOR=未知值 保留原文件 + 打 WARNING（防静默吞错）"
     local tf
     tf=$(_make_torrent "abc")
     TORRENT_FILE="$tf"
     TOR=unknown_mode_xyz
-    HANDLE_TORRENT 2>/dev/null >/dev/null
-    [[ -f "$tf" ]] && ok "未知值保留原文件" || ng "未知值意外删除/移动"
+    # 捕获 stderr 验证 WARNING 输出
+    local err
+    err=$(HANDLE_TORRENT 2>&1 >/dev/null)
+    if [[ -f "$tf" ]] && echo "$err" | grep -q "WARNING"; then
+        ok "未知值保留原文件 + 打了 WARNING（不会静默吞错）"
+    else
+        ng "未知值行为异常: file=$(test -f "$tf" && echo +||echo -) stderr='$err'"
+    fi
 }
 
 # ─────────────────── 路径计算用例（GET_FINAL_PATH） ───────────────────
@@ -712,6 +723,89 @@ t_tracker_rpc_fake_ok() {
     fi
 }
 
+t_tracker_main_file_e2e() {
+    hdr "tracker: main file 模式端到端（GET_TRACKERS → ECHO → _update_file）"
+    local conf=/tmp/tracker-main-test.conf
+    echo "bt-tracker=" > "$conf"
+
+    # 保存原函数定义，临时 override GET_TRACKERS 避免外网依赖
+    local orig_get
+    orig_get=$(declare -f GET_TRACKERS)
+    GET_TRACKERS() { TRACKER="udp://e2e1.test:1337,udp://e2e2.test:6969"; }
+
+    local out rc
+    out=$(main file "$conf" 2>&1)
+    rc=$?
+
+    # 恢复原 GET_TRACKERS
+    eval "$orig_get"
+
+    if [[ $rc -eq 0 ]] \
+        && grep -q "^bt-tracker=udp://e2e1.test:1337,udp://e2e2.test:6969$" "$conf" \
+        && echo "$out" | grep -q "成功添加 BT trackers"; then
+        ok "main file 端到端：完整流程跑通且写入了 bt-tracker 行"
+    else
+        ng "main file 异常: rc=$rc"
+        grep "^bt-tracker" "$conf" >&2
+        echo "$out" | tail -5 >&2
+    fi
+    rm -f "$conf"
+}
+
+t_tracker_main_rpc_e2e() {
+    hdr "tracker: main rpc 模式端到端（GET_TRACKERS → ECHO → _update_rpc）"
+
+    local orig_get
+    orig_get=$(declare -f GET_TRACKERS)
+    GET_TRACKERS() { TRACKER="udp://rpc-e2e.test:1337"; }
+    # mock curl 返回 aria2 成功响应
+    curl() { echo '{"jsonrpc":"2.0","id":"NG6","result":"OK"}'; }
+    export -f curl
+    PORT=6800
+    SECRET=testtoken
+
+    local out rc
+    out=$(main rpc 2>&1)
+    rc=$?
+
+    unset -f curl
+    eval "$orig_get"
+
+    if [[ $rc -eq 0 ]] && echo "$out" | grep -q "BT trackers 更新成功"; then
+        ok "main rpc 端到端：完整流程跑通且识别为成功"
+    else
+        ng "main rpc 异常: rc=$rc"
+        echo "$out" | tail -10 >&2
+    fi
+}
+
+t_tracker_ctu_dedup() {
+    hdr "tracker: CTU 多源去重合并（含本地 file:// URL）"
+    # 用本地 file:// URL 避免外网依赖（curl 默认支持 file://）
+    echo "udp://a.example:1,udp://b.example:2" > /tmp/trk1.txt
+    echo "udp://b.example:2,udp://c.example:3" > /tmp/trk2.txt
+
+    export CTU="file:///tmp/trk1.txt,file:///tmp/trk2.txt"
+    TRACKER=""
+    GET_TRACKERS >/dev/null 2>&1
+    local result="$TRACKER"
+
+    unset CTU
+    rm -f /tmp/trk1.txt /tmp/trk2.txt
+
+    # 期望去重后 3 个 tracker：a/b/c（b 在两个文件都出现，应只保留一个）
+    local count
+    count=$(echo "$result" | tr ',' '\n' | sort -u | wc -l)
+    if [[ "$count" == "3" ]] \
+        && echo "$result" | grep -q "a.example:1" \
+        && echo "$result" | grep -q "b.example:2" \
+        && echo "$result" | grep -q "c.example:3"; then
+        ok "CTU 多源合并去重正确：'$result'"
+    else
+        ng "CTU 合并异常 (count=$count): '$result'"
+    fi
+}
+
 # ─────────────────── config.sh SED_CONF 用例 ───────────────────
 
 t_sedconf_preserve_old_values() {
@@ -852,39 +946,6 @@ t_seed_env_escape_special() {
     rm -f "$backup"
 }
 
-# ─────────────────── F5: 30-config 缺 key 兜底用例 ───────────────────
-
-t_aria2conf_ensure_keys() {
-    hdr "30-config: 缺 key 兜底追加（F5 回归）"
-    local tmp=/tmp/test-aria2.conf
-    cat > "$tmp" <<'EOF'
-# minimal aria2.conf（模拟用户用了非常旧的配置缺这些 key）
-listen-port=6881
-EOF
-    # 复刻 30-config 的兜底逻辑
-    for k in on-download-stop on-download-complete on-download-pause on-download-start \
-             rpc-listen-port dht-listen-port listen-port bt-save-metadata file-allocation; do
-        grep -q "^${k}=" "$tmp" || echo "${k}=" >> "$tmp"
-    done
-
-    local fail=""
-    grep -q "^on-download-stop="     "$tmp" || fail+=" on-download-stop"
-    grep -q "^on-download-complete=" "$tmp" || fail+=" on-download-complete"
-    grep -q "^rpc-listen-port="      "$tmp" || fail+=" rpc-listen-port"
-    grep -q "^dht-listen-port="      "$tmp" || fail+=" dht-listen-port"
-    grep -q "^bt-save-metadata="     "$tmp" || fail+=" bt-save-metadata"
-    grep -q "^file-allocation="      "$tmp" || fail+=" file-allocation"
-    # 已有的 listen-port 不应重复
-    [ "$(grep -c "^listen-port=" "$tmp")" -eq 1 ] || fail+=" listen-port-duplicated"
-    if [[ -z "$fail" ]]; then
-        ok "8 个缺 key 全部追加，已有 key 未重复"
-    else
-        ng "兜底逻辑异常:$fail"
-        cat "$tmp" >&2
-    fi
-    rm -f "$tmp"
-}
-
 # ─────────────────── F2: 11-version 默认 SECRET 警告 ───────────────────
 
 t_default_secret_warning() {
@@ -963,6 +1024,9 @@ t_tracker_file_escape
 t_tracker_file_missing_line
 t_tracker_rpc_success_response
 t_tracker_rpc_fake_ok
+t_tracker_main_file_e2e
+t_tracker_main_rpc_e2e
+t_tracker_ctu_dedup
 
 # config 升级合并
 t_sedconf_preserve_old_values
@@ -971,9 +1035,6 @@ t_sedconf_preserve_old_values
 t_seed_env_set_values
 t_seed_env_skip_unset
 t_seed_env_escape_special
-
-# F5: aria2.conf 缺 key 兜底
-t_aria2conf_ensure_keys
 
 # F2: 默认 SECRET 警告
 t_default_secret_warning
