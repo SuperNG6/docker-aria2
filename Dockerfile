@@ -1,21 +1,26 @@
 FROM superng6/alpine:3.23 AS builder
 
-# download static aria2c (SuperNG6/Aria2-Pro-Core) && AriaNg AllInOne
-# 用 uname -m 检测构建环境的 CPU 架构（buildx with QEMU 时构建器本身就是目标架构）
-RUN apk add --no-cache curl wget unzip \
-    && ARIANG_VER=$(wget -qO- https://api.github.com/repos/mayswind/AriaNg/tags | grep 'name' | cut -d\" -f4 | head -1 ) \
-    && wget -P /tmp https://github.com/mayswind/AriaNg/releases/download/${ARIANG_VER}/AriaNg-${ARIANG_VER}-AllInOne.zip \
-    && unzip /tmp/AriaNg-${ARIANG_VER}-AllInOne.zip -d /tmp \
-    && case "$(uname -m)" in \
-         x86_64)        ARIA2_ARCH=x86_64 ;; \
-         aarch64)       ARIA2_ARCH=arm64 ;; \
-         armv7l|armv6l) ARIA2_ARCH=armhf ;; \
-         i386|i686)     ARIA2_ARCH=i386 ;; \
-         *) echo "unsupported arch: $(uname -m)"; exit 1 ;; \
+RUN apk add --no-cache curl wget unzip
+
+RUN case "$(uname -m)" in \
+         x86_64)        ARCH=x86_64 ;; \
+         aarch64)       ARCH=arm64 ;; \
+         armv7l|armv6l) ARCH=armhf ;; \
+         i386|i686)     ARCH=i386 ;; \
+         *) echo "unsupported arch: $(uname -m)" >&2; exit 1 ;; \
        esac \
-    && ARIA2_REL=$(wget -qO- https://api.github.com/repos/SuperNG6/Aria2-Pro-Core/releases/latest | grep '"tag_name"' | cut -d\" -f4) \
-    && wget -O /tmp/aria2.tar.gz "https://github.com/SuperNG6/Aria2-Pro-Core/releases/download/${ARIA2_REL}/aria2-static-linux-${ARIA2_ARCH}.tar.gz" \
-    && tar -xzf /tmp/aria2.tar.gz -C /usr/local/bin
+    && REL=$(curl -fsSL https://api.github.com/repos/SuperNG6/Aria2-Pro-Core/releases/latest \
+             | grep '"tag_name"' | cut -d\" -f4) \
+    && curl -fsSL "https://github.com/SuperNG6/Aria2-Pro-Core/releases/download/${REL}/aria2-static-linux-${ARCH}.tar.gz" \
+       | tar -xz -C /usr/local/bin
+
+RUN VER=$(curl -fsSL https://api.github.com/repos/mayswind/AriaNg/tags \
+             | grep '"name"' | cut -d\" -f4 | head -1) \
+    && curl -fsSL -o /tmp/ariang.zip \
+       "https://github.com/mayswind/AriaNg/releases/download/${VER}/AriaNg-${VER}-AllInOne.zip" \
+    && unzip -o /tmp/ariang.zip -d /tmp \
+    && echo "${VER}" > /tmp/ariang.ver
+
 
 FROM superng6/alpine:3.23
 
@@ -29,23 +34,31 @@ ENV TZ=Asia/Shanghai UT=true SECRET=yourtoken CACHE=128M QUIET=true \
 ENV A2B=${A2B_DEFAULT}
 
 COPY root/ /
-COPY --from=builder /tmp/index.html /www/index.html
+COPY --from=builder /tmp/index.html       /www/index.html
+COPY --from=builder /tmp/ariang.ver       /tmp/ariang.ver
 COPY --from=builder /usr/local/bin/aria2c /usr/local/bin/aria2c
 
-RUN apk add --no-cache darkhttpd curl jq findutils \
-    && chmod a+x /usr/local/bin/aria2c \
-    && if [ "${VARIANT}" = "a2b" ]; then \
-         apk add --no-cache iptables ip6tables ipset nodejs && \
-         A2B_VER=$(curl -fsSL https://api.github.com/repos/SuperNG6/aria2b/tags | grep 'name' | cut -d\" -f4 | head -1) && \
-         curl -fsSL "https://github.com/SuperNG6/aria2b/releases/download/${A2B_VER}/aria2b" -o /usr/local/bin/aria2b && \
-         chmod a+x /usr/local/bin/aria2b; \
-       else \
-         rm -rf /etc/services.d/aria2b; \
-       fi \
-    && ARIANG_VER=$(curl -fsSL https://api.github.com/repos/mayswind/AriaNg/tags | grep 'name' | cut -d\" -f4 | head -1) \
-    && echo "docker-aria2-$(date +"%Y-%m-%d")" > /aria2/build-date \
-    && echo "docker-ariang-${ARIANG_VER}" >> /aria2/build-date \
-    && if [ "${VARIANT}" = "a2b" ]; then echo "docker-aria2b-${A2B_VER}" >> /aria2/build-date; fi \
+# 公共依赖
+RUN apk add --no-cache darkhttpd curl wget jq findutils \
+    && chmod a+x /usr/local/bin/aria2c
+
+# a2b 变体：装额外包 + 拉 aria2b 二进制；standard 直接删空服务目录
+RUN if [ "${VARIANT}" = "a2b" ]; then \
+        apk add --no-cache iptables iptables-legacy ip6tables ip6tables-legacy ipset nodejs && \
+        A2B_VER=$(curl -fsSL https://api.github.com/repos/SuperNG6/aria2b/tags | grep '"name"' | cut -d\" -f4 | head -1) && \
+        curl -fsSL "https://github.com/SuperNG6/aria2b/releases/download/${A2B_VER}/aria2b" -o /usr/local/bin/aria2b && \
+        chmod a+x /usr/local/bin/aria2b && \
+        echo "${A2B_VER}" > /tmp/a2b.ver; \
+    else \
+        rm -rf /etc/services.d/aria2b; \
+    fi
+
+# 版本戳 + 清理
+RUN { \
+        echo "docker-aria2-$(date +%Y-%m-%d)"; \
+        echo "docker-ariang-$(cat /tmp/ariang.ver)"; \
+        if [ -f /tmp/a2b.ver ]; then echo "docker-aria2b-$(cat /tmp/a2b.ver)"; fi; \
+    } > /aria2/build-date \
     && rm -rf /var/cache/apk/* /tmp/*
 
 VOLUME /config /downloads
