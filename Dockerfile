@@ -44,7 +44,7 @@ RUN apk add --no-cache darkhttpd curl wget jq findutils \
 
 # a2b 变体：装额外包 + 拉 aria2b 二进制；standard 直接删空服务目录
 RUN if [ "${VARIANT}" = "a2b" ]; then \
-        apk add --no-cache iptables iptables-legacy ip6tables ip6tables-legacy ipset nodejs && \
+        apk add --no-cache iptables iptables-legacy ipset nodejs && \
         A2B_VER=$(curl -fsSL https://api.github.com/repos/SuperNG6/aria2b/tags | grep '"name"' | cut -d\" -f4 | head -1) && \
         curl -fsSL "https://github.com/SuperNG6/aria2b/releases/download/${A2B_VER}/aria2b" -o /usr/local/bin/aria2b && \
         chmod a+x /usr/local/bin/aria2b && \
