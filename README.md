@@ -95,14 +95,21 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
 
+## 2026/05/24
+
+      1、更新基础环境到 Alpine 3.23
+      2、更新 aria2c 下载核心，继续使用解除线程限制的新版核心
+      3、修复 a2b 镜像构建失败问题
+      4、启动时版本信息补充 AriaNg / aria2b 版本，排查问题更直观
+
 ## 2026/05/23
 
-      1、重构脚本层：单脚本 `script/core` / `script/setting` 拆为 `lib/{event,log,config,files,filter,torrent,rpc,tracker}.sh`
-      2、镜像分两个 variant：`standard`（aria2c 单服务）与 `a2b`（aria2c + aria2b 屏蔽吸血客户端），通过 `--build-arg VARIANT=` 选择
-      3、默认 `SECRET=yourtoken` 启动时输出红色安全警告横幅
-      4、修复若干潜在 bug：BT 重复任务种子处理、SECRET 含特殊字符导致 RPC payload 注入、cron-restart-a2b 误杀同名进程、`bt-tracker` 行缺失时 sed 静默失效、`file-allocation` 默认值被 env 覆盖等
-      5、附加功能（move/recycle/filter/torrent/RRT/MPT 等）回归原版设计契约：**仅通过 `/config/setting.conf` 配置**，env var 不参与
-      6、CI 工作流升级：`actions/*` v4→v6/v7/v8，`docker/*` v3→v4，`docker/build-push-action` v6→v7
+      1、镜像拆分为普通版与 a2b 版，普通用户无需安装 aria2b 相关组件，镜像更干净
+      2、默认 `SECRET=yourtoken` 启动时输出红色安全警告，提醒用户及时更换 token
+      3、修复 BT 重复任务、种子文件处理、tracker 更新、磁盘预分配默认值等问题
+      4、a2b 关闭时不会再反复重启刷日志，启动稳定性更好
+      5、附加功能（移动、回收站、过滤、种子处理、重复任务检测等）统一通过 `/config/setting.conf` 配置，修改后即时生效
+      6、WebUI 启动失败时会输出错误提示，方便排查端口占用等问题
 
 ## 2025/08/12
 
@@ -405,26 +412,28 @@ https://hub.docker.com/r/superng6/ariang
 | `--name=aria2` |容器名设置为aria2|
 | `-v 本地文件夹1:/downloads` |Aria2下载位置|
 | `-v 本地文件夹2:/config` |Aria2配置文件位置|
+| `-e TZ=Asia/Shanghai` |容器时区|
 | `-e PUID=1026` |Linux用户UID|
 | `-e PGID=100` |Linux用户GID|
 | `-e SECRET=yourtoken` |Aria2 token（**警告**：默认值是公开 token，公网部署务必改成随机字符串）|
-| `-e CACHE=1024M` |Aria2磁盘缓存配置|
+| `-e CACHE=128M` |Aria2磁盘缓存配置|
 | `-e QUIET=true` |aria2c 静默模式（屏蔽 stdout/stderr，调试时设为 false）|
 | `-e PORT=6800` | RPC通讯端口 |
-| `-e WEBUI=true` | 启用WEBUI |
+| `-e WEBUI=true` | 启用WEBUI，设置为`false`则不启动AriaNg |
 | `-e WEBUI_PORT=8080` | WEBUI端口 |
-| `-e BTPORT=32516` | DHT和BT监听端口 |
-| `-e UT=true` |启动容器时更新trackers|
-| `-e CTU=` |启动容器时更新自定义trackes地址|
-| `-e RUT=true` |每天凌晨5点更新trackers|
+| `-e BTPORT=32516` | DHT和BT监听端口（TCP/UDP需同时映射）|
+| `-e UT=true` |启动容器时更新trackers并写入配置文件|
+| `-e CTU=` |自定义trackers地址，多个地址用英文逗号分隔|
+| `-e RUT=true` |每天凌晨5点通过RPC更新trackers，无需重启Aria2|
 | `-e SMD=true` |保存磁力链接为种子文件|
 | `-e FA=falloc` |磁盘预分配模式`none`,`falloc`,`trunc`,`prealloc`（默认 falloc）|
-| `-e CRA2B=2h` |aria2b 定时重启间隔小时数（仅 a2b 镜像）|
-| `-e A2B=false` |启用 aria2b 屏蔽吸血客户端（仅 a2b 镜像默认 true）|
+| `-e A2B=false` |启用 aria2b 屏蔽吸血客户端（仅 a2b 镜像可用，a2b 镜像默认 true）|
 | `-e A2B_DISABLE_LOG=false` |aria2b 静默模式：true 关闭 aria2b 日志输出（仅 a2b 镜像）|
+| `-e CRA2B=2h` |aria2b 定时重启间隔小时数（仅 a2b 镜像），`false`为禁用|
 | `-p 6800:6800` |Aria2 RPC连接端口|
-| `-p 6881:6881` |Aria2 tcp下载端口|
-| `-p 6881:6881/udp` |Aria2 p2p udp下载端口|
+| `-p 8080:8080` |WEBUI端口|
+| `-p 32516:32516` |Aria2 TCP下载端口，对应`BTPORT`|
+| `-p 32516:32516/udp` |Aria2 DHT / P2P UDP端口，对应`BTPORT`|
 | `--restart unless-stopped` |自动重启容器|
 
 > **附加功能配置**：`MOVE / RMTASK / CF / DET / TOR / RRT / MPT` 等附加功能开关一律在 `/config/setting.conf` 配置（持久化、即时生效），不接受 env var。详见下文 `/config/setting.conf 配置说明`。

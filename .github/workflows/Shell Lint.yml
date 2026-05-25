@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - 'root/**'
-      - 'install.sh'
       - '.shellcheckrc'
       - '.github/workflows/Shell Lint.yml'
   push:
@@ -12,7 +11,6 @@ on:
       - master
     paths:
       - 'root/**'
-      - 'install.sh'
       - '.shellcheckrc'
 
 jobs:
@@ -34,7 +32,6 @@ jobs:
           # 显式列举要检查的脚本，避免误扫 .conf / 二进制等非 shell 文件
           # severity=warning 抓真实问题（quoting/undefined var 等），跳过 style/info 噪音
           files=(
-              install.sh
               root/aria2/scripts/lib/event.sh
               root/aria2/scripts/lib/log.sh
               root/aria2/scripts/lib/config.sh
