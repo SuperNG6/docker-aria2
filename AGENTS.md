@@ -8,7 +8,7 @@ docker-aria2 is an Alpine Linux Docker image running aria2 + AriaNg WebUI. It sh
 - **standard** — aria2c only
 - **a2b** — aria2c + aria2b (BT traffic optimization proxy)
 
-The variant is selected at build time via `ARG VARIANT=standard` in the Dockerfile. The GitHub Actions workflow builds both variants in a single `variant × platform` matrix.
+The variant is selected at build time via `ARG VARIANT=standard` in the Dockerfile. The GitHub Actions workflow builds both variants in a single `variant × platform` matrix, and local builds should use `build.sh [standard|a2b|all]` so `VARIANT` and `A2B_DEFAULT` stay in sync.
 
 The active development branch is **`dev-refactor-20260521`**. It refactored the original `aria2b` branch from a monolithic-script layout into a modular `lib/` layout. The `aria2b` branch is preserved for reference — see [Refactor history](#refactor-history-pre-refactor-aria2b-branch--current-dev-refactor) for the diff.
 
@@ -71,7 +71,7 @@ Always pin **>= v2.1.0** in this image.
 
 ### What this Dockerfile adds on top of the base image
 
-- **Packages**: `darkhttpd`, `curl`, `jq`, `findutils` (a2b additionally: `iptables`, `ip6tables`, `ipset`, `nodejs`)
+- **Packages**: `darkhttpd`, `curl`, `jq`, `findutils` (a2b additionally: `iptables`, `iptables-legacy`, `ipset`, `nodejs`; `ip6tables` is provided by the iptables packages on Alpine 3.23)
 - **Binaries**: `aria2c` (downloaded from [SuperNG6/Aria2-Pro-Core](https://github.com/SuperNG6/Aria2-Pro-Core) releases — static build, latest CI tag), `aria2b` (a2b only, pinned to latest GH release from `SuperNG6/aria2b`)
 - **AriaNg AllInOne**: static HTML/JS, served by darkhttpd from `/www`
 - **`root/` overlay**: aria2 default conf, scripts, cont-init.d, services.d
@@ -103,7 +103,7 @@ root/
 │   │   ├── 文件过滤.conf        # File content filter rules
 │   │   ├── rpc-tracker0        # Crontab for RUT=false (system maintenance only)
 │   │   └── rpc-tracker1        # Crontab for RUT=true (+ daily tracker update via RPC)
-│   └── script/
+│   └── scripts/
 │       ├── lib/                # Shared function libraries
 │       │   ├── event.sh        # Event hook entry: sources event libs; path calculation; INIT_EVENT/GUARD_EVENT
 │       │   ├── log.sh          # Color constants, DATE_TIME(), TASK_INFO() (pass `no-target` to omit move-target line)
@@ -256,6 +256,7 @@ Build is triggered manually via `workflow_dispatch`. The GitHub Actions matrix:
 - Workflow order: `build` (push by digest, no user-visible tag) → `smoke-test` (pulls by sha256 digest on amd64 only, since GH runners are amd64; arm variants are validated by build success alone) → `merge` (variant matrix: standard / a2b; only runs if smoke-test passed, then promotes the digests to `:dev-latest` / `:dev-<date>` for standard and `:a2b-dev-latest` / `:a2b-dev-<date>` for a2b). Failed tests never publish a user-visible tag.
 - The a2b smoke test runs with `A2B=true`, `--cap-add NET_ADMIN`, and `-v /lib/modules:/lib/modules:ro` when available.
 - `buildx` cache is intentionally disabled — the Dockerfile pulls AriaNg / aria2c / aria2b via `curl + grep latest tag`, and GHA cache would freeze versions on stale layers.
+- `Shell Lint.yml` runs on `master`, `dev`, and `dev-*`, and checks root scripts, `.github/scripts/*.sh`, and `build.sh` with `shellcheck --severity=warning -x`.
 
 ## Tests
 
@@ -296,6 +297,12 @@ bash -n .github/scripts/in-container-lib-test.sh
 bash -n root/aria2/scripts/lib/*.sh
 bash -n root/etc/cont-init.d/*-* root/etc/services.d/*/run
 python3 -c "import yaml; yaml.safe_load(open('.github/workflows/Build Image.yml'))"
+shellcheck --severity=warning -x root/aria2/scripts/lib/*.sh root/aria2/scripts/*.sh root/etc/cont-init.d/*-* root/etc/services.d/*/run .github/scripts/*.sh build.sh
+
+# Local builds (default no-cache, matching CI's "latest upstream" behavior)
+./build.sh          # standard -> superng6/aria2:dev-latest
+./build.sh a2b      # a2b -> superng6/aria2:a2b-dev-latest
+./build.sh all      # both variants
 
 # Trigger a CI build of the current branch
 gh workflow run "Build Image.yml" --ref "$(git rev-parse --abbrev-ref HEAD)"
@@ -321,7 +328,7 @@ docker run -d --name aria2b-local --cap-add NET_ADMIN \
     ghcr.io/superng6/aria2:a2b-dev-latest
 
 # Compare current vs pre-refactor aria2b branch (for any single file)
-git show aria2b:root/aria2/scripts/<file>
+git show origin/aria2b:root/aria2/script/<file>
 ```
 
 ## Development Branch

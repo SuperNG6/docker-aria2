@@ -631,7 +631,7 @@ t_torrent_backup_rename() {
     TORRENT_FILE="$tf"
     BAK_TORRENT_DIR="$TEST_ROOT/backup"
     TASK_NAME="my-task"
-    TOR=backup-rename
+    TOR="backup-rename"
     HANDLE_TORRENT >/dev/null
     if [[ ! -f "$tf" && -f "$TEST_ROOT/backup/my-task.torrent" ]]; then
         ok "backup-rename 重命名后备份"
@@ -917,7 +917,7 @@ t_tracker_rpc_success_response() {
     export -f curl
     TRACKER="udp://t.example.com:1337"
     PORT=6800
-    SECRET=test
+    SECRET="test"
     local out
     out=$(_update_rpc 2>&1)
     unset -f curl

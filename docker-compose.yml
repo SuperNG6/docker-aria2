@@ -1,7 +1,7 @@
 version: "3.6"
 services:
   aria2:
-    image: superng6/aria2:a2b-latest
+    image: superng6/aria2:a2b-dev-latest
     container_name: aria2
     network_mode: host
     cap_add:
@@ -20,9 +20,10 @@ services:
       - QUIET=true
       - SMD=true
       - A2B=true
+      - A2B_DISABLE_LOG=false
       - CRA2B=2h
     volumes:
       - $PWD/config:/config
       - $PWD/downloads:/downloads
-      - /lib/modules:/lib/modules
-    restart: unless-stopped   
+      - /lib/modules:/lib/modules:ro
+    restart: unless-stopped

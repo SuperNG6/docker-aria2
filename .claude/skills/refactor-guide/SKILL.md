@@ -80,7 +80,7 @@ root/aria2/script/            # 老分支里目录名就是 script（无 s），
 ### 4.1 cont-init.d 启动序列
 ```
 11-version      # 版本横幅 + SECRET=yourtoken 警告
-20-config       # 创建目录、复制默认 conf、env var 种子值（首次）/合并升级（已有）
+20-config       # 创建目录；首次复制默认 conf；已有 setting.conf 时合并升级并保留用户值
 30-config       # aria2.conf 写 hook 路径 + 端口 + SMD/FA；启 crond；UT=true 时拉 tracker
 40-config       # chown abc:abc，chmod +x，a2b variant 注册 aria2b 重启 cron
 50-config       # WEBUI=true 时启 darkhttpd（失败时打错误）
@@ -104,7 +104,7 @@ GUARD_EVENT                            # 磁力链/无效任务跳过；路径�
 
 ### 4.4 配置语义三层
 - **aria2.conf**：30-config 每次启动覆盖 9 个 key（hook/PORT/BTPORT/SMD/FA），其他用户编辑保留
-- **setting.conf**：首次启动 cp 模板 + env var 种子；之后只读，用户编辑即时生效
+- **setting.conf**：首次启动 cp 模板；之后升级合并并保留用户值；事件 hook 每次触发都会重新读取，用户编辑即时生效
 - **文件过滤.conf**：首次 cp，不动
 
 ## 5. 代码风格规范
@@ -213,6 +213,7 @@ bash -n root/aria2/scripts/lib/*.sh
 bash -n root/etc/cont-init.d/*-* root/etc/services.d/*/run
 bash -n .github/scripts/*.sh
 python3 -c "import yaml; yaml.safe_load(open('.github/workflows/Build Image.yml'))"
+shellcheck --severity=warning -x root/aria2/scripts/lib/*.sh root/aria2/scripts/*.sh root/etc/cont-init.d/*-* root/etc/services.d/*/run .github/scripts/*.sh build.sh
 ```
 
 ### 6.2 改 lib 必加 lib-test 用例
@@ -220,7 +221,7 @@ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/Build Image.yml'
 - 改 `lib/files.sh#MOVE_FILE` → 加 `t_move_<scenario>`
 - 改 `lib/filter.sh` → 加 `t_filter_<rule>`
 - 改 `lib/torrent.sh` → 加 `t_torrent_<mode>`
-- 改 `lib/config.sh` → 加 `t_sedconf_*` 或 `t_seed_env_*`
+- 改 `lib/config.sh` → 加 `t_sedconf_*`
 - 改 `lib/tracker.sh` → 加 `t_tracker_*`
 
 ### 6.3 改 cont-init / 启动流程加 RPC 集成测试
@@ -241,7 +242,7 @@ build → smoke-test → merge。失败时 `:dev-latest` 不更新，用户始�
 | 设计 | 文件:行 | 原因 |
 |------|---------|------|
 | `_LIB=$(dirname "${BASH_SOURCE[0]}")` | `lib/event.sh:5` | 必须用 `BASH_SOURCE[0]` 不是 `$0`，因为这文件总是被 source |
-| `_ENV_SEED_SNAPSHOT` 在 `LOAD_CONF` 之前 | `lib/config.sh` | `declare -g VAR=val` 对已 export 的同名变量会修改 env var 值，snapshot 必须先拍 |
+| `setting.conf` 不接受 env var seed | `20-config` / `lib/config.sh` | `setting.conf` 是附加功能唯一接口；半生效的一次性 env seed 会误导用户 |
 | `MOVE_FILE &` 后台化 | `completed.sh` | 大文件跨盘 cp 阻塞 aria2c hook fork，s6/PID-1 收尸孤儿 |
 | `tracker.sh` source guard | `lib/tracker.sh` 末尾 | 让测试能 source-and-call 内部函数而不触发 main |
 | `aria2b/run` poll RPC 替代 sleep | `services.d/aria2b/run` | sleep 10 在慢启动时抢跑 |

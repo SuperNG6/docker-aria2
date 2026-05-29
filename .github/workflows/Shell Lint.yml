@@ -4,14 +4,21 @@ on:
   pull_request:
     paths:
       - 'root/**'
+      - '.github/scripts/*.sh'
+      - 'build.sh'
       - '.shellcheckrc'
       - '.github/workflows/Shell Lint.yml'
   push:
     branches:
       - master
+      - dev
+      - 'dev-*'
     paths:
       - 'root/**'
+      - '.github/scripts/*.sh'
+      - 'build.sh'
       - '.shellcheckrc'
+      - '.github/workflows/Shell Lint.yml'
 
 jobs:
   shellcheck:
@@ -53,5 +60,8 @@ jobs:
               root/etc/cont-init.d/99-custom-scripts
               root/etc/services.d/aria2/run
               root/etc/services.d/aria2b/run
+              .github/scripts/rpc-integration-test.sh
+              .github/scripts/in-container-lib-test.sh
+              build.sh
           )
           shellcheck --severity=warning -x "${files[@]}"
