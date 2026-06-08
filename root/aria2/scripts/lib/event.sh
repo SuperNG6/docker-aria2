@@ -35,21 +35,15 @@ RECYCLE_PATH() {
 # 保留下载目录内的相对层级，使 completed/recycle 目录结构与下载目录一致
 # SOURCE_PATH 不在 DOWNLOAD_PATH 范围内（aria2 dir 配错指到 /downloads 之外）→ 标记 error
 GET_TARGET_PATH() {
-    case "${SOURCE_PATH}" in
-        "${DOWNLOAD_PATH}"|"${DOWNLOAD_PATH}/"*) ;;
-        *)
-            # 越界：拒绝在 completed/recycle 下凭空拼出 /data 之类的怪路径
-            GET_PATH_INFO="error"
-            return
-            ;;
-    esac
+    if ! IS_TASK_SOURCE_PATH "${SOURCE_PATH}"; then
+        # 越界或根目录：拒绝在 completed/recycle 下凭空拼出怪路径，也避免操作 /downloads 本身
+        GET_PATH_INFO="error"
+        return 1
+    fi
+    SOURCE_PATH="${SOURCE_PATH%/}"
     RELATIVE_PATH="${SOURCE_PATH#"${DOWNLOAD_PATH}/"}"
     TARGET_PATH="${TARGET_DIR}/$(dirname "${RELATIVE_PATH}")"
-    if [ "${TARGET_PATH}" = "${TARGET_DIR}//" ]; then
-        # SOURCE_PATH == DOWNLOAD_PATH（仅 / 前缀剥离后变空），路径计算有误
-        GET_PATH_INFO="error"
-        return
-    elif [ "${TARGET_PATH}" = "${TARGET_DIR}/." ]; then
+    if [ "${TARGET_PATH}" = "${TARGET_DIR}/." ]; then
         # 任务直接位于根下载目录，目标路径就是 TARGET_DIR 本身
         TARGET_PATH="${TARGET_DIR}"
     fi
@@ -78,13 +72,13 @@ GET_FINAL_PATH() {
         || { [ "${INFO_HASH}" != "null" ] && [ "$(dirname "${FILE_PATH}")" != "${DOWNLOAD_DIR}" ]; }; then
         TASK_NAME="${RELATIVE_PATH%%/*}"
         SOURCE_PATH="${DOWNLOAD_DIR}/${TASK_NAME}"
-        GET_TARGET_PATH
+        GET_TARGET_PATH || return
         COMPLETED_DIR="${TARGET_PATH}/${TASK_NAME}"
     else
         SOURCE_PATH="${FILE_PATH}"
         TASK_NAME="${RELATIVE_PATH##*/}"
         TASK_NAME="${TASK_NAME%.*}"
-        GET_TARGET_PATH
+        GET_TARGET_PATH || return
     fi
 }
 

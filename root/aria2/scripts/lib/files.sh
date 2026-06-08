@@ -7,12 +7,28 @@
 #   黄色 YELLOW：警示路径（move-failed 退路目录、未知值）
 #   紫色 LIGHT_PURPLE：种子相关（TORRENT_FILE，与 TASK_INFO 紫色字段一致）
 
-# 共用日志行写入函数：自动加时间戳和级别标签
-# 注意：写入磁盘日志文件的内容**不要带 ANSI 颜色码**，否则 cat /config/logs/*.log 看是乱码
-# 用法：log_line "${MOVE_LOG}" INFO "已移动: a -> b"
-log_line() {
-    local file=$1 level=$2 msg=$3
-    echo -e "$(DATE_TIME) [${level}] ${msg}" >> "${file}"
+# 判断 SOURCE_PATH 是否是 /downloads 下的具体任务路径。
+# 这里只守住一个真实风险：不要对 /downloads 根目录本身做 rm/mv/find。
+IS_TASK_SOURCE_PATH() {
+    local root="${DOWNLOAD_PATH%/}" path="${1:-}"
+    path="${path%/}"
+    [ -n "${root}" ] && [ -n "${path}" ] || return 1
+    [ "${path}" != "${root}" ] || return 1
+    case "${path}" in
+        "${root}/"*) return 0 ;;
+        *)           return 1 ;;
+    esac
+}
+
+REMOVE_SOURCE_PATH() {
+    IS_TASK_SOURCE_PATH "${SOURCE_PATH:-}" || return 1
+    rm -rf "${SOURCE_PATH}"
+}
+
+MOVE_SOURCE_PATH() {
+    local target=$1
+    IS_TASK_SOURCE_PATH "${SOURCE_PATH:-}" || return 1
+    mv -f "${SOURCE_PATH}" "${target}"
 }
 
 # 删除 aria2 下载控制文件（.aria2 后缀），任务结束后清理用
@@ -27,9 +43,7 @@ RM_ARIA2() {
 # CF=true 且任务是多文件（文件夹）时才执行内容过滤
 CLEAN_UP() {
     RM_ARIA2
-    if [ "$CF" = "true" ] && [ "${FILE_NUM}" -gt 1 ] && [ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ]; then
-        echo -e "$(DATE_TIME) ${INFO} 被过滤文件的任务路径: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
-        log_line "${CF_LOG}" INFO "被过滤文件的任务路径: ${SOURCE_PATH}"
+    if [ "$CF" = "true" ] && [ "${FILE_NUM}" -gt 1 ]; then
         LOAD_FILTER_CONF
         DELETE_EXCLUDE_FILE
         DELETE_EMPTY_DIR
@@ -63,7 +77,7 @@ _MOVE_TO_FAILED() {
     local reason=${1:-}
     local fail_dir="${DOWNLOAD_PATH}/move-failed"
     mkdir -p "${fail_dir}"
-    if mv -f "${SOURCE_PATH}" "${fail_dir}"; then
+    if MOVE_SOURCE_PATH "${fail_dir}"; then
         echo -e "$(DATE_TIME) ${INFO} ${reason}已将文件移动至: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX} -> ${YELLOW_FONT_PREFIX}${fail_dir}${FONT_COLOR_SUFFIX}"
         log_line "${MOVE_LOG}" INFO "${reason}已将文件移动至: ${SOURCE_PATH} -> ${fail_dir}"
     else
@@ -113,7 +127,7 @@ MOVE_FILE() {
     fi
 
     # 执行移动；失败回退到 move-failed 目录
-    if mv -f "${SOURCE_PATH}" "${TARGET_PATH}"; then
+    if MOVE_SOURCE_PATH "${TARGET_PATH}"; then
         echo -e "$(DATE_TIME) ${INFO} 已移动文件至目标文件夹: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX} -> ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${MOVE_LOG}" INFO "已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
     else
@@ -128,7 +142,7 @@ DELETE_FILE() {
     TASK_TYPE=": 删除任务文件"
     TASK_INFO no-target    # 删除场景无目标路径，传 no-target 隐藏对应行
     echo -e "$(DATE_TIME) ${INFO} 下载已停止，开始删除文件..."
-    if rm -rf "${SOURCE_PATH}"; then
+    if REMOVE_SOURCE_PATH; then
         echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${DELETE_LOG}" INFO "文件删除成功: ${SOURCE_PATH}"
     else
@@ -144,7 +158,7 @@ MOVE_RECYCLE() {
     TASK_INFO
     echo -e "$(DATE_TIME) ${INFO} 开始移动已下载的任务至回收站 ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
     mkdir -p "${TARGET_PATH}"
-    if mv -f "${SOURCE_PATH}" "${TARGET_PATH}"; then
+    if MOVE_SOURCE_PATH "${TARGET_PATH}"; then
         echo -e "$(DATE_TIME) ${INFO} 已移至回收站: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX} -> ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${RECYCLE_LOG}" INFO "成功移动文件到回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
         return
@@ -153,7 +167,7 @@ MOVE_RECYCLE() {
     # 移到回收站失败，降级为删除
     echo -e "$(DATE_TIME) ${ERROR} 移动文件到回收站失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
     echo -e "$(DATE_TIME) ${INFO} 尝试删除文件: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
-    if rm -rf "${SOURCE_PATH}"; then
+    if REMOVE_SOURCE_PATH; then
         echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${RECYCLE_LOG}" WARNING "移动文件到回收站失败，已删除文件: ${SOURCE_PATH}"
     else

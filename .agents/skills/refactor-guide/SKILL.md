@@ -16,6 +16,15 @@ docker-aria2 是 [SuperNG6/docker-aria2](https://github.com/SuperNG6/docker-aria
 - **多架构**：linux/amd64 + linux/arm64 + linux/arm/v7
 - **持久化配置**：所有设置在 `/config/setting.conf`，编辑即时生效，无需重启
 
+### 1.1 第一性原理与设计哲学
+
+这个项目的哲学是：**用简单方法完成简单任务，只在真实的不确定边界上增加防护**。
+
+- 容器内部的组件通信（aria2 hook 调 `localhost:${PORT}/jsonrpc`、aria2b 等待 aria2c RPC、AriaNg 访问同容器服务）是受控边界。这里优先保持直接、可读、少参数；不要为了“看起来更安全”机械叠加 timeout、retry、兜底分支。
+- 用户容器向外部网络发起请求（tracker 列表、上游下载地址、GitHub/CDN、用户自定义 CTU）是不可控边界。外网可能慢、断、DNS 异常、被墙或半开连接；这里才需要明确 timeout / retry / fallback，避免 cron 或构建流程无限挂起。
+- 防护的目标是约束真实风险，不是追求形式一致。review 时先问“这个调用跨过了哪个边界？失败会不会累积或卡死用户流程？”再决定要不要加复杂度。
+- 不做“万能修复”。例如缺 key 兜底、setting.conf env seeding、给所有 localhost RPC 加 timeout，都会让行为语义变重；除非能证明用户会因此受益，否则保持简单路径。
+
 ## 2. 上游依赖（修改 Dockerfile 前必读）
 
 镜像由 4 个上游项目组合：
@@ -68,7 +77,7 @@ root/aria2/script/            # 老分支里目录名就是 script（无 s），
 **重构后又发现并修的 6 个老 bug**（review 时格外注意这些类别）：
 - B1：FA 未设时 30-config 把 file-allocation 改成 none（应回退 falloc）
 - B2：tracker._update_rpc 用 `grep -q OK` 被错误响应中的 "OK" 字样欺骗
-- B3：tracker._update_rpc curl 无 timeout
+- B3：tracker._update_rpc curl 无 timeout（这是 cron 触发的外部 tracker 更新链路；外网/半开连接会让定时任务堆积）
 - F1：MOVE/RMTASK/CF/DET/TOR/RRT/MPT env var 之前完全是死参数
 - F2：SECRET=yourtoken 默认值是公开 token
 - F6：darkhttpd 启动失败无日志
@@ -173,7 +182,15 @@ grep -q "^bt-tracker=" "${conf}"
 grep -q "bt-tracker=" "${conf}"
 ```
 
-### 5.6 所有 curl 必须有超时
+### 5.6 curl 超时按边界判断
+
+不是所有 `curl` 都必须加 timeout。规则是：**跨不可控边界必须有超时；容器内受控 RPC 不机械加超时**。
+
+需要 timeout 的场景：
+- 拉公共 tracker、用户自定义 CTU、GitHub/CDN 等外部网络
+- cron / CI / 构建流程中的外部请求，失败可能累积、拖慢反馈或阻塞发布
+- 访问不由本容器生命周期控制的服务
+
 ```bash
 # ✓ 正确
 curl -fsS --max-time 15 --connect-timeout 5 "${url}"
@@ -181,6 +198,13 @@ curl -fsS --max-time 15 --connect-timeout 5 "${url}"
 # ✗ 错误：网络挂掉会导致 cron 任务无限阻塞
 curl -fsS "${url}"
 ```
+
+不强制 timeout 的场景：
+- `lib/rpc.sh` 调本容器 `localhost:${PORT}/jsonrpc` 获取 aria2 任务信息
+- `services.d/aria2b/run` 在容器内 poll aria2c RPC（脚本已有 30 次循环上限，单次请求是本机边界）
+- 其他明确只跨容器内部受控组件的短路径
+
+不要把 `tracker.sh` 的外网 timeout 规则泛化到所有 localhost RPC；那会把简单同步调用变成带额外失败语义的复杂调用。
 
 ### 5.7 变量必须引号
 ```bash

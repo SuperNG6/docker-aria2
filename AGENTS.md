@@ -12,6 +12,15 @@ The variant is selected at build time via `ARG VARIANT=standard` in the Dockerfi
 
 The active development branch is **`dev-refactor-20260521`**. It refactored the original `aria2b` branch from a monolithic-script layout into a modular `lib/` layout. The `aria2b` branch is preserved for reference — see [Refactor history](#refactor-history-pre-refactor-aria2b-branch--current-dev-refactor) for the diff.
 
+## Design Philosophy
+
+本项目的维护原则是：**用简单方法完成简单任务，只在真实的不确定边界上增加防护**。
+
+- 容器内部通信是受控边界：aria2 hook 调 `localhost:${PORT}/jsonrpc`、aria2b 等待 aria2c RPC、AriaNg 访问同容器服务，都应优先保持直接、可读、少参数。
+- 外部网络是不可控边界：tracker 列表、GitHub/CDN、用户自定义 CTU 等请求可能慢、断、DNS 异常或半开连接；这些地方需要 timeout / retry / fallback，避免 cron、构建或用户启动流程被外部网络拖死。
+- 防护不是形式主义。review 时先判断调用跨过了哪个边界、失败是否会累积或卡住用户流程，再决定是否增加复杂度。
+- 不做“万能修复”。缺 key 兜底、setting.conf env seeding、给所有 localhost RPC 机械加 timeout 这类改动会增加语义重量；除非有明确用户收益，否则保持简单路径。
+
 ## External dependencies (read these to understand the runtime)
 
 This image composes three upstream projects. Don't assume legacy behavior — check the actual upstream when in doubt:
@@ -171,6 +180,11 @@ Hooks (`completed.sh` / `start.sh` / `stop.sh` / `pause.sh`) use `#!/usr/bin/env
 
 ### `services.d` runtime env
 `services.d/aria2/run` and `services.d/aria2b/run` both use `#!/usr/bin/with-contenv bash`, so they see the full container env. `aria2c` is launched with `s6-setuidgid abc` (UID 911 / group users). `aria2b` (a2b variant only) polls aria2c's RPC up to 30s before launching itself.
+
+### curl timeout policy follows trust boundaries
+Do not require timeout flags on every `curl` by default. Add `--connect-timeout` / `--max-time` when the request crosses an uncontrolled boundary: public tracker sources, user-provided CTU URLs, GitHub/CDN downloads, cron-triggered external refreshes, or CI/build probes that can be delayed by external networking.
+
+For container-internal calls, keep the simple path unless there is a demonstrated failure mode. `lib/rpc.sh` talking to `localhost:${PORT}/jsonrpc`, aria2b polling aria2c inside the same container, and AriaNg talking to the local RPC/WebUI boundary are controlled local interactions. Mechanically adding timeout/retry there makes a simple synchronous contract harder to reason about and can introduce new failure semantics without solving a user-visible problem.
 
 ### `QUIET=true` silences stderr too
 The default `QUIET=true` passes `--quiet=true` to aria2c, which silences both stdout and stderr. If aria2c fails to start (port conflict, bad config), the failure is invisible in `docker logs`. Set `-e QUIET=false` to debug startup problems.
@@ -368,7 +382,7 @@ The original `aria2b` branch had monolithic scripts. The refactor (`dev-refactor
 Documented here so future deep dives don't miss them:
 - B1 (May 2026): `30-config` `FA` unset case fell to `*) FA_VAL=none` — overrode aria2.conf default `falloc`. Fixed
 - B2 (May 2026): `tracker.sh#_update_rpc` used `grep -q OK` — error responses containing "OK" string falsely identified as success. Fixed (uses `jq -e '.result == "OK"'`)
-- B3 (May 2026): `tracker.sh#_update_rpc` curl had no timeout — cron tasks could pile up indefinitely. Fixed
+- B3 (May 2026): `tracker.sh#_update_rpc` curl had no timeout on the tracker update path — external network stalls could make cron tasks pile up indefinitely. Fixed
 - F1 (May 2026, **REVERTED 2026-05-23**): a refactor briefly added `SEED_ENV_TO_SETTING_CONF` to make `MOVE/RMTASK/CF/DET/TOR/RRT/MPT` env vars take effect on first container start (claiming the original README "documented them as env vars but the code never read them"). The fix was reverted after re-reading the original README — those 7 vars were **never** in master's env table; setting.conf has always been the sole interface. The half-effective semantics ("env works only the first time") was a footgun. The 3 SEED unit tests were also removed.
 - F2 (May 2026): default `SECRET=yourtoken` was a public exposure risk. Added red-banner warning in `11-version` when default is in use
 - F6 (May 2026): `50-config` darkhttpd failure was silent. Fixed (now echoes success/failure)

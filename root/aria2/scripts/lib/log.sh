@@ -19,6 +19,12 @@ DATE_TIME() {
     date +"%Y/%m/%d %H:%M:%S"
 }
 
+# 写入磁盘日志文件：自动加时间戳和级别标签，不带 ANSI 颜色码。
+log_line() {
+    local file=$1 level=$2 msg=$3
+    echo -e "$(DATE_TIME) [${level}] ${msg}" >> "${file}"
+}
+
 # 打印任务信息横幅
 # 调用前需设置：TASK_TYPE、DOWNLOAD_PATH、SOURCE_PATH、FILE_PATH、FILE_NUM
 # 默认含"移动至目标文件夹"行（需要 TARGET_PATH）；传 no-target 隐藏，用于 DELETE_FILE 场景

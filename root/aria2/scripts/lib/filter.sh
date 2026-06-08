@@ -23,7 +23,7 @@ _filter_rule() {
 # 按过滤规则删除任务目录内不需要的文件
 # 只在多文件任务（文件夹）中运行，防止误删单文件任务
 DELETE_EXCLUDE_FILE() {
-    [ "${FILE_NUM}" -gt 1 ] && [ "${SOURCE_PATH}" != "${DOWNLOAD_PATH}" ] || return
+    [ "${FILE_NUM}" -gt 1 ] && IS_TASK_SOURCE_PATH "${SOURCE_PATH}" || return
     # 任一规则非空即进入删除流程（拼接判定比 6 个独立 -n 更紧凑）
     [ -n "${MIN_SIZE}${INCLUDE_FILE}${EXCLUDE_FILE}${KEYWORD_FILE}${EXCLUDE_FILE_REGEX}${INCLUDE_FILE_REGEX}" ] || return
 
@@ -38,7 +38,7 @@ DELETE_EXCLUDE_FILE() {
 
 # 删除过滤后遗留的空目录（DET=true 时启用）
 DELETE_EMPTY_DIR() {
-    if [ "${DET}" = "true" ]; then
+    if [ "${DET}" = "true" ] && IS_TASK_SOURCE_PATH "${SOURCE_PATH}"; then
         echo -e "$(DATE_TIME) ${INFO} 删除任务中空的文件夹 ..."
         # -depth 确保先处理深层目录，避免父目录未空时报错
         find "${SOURCE_PATH}" -depth -type d -empty -exec rm -vrf {} \;

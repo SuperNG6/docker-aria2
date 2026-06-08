@@ -193,25 +193,6 @@ t_filter_skip_single_file() {
     fi
 }
 
-t_filter_skip_root() {
-    hdr "filter: SOURCE_PATH==DOWNLOAD_PATH 时跳过（防误删根目录，含日志负断言）"
-    # 在 /downloads 根放个哨兵文件，过滤器必须拒绝在根目录执行
-    local sentinel=/downloads/__sentinel_$RANDOM.txt
-    echo data > "$sentinel"
-    SOURCE_PATH="$DOWNLOAD_PATH"
-    FILE_NUM=10
-    DET=false
-    reset_filter_vars
-    EXCLUDE_FILE="txt"
-    local out
-    out=$(DELETE_EXCLUDE_FILE 2>&1)
-    if [[ -f "$sentinel" ]] && ! echo "$out" | grep -q "删除不需要的文件"; then
-        ok "根目录过滤安静跳过（无误导日志）"
-    else
-        ng "过滤器在根目录执行了删除或打了误导日志！sentinel=$(test -f "$sentinel" && echo +||echo -) 输出='$out'"
-    fi
-    rm -f "$sentinel"
-}
 
 t_filter_delete_empty_dir() {
     hdr "filter: DET=true 删除过滤后的空目录"
@@ -411,6 +392,52 @@ t_move_recycle() {
     else
         ng "MOVE_RECYCLE 异常"
     fi
+}
+
+t_delete_guard_root() {
+    hdr "delete: 拒绝删除根目录"
+    local root sentinel failed=0
+    for root in "$DOWNLOAD_PATH" "$DOWNLOAD_PATH/"; do
+        sentinel="/downloads/__delete_guard_$RANDOM.txt"
+        echo data > "$sentinel"
+        SOURCE_PATH="$root"
+        FILE_PATH="$sentinel"
+        TARGET_PATH=""
+        TASK_NAME=""
+        FILE_NUM=10
+        DELETE_FILE >/dev/null 2>&1
+        if [[ -f "$sentinel" ]]; then
+            :
+        else
+            failed=1
+            ng "根目录删除守卫失效 root='$root'"
+        fi
+        rm -f "$sentinel"
+    done
+    [ "$failed" -eq 0 ] && ok "根目录删除均被拦截"
+}
+
+t_recycle_guard_root() {
+    hdr "recycle: 拒绝移动根目录"
+    local root sentinel failed=0
+    for root in "$DOWNLOAD_PATH" "$DOWNLOAD_PATH/"; do
+        sentinel="/downloads/__recycle_guard_$RANDOM.txt"
+        echo data > "$sentinel"
+        SOURCE_PATH="$root"
+        FILE_PATH="$sentinel"
+        TARGET_PATH="/downloads/recycle/root-guard"
+        TASK_NAME=""
+        FILE_NUM=10
+        MOVE_RECYCLE >/dev/null 2>&1
+        if [[ -f "$sentinel" ]]; then
+            :
+        else
+            failed=1
+            ng "根目录回收守卫失效 root='$root'"
+        fi
+        rm -f "$sentinel"
+    done
+    [ "$failed" -eq 0 ] && ok "根目录回收均被拦截"
 }
 
 t_rm_aria2() {
@@ -758,6 +785,26 @@ t_path_out_of_bounds() {
     fi
 }
 
+t_path_download_root_rejected() {
+    hdr "path: FILE_PATH 指向根目录时标记 error"
+    local file_path failed=0
+    for file_path in /downloads /downloads/; do
+        reset_path_vars
+        FILE_NUM=5
+        FILE_PATH="$file_path"
+        INFO_HASH=abc123def
+        DOWNLOAD_DIR=/downloads
+        GET_FINAL_PATH
+        if [[ "$GET_PATH_INFO" == "error" ]]; then
+            :
+        else
+            failed=1
+            ng "未拒绝根目录 FILE_PATH=$file_path SOURCE=$SOURCE_PATH TARGET=$TARGET_PATH"
+        fi
+    done
+    [ "$failed" -eq 0 ] && ok "根目录路径均标记为 error"
+}
+
 t_path_magnet_metadata() {
     hdr "path: 磁力链元数据阶段（FILE_PATH 为空）→ 静默返回"
     reset_path_vars
@@ -797,7 +844,7 @@ t_rrt_triggered_deletes_local() {
     TORRENT_FILE=""  # 无种子缓存
 
     if [ "${RRT}" = "true" ] && [ -d "${COMPLETED_DIR}" ] && [ "${TASK_STATUS}" != "error" ]; then
-        rm -rf "${SOURCE_PATH}"
+        REMOVE_SOURCE_PATH
     fi
 
     if [[ ! -e "$src" && -f "$completed/old.bin" ]]; then
@@ -823,7 +870,7 @@ t_rrt_skip_on_error_status() {
     RRT=true
 
     if [ "${RRT}" = "true" ] && [ -d "${COMPLETED_DIR}" ] && [ "${TASK_STATUS}" != "error" ]; then
-        rm -rf "${SOURCE_PATH}"
+        REMOVE_SOURCE_PATH
     fi
 
     if [[ -f "$src/incomplete.bin" ]]; then
@@ -849,7 +896,7 @@ t_rrt_skip_when_disabled() {
     RRT=false
 
     if [ "${RRT}" = "true" ] && [ -d "${COMPLETED_DIR}" ] && [ "${TASK_STATUS}" != "error" ]; then
-        rm -rf "${SOURCE_PATH}"
+        REMOVE_SOURCE_PATH
     fi
 
     if [[ -f "$src/active.bin" ]]; then
@@ -1124,7 +1171,6 @@ t_filter_keyword
 t_filter_min_size
 t_filter_exclude_regex
 t_filter_skip_single_file
-t_filter_skip_root
 t_filter_delete_empty_dir
 
 # move
@@ -1138,6 +1184,8 @@ t_move_unknown_mode
 # delete / recycle / .aria2
 t_delete_file
 t_move_recycle
+t_delete_guard_root
+t_recycle_guard_root
 t_rm_aria2
 t_rmaria_keep_main_file
 
@@ -1156,6 +1204,7 @@ t_path_bt_single_root
 t_path_bt_single_subdir
 t_path_bt_multi
 t_path_out_of_bounds
+t_path_download_root_rejected
 t_path_magnet_metadata
 
 # RRT 重复任务（start.sh 分支）

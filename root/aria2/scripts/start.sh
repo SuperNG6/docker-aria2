@@ -24,7 +24,7 @@ if [ "${RRT}" = "true" ] && [ -d "${COMPLETED_DIR}" ] && [ "${TASK_STATUS}" != "
     echo -e "$(DATE_TIME) ${WARNING} 正在删除该任务，并清除相关文件... ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
     CHECK_TORRENT
     RM_ARIA2
-    rm -rf "${SOURCE_PATH}"
+    REMOVE_SOURCE_PATH || exit 1
     if ! REMOVE_REPEAT_TASK; then
         echo -e "$(DATE_TIME) ${WARNING} 本地文件已清理，但 RPC 取消任务失败（GID=${LIGHT_GREEN_FONT_PREFIX}${TASK_GID}${FONT_COLOR_SUFFIX}）；aria2 中任务仍存活，可能继续下载并产生新副本" >&2
     fi
