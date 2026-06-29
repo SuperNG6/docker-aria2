@@ -213,6 +213,55 @@ t_filter_delete_empty_dir() {
     fi
 }
 
+# 走真实 LOAD_FILTER_CONF + 配置文件，验证 ^key= 锚定根除前缀污染。
+# include-file 是 include-file-regex 的前缀；若 grep 只锚 ^include-file，
+# 两 key 同时启用时 INCLUDE_FILE 会吞进 regex 行的值（中间夹换行），拼进
+# find -iregex 后正则破碎、include-file 过滤静默失效。
+t_filter_prefix_conflict() {
+    hdr "filter: include-file 与 include-file-regex 同存时前缀不互相污染"
+    local conf="$LOG_DIR/文件过滤.conf"
+    cat >"$conf" <<'EOF'
+include-file=mp4|mkv
+include-file-regex=^.*\.mp4$
+EOF
+    FILTER_CONF="$conf"
+    reset_filter_vars
+    LOAD_FILTER_CONF
+
+    # INCLUDE_FILE 必须只有 mp4|mkv，不含换行、不含 regex 行的值
+    if [[ "$INCLUDE_FILE" == "mp4|mkv" && "$INCLUDE_FILE" != *$'\n'* \
+          && "$INCLUDE_FILE" != *"mp4$"* ]]; then
+        ok "INCLUDE_FILE 未被 regex 行污染: '${INCLUDE_FILE}'"
+    else
+        ng "INCLUDE_FILE 被前缀污染: '${INCLUDE_FILE}'"
+    fi
+    # INCLUDE_FILE_REGEX 必须独立正确
+    if [[ "$INCLUDE_FILE_REGEX" == '^.*\.mp4$' ]]; then
+        ok "INCLUDE_FILE_REGEX 独立读取正确"
+    else
+        ng "INCLUDE_FILE_REGEX 异常: '${INCLUDE_FILE_REGEX}'"
+    fi
+
+    # 端到端：include-file=mp4|mkv 应保留 mp4/mkv、删除 html；regex 不应干扰
+    local task
+    task=$(make_multi_task fx-prefix video.mp4:1 demo.mkv:1 ad.html:1)
+    SOURCE_PATH="$task"
+    FILE_NUM=3
+    DET=false
+    # 重新 LOAD 让规则生效到 DELETE_EXCLUDE_FILE 读取的全局变量
+    FILTER_CONF="$conf"
+    reset_filter_vars
+    LOAD_FILTER_CONF
+    DELETE_EXCLUDE_FILE >/dev/null
+    if [[ -f "$task/video.mp4" && -f "$task/demo.mkv" && ! -f "$task/ad.html" ]]; then
+        ok "include-file 过滤在 regex 同存时仍正常工作"
+    else
+        ng "include-file 过滤被前缀污染破坏"
+        ls -la "$task" >&2
+    fi
+    rm -f "$conf"
+}
+
 # ─────────────────── 移动用例 ───────────────────
 
 t_move_false() {
@@ -1172,6 +1221,7 @@ t_filter_min_size
 t_filter_exclude_regex
 t_filter_skip_single_file
 t_filter_delete_empty_dir
+t_filter_prefix_conflict
 
 # move
 t_move_false
