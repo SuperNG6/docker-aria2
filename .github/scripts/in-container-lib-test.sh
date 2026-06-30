@@ -523,6 +523,37 @@ t_rmaria_keep_main_file() {
     fi
 }
 
+t_rmtask_unknown_keep_metadata() {
+    hdr "RMTASK=未知值：不处理文件、.aria2 或种子"
+    local task="$TEST_ROOT/rmtask-unknown"
+    local torrent="$TEST_ROOT/rmtask-unknown.torrent"
+    mkdir -p "$task"
+    echo payload > "$task/main.bin"
+    echo ctrl > "${task}.aria2"
+    echo torrent > "$torrent"
+
+    SOURCE_PATH="$task"
+    FILE_PATH="$task/main.bin"
+    TARGET_PATH=""
+    TASK_NAME="rmtask-unknown"
+    FILE_NUM=1
+    RMTASK="unknown-mode"
+    TOR="delete"
+    TORRENT_FILE="$torrent"
+
+    if ! declare -F HANDLE_STOP_TASK >/dev/null; then
+        ng "HANDLE_STOP_TASK 未定义，无法复用 stop.sh 的 RMTASK 分流"
+        return
+    fi
+
+    HANDLE_STOP_TASK >/dev/null
+    if [[ -f "$task/main.bin" && -e "${task}.aria2" && -f "$torrent" ]]; then
+        ok "未知 RMTASK 未触碰主文件、.aria2 和种子"
+    else
+        ng "未知 RMTASK 产生了副作用：main=$(test -f "$task/main.bin" && echo +||echo -) aria2=$(test -e "${task}.aria2" && echo +||echo -) torrent=$(test -f "$torrent" && echo +||echo -)"
+    fi
+}
+
 # ─────────────────── 日志输出展示用例（无抑制 stdout，便于 docker logs / CI 日志肉眼检查） ───────────────────
 
 t_log_demo_bulk_filter() {
@@ -1238,6 +1269,7 @@ t_delete_guard_root
 t_recycle_guard_root
 t_rm_aria2
 t_rmaria_keep_main_file
+t_rmtask_unknown_keep_metadata
 
 # torrent
 t_torrent_retain

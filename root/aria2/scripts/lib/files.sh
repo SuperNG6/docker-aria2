@@ -175,3 +175,27 @@ MOVE_RECYCLE() {
         log_line "${RECYCLE_LOG}" ERROR "移动到回收站和删除文件都失败: ${SOURCE_PATH}"
     fi
 }
+
+# stop.sh 的 RMTASK 分流。未知值必须不触碰 .aria2 / .torrent，
+# 否则用户拼错配置会破坏断点续传或种子保留语义。
+HANDLE_STOP_TASK() {
+    case "${RMTASK}" in
+        recycle)
+            MOVE_RECYCLE
+            CHECK_TORRENT
+            RM_ARIA2
+            ;;
+        delete)
+            DELETE_FILE
+            CHECK_TORRENT
+            RM_ARIA2
+            ;;
+        rmaria)
+            CHECK_TORRENT
+            RM_ARIA2
+            ;;
+        *)
+            echo -e "$(DATE_TIME) ${WARNING} 未知的 RMTASK 值: ${YELLOW_FONT_PREFIX}${RMTASK}${FONT_COLOR_SUFFIX}（不处理文件、.aria2 或种子）" >&2
+            ;;
+    esac
+}

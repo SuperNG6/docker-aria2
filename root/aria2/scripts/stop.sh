@@ -17,11 +17,5 @@ GUARD_EVENT              # 磁力/无效任务跳过；路径错误退出
 # 下载出错的任务保留文件供用户排查或续传
 [ "${TASK_STATUS}" = "error" ] && exit 0
 
-# 三种处理模式分流；CHECK_TORRENT 和 RM_ARIA2 由公共尾部统一处理
-case "${RMTASK}" in
-    recycle) MOVE_RECYCLE ;;
-    delete)  DELETE_FILE  ;;
-    rmaria)  ;;  # 不动文件，仅清理 .aria2 控制文件（落到下面统一执行）
-esac
-CHECK_TORRENT
-RM_ARIA2
+# RMTASK 未知值由库函数直接跳过，避免误删断点续传控制文件
+HANDLE_STOP_TASK
