@@ -254,6 +254,7 @@ jobs:
       - name: 等待并检查服务
         env:
           CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
+          PLATFORM: ${{ matrix.platform }}
           RPC_PORT: ${{ matrix.rpc_port }}
           WEB_PORT: ${{ matrix.web_port }}
           A2B_ENABLED: ${{ matrix.a2b_enabled }}
@@ -264,6 +265,19 @@ jobs:
 
           # aria2c 连通判定：jq -e '.result.version' 解析 JSON，不用 grep '"version"'——
           # 错误响应体里也可能含 "version" 字样（与 lib/tracker.sh 的 JSON 契约一致）
+          #
+          # a2b 连通判定分平台：
+          #   amd64：断言日志含 "aria2b 已启动"——该行仅在 initial() 内 RPC 探测 +
+          #          iptables/ipset 初始化全部成功后才输出，比"进程存在"严格
+          #   arm64/arm-v7：GHA ubuntu runner 内核未加载 ip_set/xt_set 模块，QEMU 仿真
+          #          容器无法 modprobe，aria2b 的 ipset 初始化必失败（Cannot open session
+          #          to kernel）。这是平台固有限制而非镜像 bug，故 arm 上 a2b 只验 aria2c
+          #          RPC + WebUI；a2b 的完整连通由 amd64×a2b 兜底
+          REQUIRE_A2B_READY=0
+          if [ "${A2B_ENABLED}" = "true" ] && [ "${PLATFORM}" = "linux/amd64" ]; then
+            REQUIRE_A2B_READY=1
+          fi
+
           A2B_READY=0
           for i in {1..30}; do
             if docker ps --filter "name=${CONTAINER_NAME}" --filter "status=running" --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}" \
@@ -273,11 +287,8 @@ jobs:
                 > /tmp/aria2-rpc.json 2> /tmp/aria2-rpc.err \
               && jq -e '.result.version' /tmp/aria2-rpc.json >/dev/null \
               && curl -fsS "http://127.0.0.1:${WEB_PORT}/" >/dev/null 2> /tmp/aria2-web.err; then
-              # aria2c RPC + WebUI 已就绪。a2b 变体还要确认 aria2b 真连上了 aria2c：
-              # "aria2b 已启动" 日志行仅在 initial() 内 RPC 探测 + iptables/ipset 初始化
-              # 全部成功后才输出；失败则进 runIdleMode 保活但不打印此行——
-              # 因此 grep 到此行 = 真连通，比"进程存在"严格
-              if [ "${A2B_ENABLED}" = "true" ]; then
+              # aria2c RPC + WebUI 已就绪
+              if [ "${REQUIRE_A2B_READY}" = "1" ]; then
                 if docker logs "${CONTAINER_NAME}" 2>&1 | grep -q 'aria2b 已启动'; then
                   A2B_READY=1
                   echo "Smoke test passed (aria2c RPC + WebUI + aria2b 已启动)"
@@ -287,15 +298,19 @@ jobs:
                 sleep 2
                 continue
               fi
-              echo "Smoke test passed (aria2c RPC + WebUI)"
+              if [ "${A2B_ENABLED}" = "true" ]; then
+                echo "Smoke test passed (aria2c RPC + WebUI；arm 平台不要求 aria2b iptables/ipset 初始化)"
+              else
+                echo "Smoke test passed (aria2c RPC + WebUI)"
+              fi
               exit 0
             fi
             sleep 2
           done
 
           echo "=== Smoke test FAILED ==="
-          if [ "${A2B_ENABLED}" = "true" ] && [ "${A2B_READY}" = "0" ]; then
-            echo "a2b 变体：未在日志中找到 'aria2b 已启动'（aria2b 未成功连上 aria2c 或进入 runIdleMode）"
+          if [ "${REQUIRE_A2B_READY}" = "1" ] && [ "${A2B_READY}" = "0" ]; then
+            echo "a2b 变体（amd64）：未在日志中找到 'aria2b 已启动'（aria2b 未成功连上 aria2c 或进入 runIdleMode）"
           fi
           echo "=== docker ps -a ==="
           docker ps -a
