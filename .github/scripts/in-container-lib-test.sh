@@ -222,7 +222,7 @@ t_filter_prefix_conflict() {
     local conf="$LOG_DIR/文件过滤.conf"
     cat >"$conf" <<'EOF'
 include-file=mp4|mkv
-include-file-regex=^.*\.mp4$
+include-file-regex=^.*\.(mp4|mkv)$
 EOF
     FILTER_CONF="$conf"
     reset_filter_vars
@@ -236,13 +236,13 @@ EOF
         ng "INCLUDE_FILE 被前缀污染: '${INCLUDE_FILE}'"
     fi
     # INCLUDE_FILE_REGEX 必须独立正确
-    if [[ "$INCLUDE_FILE_REGEX" == '^.*\.mp4$' ]]; then
+    if [[ "$INCLUDE_FILE_REGEX" == '^.*\.(mp4|mkv)$' ]]; then
         ok "INCLUDE_FILE_REGEX 独立读取正确"
     else
         ng "INCLUDE_FILE_REGEX 异常: '${INCLUDE_FILE_REGEX}'"
     fi
 
-    # 端到端：include-file=mp4|mkv 应保留 mp4/mkv、删除 html；regex 不应干扰
+    # 两个保留规则表达同一组目标，避免把交集语义误判成前缀污染
     local task
     task=$(make_multi_task fx-prefix video.mp4:1 demo.mkv:1 ad.html:1)
     SOURCE_PATH="$task"
