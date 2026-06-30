@@ -1,6 +1,6 @@
 FROM superng6/alpine:3.23 AS builder
 
-RUN apk add --no-cache curl wget unzip
+RUN apk add --no-cache unzip
 
 RUN case "$(uname -m)" in \
          x86_64)        ARCH=x86_64 ;; \
@@ -38,8 +38,8 @@ COPY --from=builder /tmp/index.html       /www/index.html
 COPY --from=builder /tmp/ariang.ver       /tmp/ariang.ver
 COPY --from=builder /usr/local/bin/aria2c /usr/local/bin/aria2c
 
-# 公共依赖
-RUN apk add --no-cache darkhttpd curl wget jq findutils \
+# 公共依赖：curl/wget 由基础镜像提供，此处只补基础镜像没有的包
+RUN apk add --no-cache darkhttpd jq findutils \
     && chmod a+x /usr/local/bin/aria2c
 
 # a2b 变体：装额外包 + 拉 aria2b 二进制；standard 直接删空服务目录

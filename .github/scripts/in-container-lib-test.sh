@@ -900,6 +900,67 @@ t_path_magnet_metadata() {
     fi
 }
 
+# ─────────────────── infoHash 解析用例（GET_INFO_HASH 三态语义） ───────────────────
+#
+# GET_INFO_HASH 返回码语义：0=BT 且 infoHash 有效 / 1=非 BT（infoHash=null）/ 2=解析失败
+# 配套契约：返回 2 时 INFO_HASH 必须清空，不能残留上一次调用的旧值，
+# 否则若调用方未来在失败后降级继续，会拿旧 INFO_HASH 误判任务类型。
+# 这里不 mock curl：GET_INFO_HASH 只解析 RPC_RESULT，不发 RPC。
+
+t_infohash_bt_sets_torrent_file() {
+    hdr "infoHash: BT 任务 → 返回 0，INFO_HASH 有效，TORRENT_FILE 指向 <dir>/<hash>.torrent"
+    RPC_RESULT='{"jsonrpc":"2.0","id":"NG6","result":{"infoHash":"abc123def","dir":"/downloads"}}'
+    INFO_HASH=stale-should-be-overwritten  # 故意置旧值，验证被新值覆盖
+    DOWNLOAD_DIR=/downloads  # GET_INFO_HASH 拼 TORRENT_FILE 依赖此全局（由 GET_DOWNLOAD_DIR 设置）
+    TORRENT_FILE=""
+    local rc
+    GET_INFO_HASH >/dev/null 2>&1
+    rc=$?
+    if [[ $rc -eq 0 \
+        && "$INFO_HASH" == "abc123def" \
+        && "$TORRENT_FILE" == "/downloads/abc123def.torrent" ]]; then
+        ok "BT 任务：返回 0，TORRENT_FILE 推算正确"
+    else
+        ng "BT 任务异常: rc=$rc INFO_HASH=$INFO_HASH TORRENT_FILE=$TORRENT_FILE"
+    fi
+}
+
+t_infohash_non_bt_returns_1() {
+    hdr "infoHash: 非 BT（infoHash=null）→ 返回 1，TORRENT_FILE 不被设置"
+    RPC_RESULT='{"jsonrpc":"2.0","id":"NG6","result":{"infoHash":null,"dir":"/downloads"}}'
+    INFO_HASH=stale-should-be-overwritten
+    DOWNLOAD_DIR=/downloads
+    TORRENT_FILE=""
+    local rc
+    GET_INFO_HASH >/dev/null 2>&1
+    rc=$?
+    if [[ $rc -eq 1 \
+        && "$INFO_HASH" == "null" \
+        && -z "$TORRENT_FILE" ]]; then
+        ok "非 BT：返回 1，INFO_HASH=null，TORRENT_FILE 空（CHECK_TORRENT 将跳过）"
+    else
+        ng "非 BT 异常: rc=$rc INFO_HASH=$INFO_HASH TORRENT_FILE=$TORRENT_FILE"
+    fi
+}
+
+t_infohash_parse_fail_clears_var() {
+    hdr "infoHash: 解析失败（RPC_RESULT 非 JSON）→ 返回 2，INFO_HASH 清空不残留"
+    # 非法 JSON：jq 解析失败，stdout 为空 → INFO_HASH 空串 → 走 return 2（致命错误）路径
+    # 故意前置 stale 值：验证入口 INFO_HASH="" 清空生效，jq 失败不会留下旧值
+    RPC_RESULT='this is not json'
+    INFO_HASH=stale-must-be-cleared
+    DOWNLOAD_DIR=/downloads
+    TORRENT_FILE=""
+    local rc
+    GET_INFO_HASH >/dev/null 2>&1
+    rc=$?
+    if [[ $rc -eq 2 && -z "$INFO_HASH" ]]; then
+        ok "解析失败：返回 2，INFO_HASH 已清空（入口重置 + jq 空输出，无 stale 残留）"
+    else
+        ng "解析失败异常: rc=$rc INFO_HASH=[$INFO_HASH]"
+    fi
+}
+
 # ─────────────────── RRT 重复任务检测用例（start.sh 核心分支） ───────────────────
 #
 # start.sh 的 RRT 触发条件：RRT=true && completed 已有同名目录 && TASK_STATUS != error
@@ -1288,6 +1349,11 @@ t_path_bt_multi
 t_path_out_of_bounds
 t_path_download_root_rejected
 t_path_magnet_metadata
+
+# infoHash 解析三态语义（GET_INFO_HASH）
+t_infohash_bt_sets_torrent_file
+t_infohash_non_bt_returns_1
+t_infohash_parse_fail_clears_var
 
 # RRT 重复任务（start.sh 分支）
 t_rrt_triggered_deletes_local

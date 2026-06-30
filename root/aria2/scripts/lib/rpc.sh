@@ -16,7 +16,10 @@ RPC_TASK_INFO() {
         --arg gid "${TASK_GID}" \
         '{jsonrpc:"2.0",method:"aria2.tellStatus",id:"NG6",
           params:(if $secret == "" then [$gid] else ["token:" + $secret, $gid] end)}')
-    curl "${RPC_ADDRESS}" -fsSd "${payload}" || curl "https://${RPC_ADDRESS}" -kfsSd "${payload}"
+    # 两次 curl 屏蔽 stderr：http 失败降级 https 是正常路径，curl 错误噪音不应进 docker logs
+    # 失败语义由 GET_RPC_RESULT 的空响应判定捕获，不依赖 stderr
+    curl "${RPC_ADDRESS}" -fsSd "${payload}" 2>/dev/null \
+        || curl "https://${RPC_ADDRESS}" -kfsSd "${payload}" 2>/dev/null
 }
 
 # 移除重复任务（aria2 中删除指定 GID 的任务）
@@ -72,6 +75,10 @@ GET_TASK_STATUS() { TASK_STATUS=$(_jq_field status); }
 #   1 - 非 BT 任务（HTTP/FTP），infoHash=null，TORRENT_FILE 未设置（正常路径）
 #   2 - 解析失败（RPC 响应不含 infoHash 字段），致命错误
 GET_INFO_HASH() {
+    # 入口先清空：防止本进程内若再次进入时上一次的 INFO_HASH 残留被误读。
+    # 当前 INIT_EVENT 每次只调一次，此行为不可达；清空是为让"无效=空串"成为显式语义，
+    # 而不是靠"调用方 GET_RPC_INFO 失败必 exit"的隐式契约兜底。
+    INFO_HASH=""
     INFO_HASH=$(echo "${RPC_RESULT}" | jq -r '.result.infoHash')
     if [ -z "${INFO_HASH}" ]; then
         echo "${RPC_RESULT}" | jq '.result' >&2
@@ -79,8 +86,7 @@ GET_INFO_HASH() {
         return 2
     fi
     [ "${INFO_HASH}" = "null" ] && return 1
-    # aria2 把 .torrent 缓存为 <infoHash>.torrent，放在任务下载目录
-    TORRENT_PATH="${DOWNLOAD_DIR}/${INFO_HASH}"
+    # aria2 把磁力元数据缓存为 <dir>/<infoHash>.torrent，放在任务下载目录
     TORRENT_FILE="${DOWNLOAD_DIR}/${INFO_HASH}.torrent"
 }
 
