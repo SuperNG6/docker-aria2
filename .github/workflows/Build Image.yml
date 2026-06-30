@@ -143,7 +143,7 @@ jobs:
           docker buildx imagetools inspect "${{ env.GHCR_IMAGE }}:${TAG_DATED}"
 
   smoke-test:
-    name: 运行检查（${{ matrix.variant }}）
+    name: 运行检查（${{ matrix.variant }}·${{ matrix.platform }}）
     runs-on: ubuntu-latest
     needs: build
     permissions:
@@ -152,6 +152,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # variant × platform 全组合：6 个 job
+        # amd64 跑全量 RPC 集成测试 + 容器内 lib 单测；
+        # arm64 / arm/v7 只验证"启动成功 + aria2c/aria2b 真连通"，
+        # 不跑命中公网 BT tracker 的 E2E（QEMU 仿真 + 共享 runner 上易 flaky）
+        variant:
+          - standard
+          - a2b
+        platform:
+          - linux/amd64
+          - linux/arm64
+          - linux/arm/v7
         include:
           - variant: standard
             rpc_port: 16800
@@ -165,6 +176,13 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v6
 
+      # arm 容器在 x86 runner 上经 QEMU 仿真运行；amd64 不需要但 setup-qemu 无害
+      - name: 设置 QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: 设置 PLATFORM_PAIR
+        run: echo "PLATFORM_PAIR=$(echo '${{ matrix.platform }}' | tr '/' '-')" >> $GITHUB_ENV
+
       - name: 登录到 GitHub Container Registry
         uses: docker/login-action@v4
         with:
@@ -172,10 +190,10 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 下载 amd64 digest
+      - name: 下载 ${{ matrix.platform }} digest
         uses: actions/download-artifact@v8
         with:
-          name: digests-${{ matrix.variant }}-linux-amd64
+          name: digests-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
           path: /tmp/digest
 
       - name: 拉取镜像（按 digest，未发布 tag）
@@ -194,7 +212,7 @@ jobs:
 
       - name: 启动容器
         env:
-          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
           IMAGE: ${{ steps.pull.outputs.image }}
           RPC_PORT: ${{ matrix.rpc_port }}
           WEB_PORT: ${{ matrix.web_port }}
@@ -225,7 +243,7 @@ jobs:
 
       - name: 等待并检查服务
         env:
-          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
           RPC_PORT: ${{ matrix.rpc_port }}
           WEB_PORT: ${{ matrix.web_port }}
           A2B_ENABLED: ${{ matrix.a2b_enabled }}
@@ -234,43 +252,69 @@ jobs:
           timeout 30s docker logs -f "${CONTAINER_NAME}" || true
           echo "Start service probes."
 
-          for i in {1..10}; do
+          # aria2c 连通判定：jq -e '.result.version' 解析 JSON，不用 grep '"version"'——
+          # 错误响应体里也可能含 "version" 字样（与 lib/tracker.sh 的 JSON 契约一致）
+          A2B_READY=0
+          for i in {1..30}; do
             if docker ps --filter "name=${CONTAINER_NAME}" --filter "status=running" --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}" \
               && curl -fsS "http://127.0.0.1:${RPC_PORT}/jsonrpc" \
                 -H 'Content-Type: application/json' \
                 -d '{"jsonrpc":"2.0","method":"aria2.getVersion","id":"smoke","params":["token:smoketoken"]}' \
                 > /tmp/aria2-rpc.json 2> /tmp/aria2-rpc.err \
-              && grep -q '"version"' /tmp/aria2-rpc.json \
+              && jq -e '.result.version' /tmp/aria2-rpc.json >/dev/null \
               && curl -fsS "http://127.0.0.1:${WEB_PORT}/" >/dev/null 2> /tmp/aria2-web.err; then
-              if [ "${A2B_ENABLED}" = "true" ] && ! docker top "${CONTAINER_NAME}" | grep -q '[a]ria2b'; then
+              # aria2c RPC + WebUI 已就绪。a2b 变体还要确认 aria2b 真连上了 aria2c：
+              # "aria2b 已启动" 日志行仅在 initial() 内 RPC 探测 + iptables/ipset 初始化
+              # 全部成功后才输出；失败则进 runIdleMode 保活但不打印此行——
+              # 因此 grep 到此行 = 真连通，比"进程存在"严格
+              if [ "${A2B_ENABLED}" = "true" ]; then
+                if docker logs "${CONTAINER_NAME}" 2>&1 | grep -q 'aria2b 已启动'; then
+                  A2B_READY=1
+                  echo "Smoke test passed (aria2c RPC + WebUI + aria2b 已启动)"
+                  exit 0
+                fi
+                # aria2b 可能还在 initial() 探测中，继续轮询
                 sleep 2
                 continue
               fi
-              echo "Smoke test passed"
+              echo "Smoke test passed (aria2c RPC + WebUI)"
               exit 0
             fi
             sleep 2
           done
 
+          echo "=== Smoke test FAILED ==="
+          if [ "${A2B_ENABLED}" = "true" ] && [ "${A2B_READY}" = "0" ]; then
+            echo "a2b 变体：未在日志中找到 'aria2b 已启动'（aria2b 未成功连上 aria2c 或进入 runIdleMode）"
+          fi
+          echo "=== docker ps -a ==="
           docker ps -a
+          echo "=== RPC response (若有) ==="
           [ -f /tmp/aria2-rpc.json ] && cat /tmp/aria2-rpc.json || true
+          echo "=== RPC error (若有) ==="
           [ -f /tmp/aria2-rpc.err ] && cat /tmp/aria2-rpc.err || true
+          echo "=== WebUI error (若有) ==="
           [ -f /tmp/aria2-web.err ] && cat /tmp/aria2-web.err || true
-          docker logs "${CONTAINER_NAME}" || true
+          echo "=== docker logs (尾 200 行) ==="
+          docker logs --tail 200 "${CONTAINER_NAME}" || true
           exit 1
 
-      - name: RPC 集成测试（${{ matrix.variant }}）
+      - name: RPC 集成测试（${{ matrix.variant }}·仅 amd64）
+        # arm 不跑全量 E2E：t_magnet/t_torrent_file 命中公网 BT tracker，
+        # QEMU 仿真 + 共享 runner 上易 flaky 误判、阻塞发布
+        if: matrix.platform == 'linux/amd64'
         env:
-          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
           RPC_PORT: ${{ matrix.rpc_port }}
         run: |
           chmod +x .github/scripts/rpc-integration-test.sh
           .github/scripts/rpc-integration-test.sh \
             127.0.0.1 "${RPC_PORT}" smoketoken "${CONTAINER_NAME}" "${{ matrix.variant }}"
 
-      - name: 库单元测试（容器内·${{ matrix.variant }}）
+      - name: 库单元测试（容器内·${{ matrix.variant }}·仅 amd64）
+        if: matrix.platform == 'linux/amd64'
         env:
-          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
         run: |
           docker cp .github/scripts/in-container-lib-test.sh \
             "${CONTAINER_NAME}":/tmp/in-container-lib-test.sh
@@ -279,7 +323,7 @@ jobs:
       - name: 失败时收集诊断信息
         if: failure()
         env:
-          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
         run: |
           echo "=== docker ps -a ==="
           docker ps -a
@@ -294,4 +338,4 @@ jobs:
 
       - name: 清理容器
         if: always()
-        run: docker rm -f "aria2-smoke-${{ matrix.variant }}" || true
+        run: docker rm -f "aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}" || true
