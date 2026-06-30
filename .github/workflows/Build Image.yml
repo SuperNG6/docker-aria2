@@ -200,6 +200,7 @@ jobs:
         id: pull
         env:
           GHCR_IMAGE: ${{ env.GHCR_IMAGE }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
           digest=$(ls /tmp/digest | head -1)
           if [ -z "${digest}" ]; then
@@ -208,12 +209,17 @@ jobs:
           fi
           ref="${GHCR_IMAGE}@sha256:${digest}"
           echo "image=${ref}" >> "$GITHUB_OUTPUT"
-          docker pull "${ref}"
+          # --platform 显式拉目标架构：build 的 push-by-digest 产出的是单架构 manifest，
+          # digest 指向的 manifest list 仅含该架构条目。x86 host 上 docker pull 默认按
+          # linux/amd64 匹配会 "no matching manifest"。指定 --platform 拉到本地后，
+          # docker run 再经 QEMU 仿真执行（QEMU 只管 run 仿真，不管 pull 架构选择）
+          docker pull --platform "${PLATFORM}" "${ref}"
 
       - name: 启动容器
         env:
           CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
           IMAGE: ${{ steps.pull.outputs.image }}
+          PLATFORM: ${{ matrix.platform }}
           RPC_PORT: ${{ matrix.rpc_port }}
           WEB_PORT: ${{ matrix.web_port }}
           A2B_ENABLED: ${{ matrix.a2b_enabled }}
@@ -221,6 +227,7 @@ jobs:
           docker_args=(
             -d
             --name "${CONTAINER_NAME}"
+            --platform "${PLATFORM}"
             -p "${RPC_PORT}:6800"
             -p "${WEB_PORT}:8080"
             -e SECRET=smoketoken
@@ -239,6 +246,9 @@ jobs:
             fi
           fi
 
+          # --platform 指定目标架构：image ref 是单架构 manifest list digest，
+          # docker run 默认按宿主 linux/amd64 选条目会 "no matching manifest"；
+          # 指定后选 arm 条目，经 QEMU 仿真执行
           docker run "${docker_args[@]}" "${IMAGE}"
 
       - name: 等待并检查服务
