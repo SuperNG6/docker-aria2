@@ -175,7 +175,16 @@ t_pause_unpause() {
     hdr "7. pause / unpause / remove"
     # 限速到 50K/s + 2MB 文件 ≈ 40s 持续期，确保 pause 介入时任务仍在传输
     rpc aria2.changeGlobalOption '[{"max-overall-download-limit":"50K"}]' >/dev/null
-    local url='https://speed.cloudflare.com/__down?bytes=2097152'
+    local listing url
+    listing=$(curl -fsSL --max-time 30 https://releases.ubuntu.com/24.04/ 2>/dev/null || true)
+    url=$(echo "$listing" \
+        | grep -oE 'https://releases\.ubuntu\.com/24\.04/ubuntu-24\.04\.[0-9]+-live-server-amd64\.iso' \
+        | head -1)
+    if [[ -z "$url" ]]; then
+        ng "无法获取 Ubuntu ISO 列表（网络/上游问题）"
+        rpc aria2.changeGlobalOption '[{"max-overall-download-limit":"0"}]' >/dev/null
+        return
+    fi
     local gid
     gid=$(rpc aria2.addUri "[[\"$url\"]]" | jq -r '.result // ""')
     if [[ -z "$gid" ]]; then
@@ -190,7 +199,12 @@ t_pause_unpause() {
     s=$(wait_status "$gid" paused 10) || true
     [[ "$s" == "paused" ]] && ok "pause → status=paused" \
         || ng "pause expected=paused got=$s"
-    rpc aria2.unpause "[\"$gid\"]" >/dev/null
+    if ! rpc aria2.unpause "[\"$gid\"]" >/dev/null; then
+        ng "unpause RPC 调用失败"
+        cleanup_gid "$gid"
+        rpc aria2.changeGlobalOption '[{"max-overall-download-limit":"0"}]' >/dev/null
+        return
+    fi
     sleep 1
     s=$(rpc aria2.tellStatus "[\"$gid\"]" | jq -r '.result.status // ""')
     [[ "$s" == "active" || "$s" == "waiting" ]] && ok "unpause → status=$s" \
