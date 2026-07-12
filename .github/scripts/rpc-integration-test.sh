@@ -175,16 +175,18 @@ t_pause_unpause() {
     hdr "7. pause / unpause / remove"
     # 限速到 50K/s + 2MB 文件 ≈ 40s 持续期，确保 pause 介入时任务仍在传输
     rpc aria2.changeGlobalOption '[{"max-overall-download-limit":"50K"}]' >/dev/null
-    local listing url
+    local listing url iso_name
     listing=$(curl -fsSL --max-time 30 https://releases.ubuntu.com/24.04/ 2>/dev/null || true)
-    url=$(echo "$listing" \
-        | grep -oE 'https://releases\.ubuntu\.com/24\.04/ubuntu-24\.04\.[0-9]+-live-server-amd64\.iso' \
+    # 列表页用相对路径 href="ubuntu-...iso"，匹配文件名后拼绝对 URL
+    iso_name=$(echo "$listing" \
+        | grep -oE 'ubuntu-24\.04\.[0-9]+-live-server-amd64\.iso' \
         | head -1)
-    if [[ -z "$url" ]]; then
+    if [[ -z "$iso_name" ]]; then
         ng "无法获取 Ubuntu ISO 列表（网络/上游问题）"
         rpc aria2.changeGlobalOption '[{"max-overall-download-limit":"0"}]' >/dev/null
         return
     fi
+    url="https://releases.ubuntu.com/24.04/${iso_name}"
     local gid
     gid=$(rpc aria2.addUri "[[\"$url\"]]" | jq -r '.result // ""')
     if [[ -z "$gid" ]]; then
