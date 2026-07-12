@@ -14,10 +14,10 @@ RUN case "$(uname -m)" in \
     && curl -fsSL "https://github.com/SuperNG6/Aria2-Pro-Core/releases/download/${REL}/aria2-static-linux-${ARCH}.tar.gz" \
        | tar -xz -C /usr/local/bin
 
-RUN VER=$(curl -fsSL https://api.github.com/repos/mayswind/AriaNg/tags \
+RUN VER=$(curl -fsSL https://api.github.com/repos/SuperNG6/AriaNg/tags \
              | grep '"name"' | cut -d\" -f4 | head -1) \
     && curl -fsSL -o /tmp/ariang.zip \
-       "https://github.com/mayswind/AriaNg/releases/download/${VER}/AriaNg-${VER}-AllInOne.zip" \
+       "https://github.com/SuperNG6/AriaNg/releases/download/${VER}/AriaNg-${VER}-AllInOne.zip" \
     && unzip -o /tmp/ariang.zip -d /tmp \
     && echo "${VER}" > /tmp/ariang.ver
 
