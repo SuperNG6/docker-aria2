@@ -961,6 +961,78 @@ t_infohash_parse_fail_clears_var() {
     fi
 }
 
+# ─────────────────── 暂停移动延迟判定用例 ───────────────────
+
+t_pause_mpt_waits_for_stable_pause() {
+    hdr "pause: MPT 等待 30 秒，仅持续 paused 的任务移动"
+    # pause.sh 的 source guard 使测试能直接调用 hook 主体；在子 shell mock 事件、RPC 和文件操作，避免影响后续用例。
+    . /aria2/scripts/pause.sh
+    local stays_paused resumed disabled_during_delay rpc_unavailable
+
+    stays_paused=$(
+        INIT_EVENT() { TASK_GID="$2"; }
+        GUARD_EVENT() { return 0; }
+        sleep() { delay_seconds="$1"; }
+        LOAD_CONF() { :; }
+        GET_RPC_RESULT() { return 0; }
+        GET_TASK_STATUS() { TASK_STATUS=paused; }
+        MOVE_FILE() { move_calls=$((move_calls + 1)); }
+        CHECK_TORRENT() { torrent_calls=$((torrent_calls + 1)); }
+        move_calls=0 torrent_calls=0 delay_seconds=0
+        MPT=true MOVE=false
+        RUN_PAUSE_HOOK paused-task 1 /downloads/file >/dev/null
+        printf '%s:%s:%s:%s' "$move_calls" "$torrent_calls" "$MOVE" "$delay_seconds"
+    )
+    resumed=$(
+        INIT_EVENT() { TASK_GID="$2"; }
+        GUARD_EVENT() { return 0; }
+        sleep() { delay_seconds="$1"; }
+        LOAD_CONF() { :; }
+        GET_RPC_RESULT() { return 0; }
+        GET_TASK_STATUS() { TASK_STATUS=active; }
+        MOVE_FILE() { move_calls=$((move_calls + 1)); }
+        CHECK_TORRENT() { torrent_calls=$((torrent_calls + 1)); }
+        move_calls=0 torrent_calls=0 delay_seconds=0
+        MPT=true MOVE=false
+        RUN_PAUSE_HOOK filtered-task 1 /downloads/file >/dev/null
+        printf '%s:%s:%s:%s' "$move_calls" "$torrent_calls" "$MOVE" "$delay_seconds"
+    )
+    disabled_during_delay=$(
+        INIT_EVENT() { TASK_GID="$2"; }
+        GUARD_EVENT() { return 0; }
+        sleep() { delay_seconds="$1"; }
+        LOAD_CONF() { MPT=false; }
+        GET_RPC_RESULT() { return 0; }
+        GET_TASK_STATUS() { TASK_STATUS=paused; }
+        MOVE_FILE() { move_calls=$((move_calls + 1)); }
+        CHECK_TORRENT() { torrent_calls=$((torrent_calls + 1)); }
+        move_calls=0 torrent_calls=0 delay_seconds=0
+        MPT=true MOVE=false
+        RUN_PAUSE_HOOK disabled-task 1 /downloads/file >/dev/null
+        printf '%s:%s:%s:%s' "$move_calls" "$torrent_calls" "$MOVE" "$delay_seconds"
+    )
+    rpc_unavailable=$(
+        INIT_EVENT() { TASK_GID="$2"; }
+        GUARD_EVENT() { return 0; }
+        sleep() { delay_seconds="$1"; }
+        LOAD_CONF() { :; }
+        GET_RPC_RESULT() { return 1; }
+        MOVE_FILE() { move_calls=$((move_calls + 1)); }
+        CHECK_TORRENT() { torrent_calls=$((torrent_calls + 1)); }
+        move_calls=0 torrent_calls=0 delay_seconds=0
+        MPT=true MOVE=false
+        RUN_PAUSE_HOOK unavailable-task 1 /downloads/file >/dev/null 2>&1
+        printf '%s:%s:%s:%s' "$move_calls" "$torrent_calls" "$MOVE" "$delay_seconds"
+    )
+
+    if [[ "$stays_paused" == "1:1:true:30" && "$resumed" == "0:0:false:30" \
+        && "$disabled_during_delay" == "0:0:false:30" && "$rpc_unavailable" == "0:0:false:30" ]]; then
+        ok "持续暂停才移动；恢复下载、关闭功能或无法确认状态时不移动"
+    else
+        ng "暂停移动延迟分支异常：paused=$stays_paused resumed=$resumed disabled=$disabled_during_delay unavailable=$rpc_unavailable"
+    fi
+}
+
 # ─────────────────── RRT 重复任务检测用例（start.sh 核心分支） ───────────────────
 #
 # start.sh 的 RRT 触发条件：RRT=true && completed 已有同名目录 && TASK_STATUS != error
@@ -1354,6 +1426,7 @@ t_path_magnet_metadata
 t_infohash_bt_sets_torrent_file
 t_infohash_non_bt_returns_1
 t_infohash_parse_fail_clears_var
+t_pause_mpt_waits_for_stable_pause
 
 # RRT 重复任务（start.sh 分支）
 t_rrt_triggered_deletes_local
