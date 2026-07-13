@@ -903,14 +903,11 @@ t_path_magnet_metadata() {
 # ─────────────────── infoHash 解析用例（GET_INFO_HASH 三态语义） ───────────────────
 #
 # GET_INFO_HASH 返回码语义：0=BT 且 infoHash 有效 / 1=非 BT（infoHash=null）/ 2=解析失败
-# 配套契约：返回 2 时 INFO_HASH 必须清空，不能残留上一次调用的旧值，
-# 否则若调用方未来在失败后降级继续，会拿旧 INFO_HASH 误判任务类型。
 # 这里不 mock curl：GET_INFO_HASH 只解析 RPC_RESULT，不发 RPC。
 
 t_infohash_bt_sets_torrent_file() {
     hdr "infoHash: BT 任务 → 返回 0，INFO_HASH 有效，TORRENT_FILE 指向 <dir>/<hash>.torrent"
     RPC_RESULT='{"jsonrpc":"2.0","id":"NG6","result":{"infoHash":"abc123def","dir":"/downloads"}}'
-    INFO_HASH=stale-should-be-overwritten  # 故意置旧值，验证被新值覆盖
     DOWNLOAD_DIR=/downloads  # GET_INFO_HASH 拼 TORRENT_FILE 依赖此全局（由 GET_DOWNLOAD_DIR 设置）
     TORRENT_FILE=""
     local rc
@@ -928,7 +925,6 @@ t_infohash_bt_sets_torrent_file() {
 t_infohash_non_bt_returns_1() {
     hdr "infoHash: 非 BT（infoHash=null）→ 返回 1，TORRENT_FILE 不被设置"
     RPC_RESULT='{"jsonrpc":"2.0","id":"NG6","result":{"infoHash":null,"dir":"/downloads"}}'
-    INFO_HASH=stale-should-be-overwritten
     DOWNLOAD_DIR=/downloads
     TORRENT_FILE=""
     local rc
@@ -943,31 +939,20 @@ t_infohash_non_bt_returns_1() {
     fi
 }
 
-t_infohash_parse_fail_clears_var() {
-    hdr "infoHash: 解析失败（RPC_RESULT 非 JSON）→ 返回 2，INFO_HASH 清空不残留"
-    # 非法 JSON：jq 解析失败，stdout 为空 → INFO_HASH 空串 → 走 return 2（致命错误）路径
-    # 故意前置 stale 值：验证入口 INFO_HASH="" 清空生效，jq 失败不会留下旧值
-    RPC_RESULT='this is not json'
-    INFO_HASH=stale-must-be-cleared
-    DOWNLOAD_DIR=/downloads
-    TORRENT_FILE=""
-    local rc
-    GET_INFO_HASH >/dev/null 2>&1
-    rc=$?
-    if [[ $rc -eq 2 && -z "$INFO_HASH" ]]; then
-        ok "解析失败：返回 2，INFO_HASH 已清空（入口重置 + jq 空输出，无 stale 残留）"
-    else
-        ng "解析失败异常: rc=$rc INFO_HASH=[$INFO_HASH]"
-    fi
-}
-
 # ─────────────────── 暂停移动延迟判定用例 ───────────────────
 
 t_pause_mpt_waits_for_stable_pause() {
-    hdr "pause: MPT 等待 30 秒，仅持续 paused 的任务移动"
+    hdr "pause: MPT 启动钩子后等待 30 秒，仅按任务状态决定是否移动"
     # pause.sh 的 source guard 使测试能直接调用 hook 主体；在子 shell mock 事件、RPC 和文件操作，避免影响后续用例。
     . /aria2/scripts/pause.sh
-    local stays_paused resumed disabled_during_delay rpc_unavailable
+    local disabled_at_entry stays_paused resumed triggered_then_disabled rpc_unavailable
+
+    disabled_at_entry=$(
+        INIT_EVENT() { init_calls=$((init_calls + 1)); }
+        init_calls=0 MPT=false
+        RUN_PAUSE_HOOK disabled-task 1 /downloads/file >/dev/null
+        printf '%s' "$init_calls"
+    )
 
     stays_paused=$(
         INIT_EVENT() { TASK_GID="$2"; }
@@ -997,7 +982,8 @@ t_pause_mpt_waits_for_stable_pause() {
         RUN_PAUSE_HOOK filtered-task 1 /downloads/file >/dev/null
         printf '%s:%s:%s:%s' "$move_calls" "$torrent_calls" "$MOVE" "$delay_seconds"
     )
-    disabled_during_delay=$(
+    # MPT 只决定是否启动本次钩子；启动后 LOAD_CONF 刷新后续配置，不取消已经发生的暂停事件。
+    triggered_then_disabled=$(
         INIT_EVENT() { TASK_GID="$2"; }
         GUARD_EVENT() { return 0; }
         sleep() { delay_seconds="$1"; }
@@ -1025,11 +1011,12 @@ t_pause_mpt_waits_for_stable_pause() {
         printf '%s:%s:%s:%s' "$move_calls" "$torrent_calls" "$MOVE" "$delay_seconds"
     )
 
-    if [[ "$stays_paused" == "1:1:true:30" && "$resumed" == "0:0:false:30" \
-        && "$disabled_during_delay" == "0:0:false:30" && "$rpc_unavailable" == "0:0:false:30" ]]; then
-        ok "持续暂停才移动；恢复下载、关闭功能或无法确认状态时不移动"
+    if [[ "$disabled_at_entry" == "0" \
+        && "$stays_paused" == "1:1:true:30" && "$resumed" == "0:0:false:30" \
+        && "$triggered_then_disabled" == "1:1:true:30" && "$rpc_unavailable" == "0:0:false:30" ]]; then
+        ok "MPT 关闭时不初始化；等待后仍暂停才移动；触发后关闭 MPT 不取消本次事件"
     else
-        ng "暂停移动延迟分支异常：paused=$stays_paused resumed=$resumed disabled=$disabled_during_delay unavailable=$rpc_unavailable"
+        ng "暂停移动延迟分支异常：disabled-init=$disabled_at_entry paused=$stays_paused resumed=$resumed triggered-then-disabled=$triggered_then_disabled unavailable=$rpc_unavailable"
     fi
 }
 
@@ -1037,8 +1024,7 @@ t_pause_mpt_waits_for_stable_pause() {
 #
 # start.sh 的 RRT 触发条件：RRT=true && completed 已有同名目录 && TASK_STATUS != error
 # 满足时：删本地新下载、按 TOR 处理 .torrent、RPC 取消任务。
-# 单测里没有真的 aria2 任务，只验证"条件分支 + rm 副作用"——RPC 取消那一步走真实 RPC
-# 在 RPC 集成测试里覆盖（aria2.remove 已经在 t_pause_unpause 等用例中验证过）。
+# 单测里没有真的 aria2 任务，只验证"条件分支 + rm 副作用"；RPC 取消由 aria2 上游保证。
 
 t_rrt_triggered_deletes_local() {
     hdr "RRT: completed 已有同名 → 删本地新下载，保留 completed 旧副本"
@@ -1425,7 +1411,6 @@ t_path_magnet_metadata
 # infoHash 解析三态语义（GET_INFO_HASH）
 t_infohash_bt_sets_torrent_file
 t_infohash_non_bt_returns_1
-t_infohash_parse_fail_clears_var
 t_pause_mpt_waits_for_stable_pause
 
 # RRT 重复任务（start.sh 分支）

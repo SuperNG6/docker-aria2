@@ -613,7 +613,7 @@ services:
     volumes:
       - $PWD/config:/config
       - $PWD/downloads:/downloads
-      - /lib/modules:/lib/modules
+      - /lib/modules:/lib/modules:ro
     restart: unless-stopped   
 ```
 

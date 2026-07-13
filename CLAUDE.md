@@ -72,7 +72,7 @@ dev-refactor-20260521
 
 ## 上游依赖
 
-本镜像由三个上游组合而成。不要根据旧记忆猜行为，有疑问时查实际代码或 release。
+本镜像由四个上游组合而成。不要根据旧记忆猜行为，有疑问时查实际代码或 release。
 
 ### 基础镜像
 
@@ -536,7 +536,8 @@ build → smoke-test → merge
 规则：
 
 * build 阶段按 digest 推送
-* smoke-test 只在 amd64 runner 上运行
+* 所有架构都运行启动与服务连通 smoke-test
+* 完整 RPC 集成测试和容器内 lib 测试仅在 amd64 运行
 * smoke-test 通过后才 merge 成用户可见 tag
 * 失败测试绝不发布用户可见 tag
 
@@ -595,16 +596,11 @@ uname -m
 
 覆盖重点：
 
-* aria2 JSON-RPC 基础能力
-* HTTP 下载
-* 磁力任务
-* torrent 提交
-* pause / unpause / remove
-* aria2.conf 默认值断言
-* tracker RPC 端到端
-* MOVE 端到端
+* RPC 服务连通
+* aria2.conf 中 `FA` / `SMD` / `BTPORT` 的项目默认值
+* `move-task=true` 时下载完成 hook 的 MOVE 端到端行为
 
-注意：`rpc()` helper 通过 stdin 把参数传给 `jq`，用于绕过 Linux 单参数 128KB 限制。不要重构回 `--argjson`，torrent base64 可能超长。
+aria2 原生 RPC、磁力、torrent、pause/unpause 等能力由上游保证，不在本项目重复测试。
 
 ### 容器内 lib 单元测试
 

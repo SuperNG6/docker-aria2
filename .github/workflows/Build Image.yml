@@ -325,8 +325,7 @@ jobs:
           exit 1
 
       - name: RPC 集成测试（${{ matrix.variant }}·仅 amd64）
-        # arm 不跑全量 E2E：t_magnet/t_torrent_file 命中公网 BT tracker，
-        # QEMU 仿真 + 共享 runner 上易 flaky 误判、阻塞发布
+        # arm 只做启动与服务连通；下载完成 hook E2E 留给 amd64，避免 QEMU 放大外网波动。
         if: matrix.platform == 'linux/amd64'
         env:
           CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}

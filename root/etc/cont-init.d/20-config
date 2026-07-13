@@ -30,11 +30,6 @@ fi
 [ -e /config/aria2.session ] || touch /config/aria2.session
 [ -e /config/dht.dat ]       || touch /config/dht.dat
 
-# 2021.03.15 变更：日志文件从 /config/ 根目录迁到 /config/logs/
-if [ -e /config/move.log ] || [ -e /config/recycle.log ] || [ -e /config/delete.log ] || [ -e /config/文件过滤日志.log ]; then
-    mv /config/*.log /config/logs/
-fi
-
 # 各功能日志文件按需创建（缺一即补）
 for log in move.log recycle.log delete.log 文件过滤日志.log; do
     [ -e "/config/logs/${log}" ] || touch "/config/logs/${log}"
