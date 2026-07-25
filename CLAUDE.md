@@ -191,22 +191,7 @@ XL,SD,XF,QD,BN
 * 配置持久化目录：`/config`
 * 下载目录：通常为 `/downloads`
 
-本 Dockerfile 在基础镜像之上添加：
-
-* `darkhttpd`
-* `jq`
-* `findutils`
-* `aria2c`
-* AriaNg AllInOne 静态文件
-* `root/` overlay
-
-`a2b` 变体额外添加：
-
-* `iptables`
-* `iptables-legacy`
-* `ipset`
-* `nodejs`
-* `aria2b`
+> 本镜像在基础镜像上额外安装哪些包、`a2b` 变体额外加什么，参见 `Dockerfile`，不在此复述。
 
 ## s6-overlay v2 约束
 
@@ -236,42 +221,7 @@ exec s6-svc -d .
 
 ## 目录结构
 
-```text
-root/
-├── aria2/
-│   ├── conf/
-│   │   ├── aria2.conf.default
-│   │   ├── setting.conf
-│   │   ├── 文件过滤.conf
-│   │   ├── rpc-tracker0
-│   │   └── rpc-tracker1
-│   └── scripts/
-│       ├── lib/
-│       │   ├── event.sh
-│       │   ├── log.sh
-│       │   ├── config.sh
-│       │   ├── files.sh
-│       │   ├── filter.sh
-│       │   ├── torrent.sh
-│       │   ├── rpc.sh
-│       │   └── tracker.sh
-│       ├── completed.sh
-│       ├── start.sh
-│       ├── stop.sh
-│       └── pause.sh
-└── etc/
-    ├── cont-init.d/
-    │   ├── 11-version
-    │   ├── 20-config
-    │   ├── 30-config
-    │   ├── 40-config
-    │   ├── 50-config
-    │   ├── 90-custom-folders
-    │   └── 99-custom-scripts
-    └── services.d/
-        ├── aria2/run
-        └── aria2b/run
-```
+仓库根下分 `root/`（容器 overlay：`aria2/` 脚本与配置、`etc/` s6 启动钩子）两层；完整文件树可由 `find root -type f` 重建，不在此罗列。
 
 `90-custom-folders` 和 `99-custom-scripts` 是有意保留的空钩子，不要删除。
 
@@ -468,6 +418,26 @@ GET_RPC_INFO || exit 1
 -e QUIET=false
 ```
 
+## 启动信息横幅
+
+`cont-init.d/11-version` 在项目配置初始化前展示本次启动信息。
+
+数据来源按是否会在后续初始化阶段变化区分：
+
+* `PORT`、`BTPORT`、`WEBUI`、`WEBUI_PORT`、`CACHE`、`QUIET`、`UT`、
+  `RUT`、`CTU`、`SMD`、`FA`、`A2B` 等显示本次环境变量的预期生效值。
+* RPC HTTPS 状态只读取已存在的 `/config/aria2.conf`，首次配置使用默认 HTTP。
+* 移动、停止任务处理、过滤、种子处理、重复任务和暂停移动只读取已存在的
+  `/config/setting.conf`。
+* `setting.conf` 不存在时不逐项展示模板默认值，只提示本次将使用项目默认配置。
+* Aria2 版本通过 `aria2c --version` 获取；AriaNg、aria2b 和镜像版本读取
+  `/aria2/build-date`。
+* standard / a2b 变体通过 `/usr/local/bin/aria2b` 是否存在判断，不依赖构建期 ARG。
+* RPC token 只展示未配置、默认令牌或已配置状态，绝不输出自定义 token。
+
+横幅展示的是初始化配置，不代表 aria2c、WebUI 或 aria2b 已完成健康检查，因此文案不得写成
+“服务启动成功”。
+
 ## cron 规则
 
 `30-config` 将 tracker cron 写入：
@@ -491,7 +461,10 @@ crontab -l
 crontab -
 ```
 
-注册 aria2b 重启 cron。两个路径在本镜像中可以共存，不冲突。
+注册 aria2b 重启 cron。aria2b v2.2.0 的实际进程是 Node.js，不能用
+`pkill -x aria2b`；定时任务必须通过
+`s6-svc -r /var/run/s6/services/aria2b` 重启 s6 服务。两个 cron 路径在本镜像中
+可以共存，不冲突。
 
 `30-config` 应始终启动 crond。不要改回仅在 `RUT=true` 时启动，否则 aria2b 重启 cron 和 Alpine periodic 会失效。
 
@@ -585,147 +558,14 @@ uname -m
 
 不要无理由改成 `ARG TARGETARCH`。
 
-## 测试
+## 测试与常用命令
 
-### 宿主侧 RPC 集成测试
+测试脚本路径、调用方式、本地构建、触发/查看 CI、standard 与 a2b 本地 smoke-test 的具体命令块，统一放在 `refactor-guide` 技能（`.claude/skills/refactor-guide/SKILL.md`）中，按需加载，不常驻上下文。
 
-脚本：
+两条不可从代码推断的约束仍在此保留：
 
-```text
-.github/scripts/rpc-integration-test.sh
-```
-
-用法：
-
-```bash
-.github/scripts/rpc-integration-test.sh <host> <port> <secret> [container-name] [variant]
-```
-
-覆盖重点：
-
-* RPC 服务连通
-* aria2.conf 中 `FA` / `SMD` / `BTPORT` 的项目默认值
-* `move-task=true` 时下载完成 hook 的 MOVE 端到端行为
-
-aria2 原生 RPC、磁力、torrent、pause/unpause 等能力由上游保证，不在本项目重复测试。
-
-### 容器内 lib 单元测试
-
-脚本：
-
-```text
-.github/scripts/in-container-lib-test.sh
-```
-
-用法：
-
-```bash
-docker cp .github/scripts/in-container-lib-test.sh aria2-local:/tmp/
-docker exec aria2-local bash /tmp/in-container-lib-test.sh
-```
-
-覆盖重点：
-
-* filter
-  * 是否按任务目录的真实文件数决定多文件过滤，不依赖 aria2 hook 的文件数
-* move
-* delete / recycle / `.aria2`
-* torrent 处理
-* path 计算
-  * 项目保留目录不能成为任务根目录
-* RRT 重复任务处理
-* tracker
-* aria2b HTTP / HTTPS RPC URL 选择（仅 a2b 变体）
-* config 升级保留
-* version banner
-* log demo
-
-该脚本有意不开 `set -u`。不要强行加。部分日志函数依赖 hook 场景中的隐式变量，单元测试无法总是预设。
-
-## 常用命令
-
-### 语法预检
-
-```bash
-bash -n .github/scripts/rpc-integration-test.sh
-bash -n .github/scripts/in-container-lib-test.sh
-bash -n root/aria2/scripts/lib/*.sh
-bash -n root/etc/cont-init.d/*-* root/etc/services.d/*/run
-python3 -c "import yaml; yaml.safe_load(open('.github/workflows/Build Image.yml'))"
-```
-
-### ShellCheck
-
-```bash
-shellcheck --severity=warning -x \
-  root/aria2/scripts/lib/*.sh \
-  root/aria2/scripts/*.sh \
-  root/etc/cont-init.d/*-* \
-  root/etc/services.d/*/run \
-  .github/scripts/*.sh \
-  build.sh
-```
-
-### 本地构建
-
-```bash
-./build.sh
-./build.sh a2b
-./build.sh all
-```
-
-### 触发当前分支 CI
-
-```bash
-gh workflow run "Build Image.yml" --ref "$(git rev-parse --abbrev-ref HEAD)"
-```
-
-### 查看最新运行
-
-```bash
-gh run list --workflow="Build Image.yml" \
-  --branch "$(git rev-parse --abbrev-ref HEAD)" \
-  --limit 3
-
-gh run view <run-id> --log-failed
-```
-
-### 本地 smoke-test：standard
-
-```bash
-IMAGE=ghcr.io/superng6/aria2:dev-latest
-
-docker run -d --name aria2-local \
-  -p 16800:6800 \
-  -p 18080:8080 \
-  -e SECRET=smoketoken \
-  -e UT=false \
-  -e RUT=false \
-  "${IMAGE}"
-
-.github/scripts/rpc-integration-test.sh \
-  127.0.0.1 16800 smoketoken aria2-local standard
-
-docker cp .github/scripts/in-container-lib-test.sh aria2-local:/tmp/
-docker exec aria2-local bash /tmp/in-container-lib-test.sh
-
-docker rm -f aria2-local
-```
-
-### 本地 smoke-test：a2b
-
-```bash
-docker run -d --name aria2b-local \
-  --cap-add NET_ADMIN \
-  -v /lib/modules:/lib/modules:ro \
-  -p 16801:6800 \
-  -p 18081:8080 \
-  -e A2B=true \
-  -e SECRET=smoketoken \
-  -e UT=false \
-  -e RUT=false \
-  ghcr.io/superng6/aria2:a2b-dev-latest
-```
+* 容器内 lib 测试脚本（`.github/scripts/in-container-lib-test.sh`）有意不开 `set -u`，不要强行加；部分日志函数依赖 hook 场景中的隐式变量。
+* aria2 原生 RPC、磁力、torrent、pause/unpause 等能力由上游保证，不在本项目重复测试。
 
 ## 修改前 checklist
 
@@ -780,18 +620,6 @@ docker run -d --name aria2b-local \
 ## 已知且接受的设计
 
 以下事项已评审并接受，不要重复当作 bug 提出：
-
-### `11-version` 中 aria2c 版本字符串可能陈旧
-
-启动横幅中 aria2c 版本字符串可能与实际二进制版本漂移。真实版本可通过：
-
-```bash
-aria2c --version
-```
-
-获取。
-
-该问题只影响展示，不影响控制流，暂不修复。
 
 ### `setting.conf` 不接受 env var
 
