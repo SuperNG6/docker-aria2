@@ -8,13 +8,16 @@
 #   紫色 LIGHT_PURPLE：种子相关（TORRENT_FILE，与 TASK_INFO 紫色字段一致）
 
 # 判断 SOURCE_PATH 是否是 /downloads 下的具体任务路径。
-# 这里只守住一个真实风险：不要对 /downloads 根目录本身做 rm/mv/find。
+# 除根目录外，也拒绝项目共享目录本身；BT 根目录若与这些名称撞名，
+# 不能把历史 completed/recycle/move-failed 内容当成本次任务整体操作。
 IS_TASK_SOURCE_PATH() {
     local root="${DOWNLOAD_PATH%/}" path="${1:-}"
     path="${path%/}"
     [ -n "${root}" ] && [ -n "${path}" ] || return 1
-    [ "${path}" != "${root}" ] || return 1
     case "${path}" in
+        "${root}"|"${root}/completed"|"${root}/recycle"|"${root}/move-failed")
+            return 1
+            ;;
         "${root}/"*) return 0 ;;
         *)           return 1 ;;
     esac

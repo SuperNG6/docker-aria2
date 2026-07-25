@@ -1,45 +1,67 @@
 #!/usr/bin/with-contenv bash
 # aria2b 服务启动脚本（由 s6-overlay 管理）
 # aria2b 是一个 BT 流量优化代理，仅在 a2b 变体（VARIANT=a2b）中安装
-# A2B=true 时正常启动；A2B!=true 时执行 s6-svc -d . 让 s6 停止监控本服务，
-# 避免 s6 因进程不存在而无限重启（标准的 s6-overlay v2 服务禁用方式）
 
-if [ "${A2B}" != "true" ]; then
-    echo "信息：Aria2B 功能未启用（A2B!=true）"
-    # 通知 s6 停止监控本服务（-d = down），防止 s6 因 exec 退出而反复重启
-    exec s6-svc -d .
-fi
-
-echo "信息：Aria2B 功能已启用。"
-# aria2b 需要 aria2c 的 RPC 接口已就绪，poll 至多 30 秒直至 RPC 响应
-# 早期固定 sleep 10 在 RPC 慢启动时仍可能抢跑；改 poll 既快又稳
-# payload 用 jq 构造：SECRET 含 " \ 换行等特殊字符也能安全转义，与 lib/rpc.sh 风格统一
-echo "信息：等待 Aria2c RPC 就绪 ..."
-PROBE_PAYLOAD=$(jq -nc \
-    --arg secret "${SECRET}" \
-    '{jsonrpc:"2.0",id:"a2b-wait",method:"aria2.getVersion",
-      params:(if $secret == "" then [] else ["token:" + $secret] end)}')
-for i in $(seq 1 30); do
-    if curl -fsS --max-time 1 "http://127.0.0.1:${PORT}/jsonrpc" \
-        -H 'Content-Type: application/json' \
-        -d "${PROBE_PAYLOAD}" \
-        >/dev/null 2>&1; then
-        echo "信息：Aria2c RPC 已就绪（${i}s）"
-        break
+# 根据 aria2.conf 的有效 rpc-secure 配置选择本地 RPC 协议。
+# 注释行不生效；HTTPS 为本地自签证书场景，与 lib/rpc.sh 一样跳过证书校验。
+GET_ARIA2B_RPC_URL() {
+    local conf=${1:-/config/aria2.conf} scheme=http
+    if grep -Eq \
+        '^[[:space:]]*rpc-secure[[:space:]]*=[[:space:]]*true([[:space:]]*(#.*)?)?$' \
+        "${conf}" 2>/dev/null; then
+        scheme=https
     fi
-    sleep 1
-done
+    printf '%s://127.0.0.1:%s/jsonrpc' "${scheme}" "${PORT}"
+}
 
-# 用数组装参数：A2B_DISABLE_LOG 控制是否丢弃输出，启停两路径共享同一份参数
-ARGS=(
-    aria2b
-    -c "/config/aria2.conf"
-    -u "http://127.0.0.1:${PORT}/jsonrpc"
-    -s "${SECRET}"
-)
+RUN_ARIA2B_SERVICE() {
+    if [ "${A2B}" != "true" ]; then
+        echo "信息：Aria2B 功能未启用（A2B!=true）"
+        # 通知 s6 停止监控本服务（-d = down），防止 s6 因 exec 退出而反复重启
+        exec s6-svc -d .
+    fi
 
-if [ "${A2B_DISABLE_LOG}" = "true" ]; then
-    exec "${ARGS[@]}" > /dev/null 2>&1
-else
-    exec "${ARGS[@]}"
+    local rpc_url probe_payload i
+    local -a curl_args args
+    rpc_url=$(GET_ARIA2B_RPC_URL)
+    curl_args=(-fsS --max-time 1)
+    [ "${rpc_url%%:*}" = "https" ] && curl_args+=(-k)
+
+    echo "信息：Aria2B 功能已启用。"
+    # aria2b 需要 aria2c 的 RPC 接口已就绪，poll 至多 30 秒直至 RPC 响应
+    # payload 用 jq 构造：SECRET 含 " \ 换行等特殊字符也能安全转义
+    echo "信息：等待 Aria2c RPC 就绪 ..."
+    probe_payload=$(jq -nc \
+        --arg secret "${SECRET}" \
+        '{jsonrpc:"2.0",id:"a2b-wait",method:"aria2.getVersion",
+          params:(if $secret == "" then [] else ["token:" + $secret] end)}')
+    for i in $(seq 1 30); do
+        if curl "${curl_args[@]}" "${rpc_url}" \
+            -H 'Content-Type: application/json' \
+            -d "${probe_payload}" \
+            >/dev/null 2>&1; then
+            echo "信息：Aria2c RPC 已就绪（${i}s）"
+            break
+        fi
+        sleep 1
+    done
+
+    # 探测与 aria2b 共用 rpc_url，避免 rpc-secure=true 时协议不一致
+    args=(
+        aria2b
+        -c "/config/aria2.conf"
+        -u "${rpc_url}"
+        -s "${SECRET}"
+    )
+
+    if [ "${A2B_DISABLE_LOG}" = "true" ]; then
+        exec "${args[@]}" > /dev/null 2>&1
+    else
+        exec "${args[@]}"
+    fi
+}
+
+# source guard：容器直接执行时启动服务；库测试 source 时只加载 URL 选择函数。
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    RUN_ARIA2B_SERVICE "$@"
 fi

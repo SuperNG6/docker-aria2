@@ -36,6 +36,8 @@ mkdir -p "$LOG_DIR"
 . "$LIB/torrent.sh"
 . "$LIB/event.sh"   # 提供 GET_BASE_PATH / GET_FINAL_PATH / GET_TARGET_PATH
 . "$LIB/tracker.sh" # source guard 让其不自动跑 main
+# standard 变体会删除 aria2b 服务；a2b 变体 source guard 只加载 RPC URL 选择函数。
+[ -f /etc/services.d/aria2b/run ] && . /etc/services.d/aria2b/run
 
 # 公共全局：files/filter 库读取的"全局基础路径"
 DOWNLOAD_PATH=/downloads
@@ -903,6 +905,26 @@ t_path_download_root_rejected() {
     [ "$failed" -eq 0 ] && ok "根目录路径均标记为 error"
 }
 
+t_path_reserved_roots_rejected() {
+    hdr "path: 项目保留目录不能作为任务根目录"
+    local reserved failed=0
+    for reserved in completed recycle move-failed; do
+        reset_path_vars
+        FILE_NUM=5
+        FILE_PATH="/downloads/${reserved}/file.bin"
+        INFO_HASH=abc123def
+        DOWNLOAD_DIR=/downloads
+        GET_FINAL_PATH
+        if [[ "$GET_PATH_INFO" == "error" ]]; then
+            :
+        else
+            failed=1
+            ng "未拒绝保留目录：$reserved SOURCE=$SOURCE_PATH TARGET=$TARGET_PATH"
+        fi
+    done
+    [ "$failed" -eq 0 ] && ok "completed/recycle/move-failed 根目录均被拒绝"
+}
+
 t_path_magnet_metadata() {
     hdr "path: 磁力链元数据阶段（FILE_PATH 为空）→ 静默返回"
     reset_path_vars
@@ -915,6 +937,31 @@ t_path_magnet_metadata() {
         ok "FILE_PATH 空时不计算路径"
     else
         ng "意外算出 SOURCE=$SOURCE_PATH"
+    fi
+}
+
+# ─────────────────── aria2b RPC URL 用例（仅 a2b 变体） ───────────────────
+
+t_aria2b_rpc_url_scheme() {
+    hdr "aria2b: rpc-secure 控制本地 RPC URL 协议"
+    local conf="$TEST_ROOT/aria2b-rpc.conf"
+    local PORT=16800 http_url https_url https_comment_url
+
+    printf '%s\n' '# rpc-secure=true' 'rpc-secure=false' > "$conf"
+    http_url=$(GET_ARIA2B_RPC_URL "$conf")
+
+    printf '%s\n' 'rpc-secure = true' > "$conf"
+    https_url=$(GET_ARIA2B_RPC_URL "$conf")
+
+    printf '%s\n' '  rpc-secure=true # local TLS' > "$conf"
+    https_comment_url=$(GET_ARIA2B_RPC_URL "$conf")
+
+    if [[ "$http_url" == "http://127.0.0.1:16800/jsonrpc" \
+        && "$https_url" == "https://127.0.0.1:16800/jsonrpc" \
+        && "$https_comment_url" == "https://127.0.0.1:16800/jsonrpc" ]]; then
+        ok "注释/false 使用 HTTP，有效 true 使用 HTTPS"
+    else
+        ng "URL 选择异常：http=$http_url https=$https_url comment=$https_comment_url"
     fi
 }
 
@@ -1425,7 +1472,11 @@ t_path_bt_single_subdir
 t_path_bt_multi
 t_path_out_of_bounds
 t_path_download_root_rejected
+t_path_reserved_roots_rejected
 t_path_magnet_metadata
+
+# aria2b（standard 变体没有服务目录，跳过）
+declare -F GET_ARIA2B_RPC_URL >/dev/null && t_aria2b_rpc_url_scheme
 
 # infoHash 解析三态语义（GET_INFO_HASH）
 t_infohash_bt_sets_torrent_file

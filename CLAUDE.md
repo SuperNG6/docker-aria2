@@ -48,13 +48,11 @@ dev-refactor-20260521
 * aria2b 等待同容器内 aria2c RPC
 * AriaNg 访问同容器内 RPC / WebUI
 
-外部网络是不可控边界，需要 timeout / retry / fallback：
+除“已知且接受的设计”中明确列出的 Dockerfile GitHub 下载外，外部网络是不可控边界，需要 timeout / retry / fallback：
 
 * tracker 列表
-* GitHub Releases / CDN
 * 用户自定义 `CTU`
 * cron 触发的外部刷新
-* 构建阶段的远程下载
 
 不要机械地给所有本地 RPC、localhost curl、内部服务探测加 timeout/retry。只有当失败会卡住用户流程、cron 堆积、构建挂起或跨越外部网络时，才增加防护。
 
@@ -162,11 +160,12 @@ aria2b 从 `/config/aria2.conf` 读取 `ab-` 前缀配置，例如：
 * `ab-rpc-cert`
 * `ab-rpc-key`
 
-`services.d/aria2b/run` 启动时传入：
+`services.d/aria2b/run` 从 `/config/aria2.conf` 的有效 `rpc-secure=true`
+选择本地 RPC 协议；注释行或其他值使用 HTTP，启用时使用 HTTPS。启动时传入：
 
 ```bash
 -c /config/aria2.conf
--u http://127.0.0.1:${PORT}/jsonrpc
+-u <http|https>://127.0.0.1:${PORT}/jsonrpc
 -s "${SECRET}"
 ```
 
@@ -334,6 +333,14 @@ dirname "${BASH_SOURCE[0]}"
 ```
 
 不要改成 `$0`。这些库文件是被 source 的，使用 `$0` 会解析到调用脚本或 shell，而不是库文件本身。
+
+`IS_TASK_SOURCE_PATH` 除拒绝 `/downloads` 根目录外，还必须拒绝项目共享目录本身：
+
+* `/downloads/completed`
+* `/downloads/recycle`
+* `/downloads/move-failed`
+
+多文件 BT 根目录可能与这些名称撞名，不能把共享目录中的历史内容当成本次任务整体移动或删除。
 
 ### 全局变量命名
 
@@ -625,8 +632,10 @@ docker exec aria2-local bash /tmp/in-container-lib-test.sh
 * delete / recycle / `.aria2`
 * torrent 处理
 * path 计算
+  * 项目保留目录不能成为任务根目录
 * RRT 重复任务处理
 * tracker
+* aria2b HTTP / HTTPS RPC URL 选择（仅 a2b 变体）
 * config 升级保留
 * version banner
 * log demo
@@ -799,6 +808,18 @@ localhost RPC 属于受控边界，不默认添加复杂 timeout/retry。
 ### cron 路径共存
 
 `/etc/crontabs/root` 和 `crontab -l` / `crontab -` 在本镜像中可以共存，不要强行统一。
+
+### 回收失败后直接删除
+
+`RMTASK=recycle` 时，移动到回收站失败会降级为永久删除。这是维护者接受的个人项目语义，不改成保留源文件。
+
+### 同名目标允许覆盖
+
+任务文件移动和种子备份继续使用 `mv -f`。同名文件或 `${TASK_NAME}.torrent` 被覆盖属于接受行为，不增加重命名或防碰撞策略。
+
+### 构建阶段 GitHub 下载不强制 timeout
+
+Dockerfile 中 aria2c、AriaNg、aria2b 都从维护者掌控的 GitHub 项目下载。维护者接受等待行为，不为这些 `curl` 增加 timeout / retry。
 
 ## 持久化配置
 
