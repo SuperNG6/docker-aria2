@@ -10,7 +10,7 @@
 #   因不相关历史任务残留，RRT 会误判 A 为重复并取消之。
 #   触发面较窄（任务命名撞车 + 用户保留旧副本），用户遇到时可临时设 RRT=false 绕开。
 
-. "$(dirname "$0")/lib/event.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/event.sh"
 
 INIT_EVENT completed "$@"  # 初始化路径（目标目录：completed，用于检查是否已存在）
 GUARD_EVENT                 # 磁力/无效任务跳过；路径错误退出

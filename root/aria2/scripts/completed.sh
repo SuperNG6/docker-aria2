@@ -15,7 +15,7 @@
 #   把 MOVE_FILE 放后台，hook 立刻退出，aria2 立刻继续接活；MOVE 由 s6/init 接管收尸。
 #   CHECK_TORRENT 留在前台：.torrent 单文件操作毫秒级，串行避免与 RRT 路径竞争。
 
-. "$(dirname "$0")/lib/event.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/event.sh"
 
 INIT_EVENT completed "$@"  # 初始化路径、RPC 信息（目标目录：completed）
 GUARD_EVENT                 # 磁力/无效任务跳过；路径错误退出

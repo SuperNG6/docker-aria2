@@ -7,7 +7,7 @@
 #   rmaria  - 仅移除 aria2 任务记录，不动文件（默认）
 # TASK_STATUS=error 时（下载出错）不执行任何文件操作，避免误删损坏文件
 
-. "$(dirname "$0")/lib/event.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/event.sh"
 
 INIT_EVENT recycle "$@"  # 初始化路径（目标目录：recycle）
 GUARD_EVENT              # 磁力/无效任务跳过；路径错误退出
