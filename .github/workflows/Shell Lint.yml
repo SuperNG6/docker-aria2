@@ -7,7 +7,7 @@ on:
       - '.github/scripts/*.sh'
       - 'build.sh'
       - '.shellcheckrc'
-      - '.github/workflows/Shell Lint.yml'
+      - '.github/workflows/**'
   push:
     branches:
       - master
@@ -18,11 +18,11 @@ on:
       - '.github/scripts/*.sh'
       - 'build.sh'
       - '.shellcheckrc'
-      - '.github/workflows/Shell Lint.yml'
+      - '.github/workflows/**'
 
 jobs:
-  shellcheck:
-    name: shellcheck
+  shell-lint:
+    name: Shell 语法与 ShellCheck
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码
@@ -34,34 +34,36 @@ jobs:
           sudo apt-get install -y -qq shellcheck
           shellcheck --version
 
-      - name: 检查脚本
+      - name: 自动发现并检查 Shell 脚本
         run: |
-          # 显式列举要检查的脚本，避免误扫 .conf / 二进制等非 shell 文件
-          # severity=warning 抓真实问题（quoting/undefined var 等），跳过 style/info 噪音
-          files=(
-              root/aria2/scripts/lib/event.sh
-              root/aria2/scripts/lib/log.sh
-              root/aria2/scripts/lib/config.sh
-              root/aria2/scripts/lib/files.sh
-              root/aria2/scripts/lib/filter.sh
-              root/aria2/scripts/lib/torrent.sh
-              root/aria2/scripts/lib/rpc.sh
-              root/aria2/scripts/lib/tracker.sh
-              root/aria2/scripts/completed.sh
-              root/aria2/scripts/start.sh
-              root/aria2/scripts/stop.sh
-              root/aria2/scripts/pause.sh
-              root/etc/cont-init.d/11-version
-              root/etc/cont-init.d/20-config
-              root/etc/cont-init.d/30-config
-              root/etc/cont-init.d/40-config
-              root/etc/cont-init.d/50-config
-              root/etc/cont-init.d/90-custom-folders
-              root/etc/cont-init.d/99-custom-scripts
-              root/etc/services.d/aria2/run
-              root/etc/services.d/aria2b/run
-              .github/scripts/rpc-integration-test.sh
-              .github/scripts/in-container-lib-test.sh
-              build.sh
-          )
+          # 从 Git 跟踪文件中按 shebang 识别脚本，新增脚本无需手工维护清单。
+          files=()
+          while IFS= read -r -d '' file; do
+            if head -n 1 "${file}" \
+              | grep -Eq '^#!/(usr/bin/env (ba)?sh|bin/(ba)?sh|usr/bin/with-contenv (ba)?sh)($| )'; then
+              files+=("${file}")
+            fi
+          done < <(git ls-files -z -- root .github/scripts build.sh)
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "未发现 Shell 脚本" >&2
+            exit 1
+          fi
+
+          printf '检查 %d 个 Shell 脚本：\n' "${#files[@]}"
+          printf '  %s\n' "${files[@]}"
+          bash -n "${files[@]}"
           shellcheck --severity=warning -x "${files[@]}"
+
+  actionlint:
+    name: GitHub Actions 编排检查
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v6
+
+      - name: 检查 workflow
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          # Shell 脚本已由上面的 warning 级 ShellCheck 单独检查，避免重复且更严格的 info 噪音。
+          args: -color -shellcheck= -pyflakes=
