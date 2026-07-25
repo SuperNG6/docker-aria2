@@ -175,11 +175,11 @@ t_filter_exclude_regex() {
 }
 
 t_filter_skip_single_file() {
-    hdr "filter: FILE_NUM=1 时跳过（防误删单文件任务，含日志负断言）"
+    hdr "filter: 真实文件数为 1 时跳过（即使 aria2 文件数错误）"
     local task
     task=$(make_multi_task fx-single only.txt:1)
     SOURCE_PATH="$task"
-    FILE_NUM=1
+    FILE_NUM=99
     DET=false
     reset_filter_vars
     EXCLUDE_FILE="txt"
@@ -187,9 +187,27 @@ t_filter_skip_single_file() {
     local out
     out=$(DELETE_EXCLUDE_FILE 2>&1)
     if [[ -f "$task/only.txt" ]] && ! echo "$out" | grep -q "删除不需要的文件"; then
-        ok "单文件任务安静跳过（无误导日志）"
+        ok "以真实文件数识别单文件任务并安静跳过"
     else
         ng "单文件任务异常：file=$(test -f "$task/only.txt" && echo +||echo -) 输出='$out'"
+    fi
+}
+
+t_filter_real_count_overrides_aria2() {
+    hdr "filter: 真实文件数覆盖 aria2 返回的错误文件数"
+    local task
+    task=$(make_multi_task fx-real-count keep.mp4:2 remove.txt:1)
+    SOURCE_PATH="$task"
+    FILE_NUM=1
+    DET=false
+    reset_filter_vars
+    EXCLUDE_FILE="txt"
+    DELETE_EXCLUDE_FILE >/dev/null
+    if [[ -f "$task/keep.mp4" && ! -f "$task/remove.txt" && "$REAL_FILE_NUM" -eq 2 ]]; then
+        ok "aria2 返回 1 时仍探测到 2 个真实文件并执行过滤"
+    else
+        ng "真实文件数未覆盖 aria2 返回值: REAL_FILE_NUM=${REAL_FILE_NUM:-unset}"
+        ls -la "$task" >&2
     fi
 }
 
@@ -1370,6 +1388,7 @@ t_filter_keyword
 t_filter_min_size
 t_filter_exclude_regex
 t_filter_skip_single_file
+t_filter_real_count_overrides_aria2
 t_filter_delete_empty_dir
 t_filter_prefix_conflict
 

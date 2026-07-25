@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
 # 文件过滤库：根据 /config/文件过滤.conf 的规则删除不需要的文件
-# 仅在 CF=true（内容过滤启用）且任务是多文件时生效
+# 仅在 CF=true（内容过滤启用）且任务目录内确有多个文件时生效
 # 由 files.sh 的 CLEAN_UP 调用
+
+# 探测任务源路径中的真实文件数。
+# aria2 hook 传入的 FILE_NUM 偶尔与落盘内容不一致，不能用它决定是否过滤。
+DETECT_REAL_FILE_NUM() {
+    if [ -d "${SOURCE_PATH:-}" ] && IS_TASK_SOURCE_PATH "${SOURCE_PATH}"; then
+        # NUL 分隔避免文件名中的换行影响计数，也不依赖 GNU find 的 -printf。
+        REAL_FILE_NUM=$(find "${SOURCE_PATH}" -type f -print0 | tr -cd '\0' | wc -c)
+        REAL_FILE_NUM=${REAL_FILE_NUM//[[:space:]]/}
+    elif [ -f "${SOURCE_PATH:-}" ] && IS_TASK_SOURCE_PATH "${SOURCE_PATH}"; then
+        REAL_FILE_NUM=1
+    else
+        REAL_FILE_NUM=0
+    fi
+}
 
 # 从文件过滤配置文件读取过滤规则到全局变量
 # 支持：最小文件大小、包含/排除扩展名、关键字过滤、正则过滤
@@ -25,9 +39,10 @@ _filter_rule() {
 }
 
 # 按过滤规则删除任务目录内不需要的文件
-# 只在多文件任务（文件夹）中运行，防止误删单文件任务
+# 只在真实多文件任务（文件夹）中运行，防止 aria2 文件数错误导致误删或漏删
 DELETE_EXCLUDE_FILE() {
-    [ "${FILE_NUM}" -gt 1 ] && IS_TASK_SOURCE_PATH "${SOURCE_PATH}" || return
+    DETECT_REAL_FILE_NUM
+    [ "${REAL_FILE_NUM}" -gt 1 ] || return
     # 任一规则非空即进入删除流程（拼接判定比 6 个独立 -n 更紧凑）
     [ -n "${MIN_SIZE}${INCLUDE_FILE}${EXCLUDE_FILE}${KEYWORD_FILE}${EXCLUDE_FILE_REGEX}${INCLUDE_FILE_REGEX}" ] || return
 

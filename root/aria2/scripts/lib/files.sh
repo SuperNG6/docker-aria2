@@ -40,13 +40,14 @@ RM_ARIA2() {
 }
 
 # 下载完成后的清理：删除 .aria2 控制文件，并按配置过滤不需要的文件
-# CF=true 且任务是多文件（文件夹）时才执行内容过滤
+# CF=true 且任务目录内探测到多个真实文件时才执行内容过滤
 CLEAN_UP() {
     RM_ARIA2
-    if [ "$CF" = "true" ] && [ "${FILE_NUM}" -gt 1 ]; then
+    if [ "$CF" = "true" ]; then
         LOAD_FILTER_CONF
+        # DELETE_EXCLUDE_FILE 内部探测一次真实文件数，并据此决定是否过滤。
         DELETE_EXCLUDE_FILE
-        DELETE_EMPTY_DIR
+        [ "${REAL_FILE_NUM}" -gt 1 ] && DELETE_EMPTY_DIR
     fi
 }
 

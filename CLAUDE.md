@@ -620,6 +620,7 @@ docker exec aria2-local bash /tmp/in-container-lib-test.sh
 覆盖重点：
 
 * filter
+  * 是否按任务目录的真实文件数决定多文件过滤，不依赖 aria2 hook 的文件数
 * move
 * delete / recycle / `.aria2`
 * torrent 处理
