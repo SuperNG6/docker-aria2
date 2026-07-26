@@ -2,8 +2,8 @@
 # 真实容器场景测试。
 #
 # 不 source 项目库、不复制 hook 分支、不手写 SOURCE_PATH。所有文件处理均由运行中的
-# aria2c 通过正式 RPC 和 on-download-* hook 触发，最终只检查用户能观察到的 RPC、
-# 文件、日志和 UID/GID。
+# aria2c 通过正式 RPC 和 on-download-start/pause/stop/complete hook 触发，最终只检查
+# 用户能观察到的 RPC 状态、文件处理结果、磁盘日志、配置热修改和 UID/GID。
 #
 # 用法:
 #   rpc-integration-test.sh <host> <port> <secret> <container> [variant] [webui-port]
@@ -133,6 +133,12 @@ prepare_complete_fixture() {
     '
 }
 
+prepare_active_fixture() {
+    # 活动任务必须由 aria2 自己创建目标文件；预写长度不符的文件会在 hook 前触发
+    # FILE_PREALLOC 错误，测到的是非法续传夹具而不是 start/pause/stop 系统行为。
+    reset_fixture_paths
+}
+
 add_fixture_torrent() {
     local options=$1 params
     params=$(jq -nc \
@@ -148,58 +154,102 @@ expected_abc_owner() {
 }
 
 t_runtime_identity_and_config() {
-    hdr "1. 实际进程身份与初始化配置"
-    local abc_uid aria2_pid aria2_uid
+    hdr "1. 实际进程身份、初始化配置与 RPC 读取"
+    local abc_uid aria2_pid aria2_uid global_options
     abc_uid=$(docker exec "${CONTAINER}" id -u abc)
     aria2_pid=$(docker exec "${CONTAINER}" pgrep -x aria2c)
     aria2_uid=$(docker exec "${CONTAINER}" stat -c %u "/proc/${aria2_pid}")
+    global_options=$(rpc aria2.getGlobalOption '[]' 2>/dev/null)
 
     if [ "${aria2_uid}" = "${abc_uid}" ] \
         && docker exec "${CONTAINER}" grep -Fxq 'file-allocation=falloc' /config/aria2.conf \
         && docker exec "${CONTAINER}" grep -Fxq 'bt-save-metadata=true' /config/aria2.conf \
+        && docker exec "${CONTAINER}" grep -Fxq 'on-download-start=/aria2/scripts/start.sh' /config/aria2.conf \
+        && docker exec "${CONTAINER}" grep -Fxq 'on-download-pause=/aria2/scripts/pause.sh' /config/aria2.conf \
+        && docker exec "${CONTAINER}" grep -Fxq 'on-download-stop=/aria2/scripts/stop.sh' /config/aria2.conf \
         && docker exec "${CONTAINER}" grep -Fxq 'on-download-complete=/aria2/scripts/completed.sh' /config/aria2.conf \
+        && jq -e \
+            '.result.dir == "/downloads"
+             and .result["file-allocation"] == "falloc"
+             and .result["bt-save-metadata"] == "true"' \
+            <<< "${global_options}" >/dev/null \
         && docker exec --user abc "${CONTAINER}" test -w /config/setting.conf \
         && docker exec --user abc "${CONTAINER}" test -w /downloads; then
-        ok "aria2c 以 abc 运行，正式配置和卷写权限有效"
+        ok "aria2c 以 abc 运行，四类 hook、RPC 配置读取和卷写权限均有效"
     else
-        ng "实际进程身份、配置或 abc 写权限异常"
+        ng "实际进程身份、初始化配置、RPC 读取或 abc 写权限异常"
     fi
 }
 
 t_http_complete_hook() {
-    hdr "2. HTTP 单文件完成 → aria2 自动触发 completed.sh"
-    local fname gid status owner expected_owner
-    fname="runtime-http-${VARIANT}-$$.html"
-    configure_setting true rmaria false true false retain false || {
-        ng "无法写入真实 setting.conf"
+    hdr "2. HTTP 完成事件 → setting.conf 热修改立即控制移动"
+    local stay_fname move_fname stay_gid move_gid status owner expected_owner
+    stay_fname="runtime-http-stay-${VARIANT}-$$.html"
+    move_fname="runtime-http-move-${VARIANT}-$$.html"
+
+    configure_setting false rmaria false true false retain false || {
+        ng "无法写入 move-task=false"
         return
     }
     docker exec --user abc "${CONTAINER}" rm -rf \
-        "/downloads/${fname}" "/downloads/completed/${fname}"
+        "/downloads/${stay_fname}" "/downloads/completed/${stay_fname}" \
+        "/downloads/${move_fname}" "/downloads/completed/${move_fname}"
 
-    gid=$(rpc aria2.addUri \
-        "[[\"http://127.0.0.1:${WEBUI_PORT}/index.html\"],{\"out\":\"${fname}\"}]" \
+    stay_gid=$(rpc aria2.addUri \
+        "[[\"http://127.0.0.1:${WEBUI_PORT}/index.html\"],{\"out\":\"${stay_fname}\"}]" \
         | jq -r '.result // empty')
-    [ -n "${gid}" ] || {
-        ng "HTTP 场景未获得 GID"
+    [ -n "${stay_gid}" ] || {
+        ng "HTTP 不移动场景未获得 GID"
+        return
+    }
+    status=$(wait_status "${stay_gid}" complete 60)
+    if [ "${status}" != "complete" ] \
+        || ! docker exec "${CONTAINER}" test -s "/downloads/${stay_fname}" \
+        || docker exec "${CONTAINER}" test -e "/downloads/completed/${stay_fname}" \
+        || ! docker exec "${CONTAINER}" grep -Fxq 'move-task=false' /config/setting.conf; then
+        ng "move-task=false 未保留完成文件（status=${status:-空}）"
+        cleanup_gid "${stay_gid}"
+        return
+    fi
+
+    configure_setting true rmaria false true false retain false || {
+        ng "无法热修改 move-task=true"
+        cleanup_gid "${stay_gid}"
+        return
+    }
+    docker exec --user abc "${CONTAINER}" sh -c ': > /config/logs/move.log'
+
+    move_gid=$(rpc aria2.addUri \
+        "[[\"http://127.0.0.1:${WEBUI_PORT}/index.html\"],{\"out\":\"${move_fname}\"}]" \
+        | jq -r '.result // empty')
+    [ -n "${move_gid}" ] || {
+        ng "HTTP 移动场景未获得 GID"
+        cleanup_gid "${stay_gid}"
         return
     }
 
-    status=$(wait_status "${gid}" complete 60)
+    status=$(wait_status "${move_gid}" complete 60)
     expected_owner=$(expected_abc_owner)
     if [ "${status}" = "complete" ] \
         && wait_container_test \
-            "[ ! -e '/downloads/${fname}' ] && [ -s '/downloads/completed/${fname}' ]" \
+            "[ ! -e '/downloads/${move_fname}' ] \
+             && [ -s '/downloads/completed/${move_fname}' ]" \
         && owner=$(docker exec "${CONTAINER}" stat -c '%u:%g' \
-            "/downloads/completed/${fname}") \
-        && [ "${owner}" = "${expected_owner}" ]; then
-        ok "真实下载、异步 hook、移动和 abc 所有权均正确"
+            "/downloads/completed/${move_fname}") \
+        && [ "${owner}" = "${expected_owner}" ] \
+        && docker exec "${CONTAINER}" grep -Fxq 'move-task=true' /config/setting.conf \
+        && docker exec "${CONTAINER}" grep -Fq \
+            "已移动文件至目标文件夹: /downloads/${move_fname} -> /downloads/completed" \
+            /config/logs/move.log; then
+        ok "完成 hook 读取热修改配置，分别保留/移动文件并写入 move.log"
     else
-        ng "HTTP 下载完成 hook 场景异常（status=${status:-空}）"
+        ng "HTTP 完成、配置热读取、移动或日志场景异常（status=${status:-空}）"
     fi
 
-    cleanup_gid "${gid}"
-    docker exec --user abc "${CONTAINER}" rm -f "/downloads/completed/${fname}"
+    cleanup_gid "${stay_gid}"
+    cleanup_gid "${move_gid}"
+    docker exec --user abc "${CONTAINER}" rm -f \
+        "/downloads/${stay_fname}" "/downloads/completed/${move_fname}"
 }
 
 t_bt_filter_partial() {
@@ -214,6 +264,8 @@ t_bt_filter_partial() {
         ng "无法以 abc 准备完整 torrent 夹具"
         return
     }
+    docker exec --user abc "${CONTAINER}" sh -c \
+        ': > /config/logs/文件过滤日志.log'
 
     gid=$(add_fixture_torrent "${COMPLETE_OPTIONS}")
     [ -n "${gid}" ] || {
@@ -230,8 +282,11 @@ t_bt_filter_partial() {
              && [ ! -e /downloads/completed/fixture-task/remove.txt ]" \
         && owner=$(docker exec "${CONTAINER}" stat -c '%u:%g' \
             /downloads/completed/fixture-task/keep.mp4) \
-        && [ "${owner}" = "${expected_owner}" ]; then
-        ok "真实 BT hook 只删除命中文件并移动剩余内容"
+        && [ "${owner}" = "${expected_owner}" ] \
+        && docker exec "${CONTAINER}" grep -Fq \
+            '/downloads/fixture-task/remove.txt' \
+            /config/logs/文件过滤日志.log; then
+        ok "真实 BT hook 只删除命中文件、记录过滤日志并移动剩余内容"
     else
         ng "真实 BT 部分过滤场景异常（status=${status:-空}）"
     fi
@@ -276,14 +331,96 @@ t_bt_filter_all_guard() {
     cleanup_gid "${gid}"
 }
 
+t_bt_start_repeat_hook() {
+    hdr "5. BT 开始事件 → 重复任务检测、文件清理与 RPC 取消"
+    local gid status
+    configure_setting false rmaria false true true retain false || {
+        ng "无法启用真实重复任务配置"
+        return
+    }
+    prepare_active_fixture || {
+        ng "无法准备重复任务活动夹具"
+        return
+    }
+    docker exec --user abc "${CONTAINER}" sh -c '
+        mkdir -p /downloads/completed/fixture-task
+        printf "EXISTING\n" > /downloads/completed/fixture-task/existing.txt
+    '
+
+    gid=$(add_fixture_torrent "${ACTIVE_OPTIONS}")
+    [ -n "${gid}" ] || {
+        ng "重复任务开始场景未获得 GID"
+        return
+    }
+    status=$(wait_status "${gid}" removed 30)
+
+    if [ "${status}" = "removed" ] \
+        && wait_container_test \
+            "[ ! -e /downloads/fixture-task ] \
+             && [ -f /downloads/completed/fixture-task/existing.txt ]" 15 \
+        && docker logs "${CONTAINER}" 2>&1 \
+            | grep -F '发现目标文件夹已存在当前任务' >/dev/null; then
+        ok "真实 start.sh 识别重复目录、删除新任务文件并通过 RPC 取消任务"
+    else
+        ng "真实 BT 开始重复任务场景异常（status=${status:-空}）"
+    fi
+    cleanup_gid "${gid}"
+}
+
+t_bt_pause_move_hook() {
+    hdr "6. BT 暂停事件 → 状态复查后移动并记录日志"
+    local gid status
+    configure_setting false rmaria false true false retain true || {
+        ng "无法启用真实暂停移动配置"
+        return
+    }
+    prepare_active_fixture || {
+        ng "无法准备暂停任务活动夹具"
+        return
+    }
+    docker exec --user abc "${CONTAINER}" sh -c ': > /config/logs/move.log'
+
+    gid=$(add_fixture_torrent "${ACTIVE_OPTIONS}")
+    [ -n "${gid}" ] || {
+        ng "暂停任务场景未获得 GID"
+        return
+    }
+    status=$(wait_status "${gid}" active,waiting 30)
+    if [ -z "${status}" ] \
+        || ! rpc aria2.pause "[\"${gid}\"]" | jq -e '.result' >/dev/null \
+        || [ "$(wait_status "${gid}" paused 15)" != "paused" ]; then
+        ng "RPC 无法暂停活动 BT 任务（status=${status:-空}）"
+        cleanup_gid "${gid}"
+        return
+    fi
+
+    if wait_container_test \
+        "[ ! -e /downloads/fixture-task ] \
+         && [ -f /downloads/completed/fixture-task/keep.mp4 ] \
+         && [ -f /downloads/completed/fixture-task/remove.txt ] \
+         && [ ! -e /downloads/fixture-task.aria2 ]" 50 \
+        && docker exec "${CONTAINER}" grep -Fq \
+            '已移动文件至目标文件夹: /downloads/fixture-task -> /downloads/completed' \
+            /config/logs/move.log; then
+        ok "真实 pause.sh 确认 paused 状态后强制移动，并写入 move.log"
+    else
+        ng "真实 BT 暂停移动或日志场景异常"
+    fi
+    cleanup_gid "${gid}"
+}
+
 t_bt_stop_recycle_hook() {
-    hdr "5. 活动 BT 任务删除 → aria2 自动触发 stop.sh"
+    hdr "7. BT 停止事件 → 移入回收站并记录日志"
     local gid status
     configure_setting false recycle false true false retain false || {
         ng "无法启用真实回收站配置"
         return
     }
-    reset_fixture_paths
+    prepare_active_fixture || {
+        ng "无法准备停止回收活动夹具"
+        return
+    }
+    docker exec --user abc "${CONTAINER}" sh -c ': > /config/logs/recycle.log'
 
     gid=$(add_fixture_torrent "${ACTIVE_OPTIONS}")
     [ -n "${gid}" ] || {
@@ -311,17 +448,68 @@ t_bt_stop_recycle_hook() {
         "[ ! -e /downloads/fixture-task ] \
          && [ -f /downloads/recycle/fixture-task/keep.mp4 ] \
          && [ -f /downloads/recycle/fixture-task/remove.txt ] \
-         && [ ! -e /downloads/fixture-task.aria2 ]" 30; then
-        ok "真实 stop.sh 将活动任务移入回收站并清理控制文件"
+         && [ ! -e /downloads/fixture-task.aria2 ]" 30 \
+        && docker exec "${CONTAINER}" grep -Fq \
+            '成功移动文件到回收站: /downloads/fixture-task -> /downloads/recycle' \
+            /config/logs/recycle.log; then
+        ok "真实 stop.sh 将活动任务移入回收站、清理控制文件并写入 recycle.log"
     else
-        ng "真实 BT 停止回收场景异常"
+        ng "真实 BT 停止回收或日志场景异常"
+    fi
+    rpc aria2.removeDownloadResult "[\"${gid}\"]" >/dev/null 2>&1 || true
+}
+
+t_bt_stop_delete_hook() {
+    hdr "8. BT 停止事件 → 永久删除并记录日志"
+    local gid status
+    configure_setting false delete false true false retain false || {
+        ng "无法启用真实永久删除配置"
+        return
+    }
+    prepare_active_fixture || {
+        ng "无法准备停止删除活动夹具"
+        return
+    }
+    docker exec --user abc "${CONTAINER}" sh -c ': > /config/logs/delete.log'
+
+    gid=$(add_fixture_torrent "${ACTIVE_OPTIONS}")
+    [ -n "${gid}" ] || {
+        ng "停止删除场景未获得 GID"
+        return
+    }
+    status=$(wait_status "${gid}" active,waiting 30)
+    if [ -z "${status}" ] \
+        || ! wait_container_test \
+            "[ -f /downloads/fixture-task/keep.mp4 ] \
+             && [ -f /downloads/fixture-task/remove.txt ]" 15; then
+        ng "删除前 aria2 未创建真实任务文件（status=${status:-空}）"
+        cleanup_gid "${gid}"
+        return
+    fi
+
+    if ! rpc aria2.forceRemove "[\"${gid}\"]" | jq -e '.result' >/dev/null; then
+        ng "RPC 无法删除永久删除场景中的活动 BT 任务"
+        cleanup_gid "${gid}"
+        return
+    fi
+
+    if wait_container_test \
+        "[ ! -e /downloads/fixture-task ] \
+         && [ ! -e /downloads/recycle/fixture-task ] \
+         && [ ! -e /downloads/fixture-task.aria2 ]" 30 \
+        && docker exec "${CONTAINER}" grep -Fq \
+            '文件删除成功: /downloads/fixture-task' \
+            /config/logs/delete.log; then
+        ok "真实 stop.sh 永久删除任务文件、清理控制文件并写入 delete.log"
+    else
+        ng "真实 BT 停止删除或日志场景异常"
     fi
     rpc aria2.removeDownloadResult "[\"${gid}\"]" >/dev/null 2>&1 || true
 }
 
 t_existing_config_restart() {
     [ "${VARIANT}" = "standard" ] || return 0
-    hdr "6. 已有精简配置 → 容器重启后升级并保留用户值"
+    hdr "9. 已有精简配置 → 容器重启后升级并保留用户值"
 
     if ! docker exec --user abc "${CONTAINER}" sh -c \
         'printf "%s\n" \
@@ -368,7 +556,10 @@ t_runtime_identity_and_config
 t_http_complete_hook
 t_bt_filter_partial
 t_bt_filter_all_guard
+t_bt_start_repeat_hook
+t_bt_pause_move_hook
 t_bt_stop_recycle_hook
+t_bt_stop_delete_hook
 t_existing_config_restart
 
 reset_fixture_paths >/dev/null 2>&1 || true

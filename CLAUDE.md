@@ -601,9 +601,10 @@ uname -m
 
 3. 真实容器场景测试：`.github/scripts/rpc-integration-test.sh`
 
-   覆盖 `/init`、配置文件、aria2 RPC、正式 `on-download-*` hook、异步移动、
-   文件系统结果、日志和 UID/GID。当前使用本地 AriaNg HTTP 和一个 12 字节的
-   固定多文件 torrent，不依赖公网下载或 tracker。
+   覆盖 `/init`、配置文件初始化/热修改/升级、aria2 RPC、正式
+   `on-download-start/pause/stop/complete` hook、过滤、异步移动、回收和永久删除，
+   并检查最终文件、磁盘日志、服务状态和 UID/GID。当前使用本地 AriaNg HTTP 和
+   一个 12 字节的固定多文件 torrent，不依赖公网下载或 tracker。
 
 ### 测试编写约束
 
