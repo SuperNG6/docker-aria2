@@ -11,4 +11,5 @@ fi
 echo "信息：WebUI 功能已启用（端口 ${WEBUI_PORT}）"
 exec darkhttpd /www \
     --index index.html \
+    --log /dev/null \
     --port "${WEBUI_PORT}"

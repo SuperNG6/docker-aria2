@@ -225,7 +225,8 @@ exec s6-svc -d .
 不要改成简单 `exit 0`，否则 s6 会不断重启服务。
 
 WebUI 的 `darkhttpd` 必须以前台模式运行，由 s6 直接监管；不要添加 `--daemon`，
-也不要重新放回 `cont-init.d` 后台启动。
+也不要重新放回 `cont-init.d` 后台启动。访问日志写入 `/dev/null`，避免普通 WebUI
+请求和浏览器资源探测持续污染容器控制台；服务启动失败等 stderr 错误仍应保留。
 
 ## 目录结构
 

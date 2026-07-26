@@ -357,6 +357,14 @@ jobs:
             exit 1
           fi
 
+          access_log_probe="/__darkhttpd_access_log_probe__"
+          curl -sS -o /dev/null "http://127.0.0.1:${WEB_PORT}${access_log_probe}"
+          container_logs=$(docker logs "${CONTAINER_NAME}" 2>&1)
+          if [[ "${container_logs}" == *"${access_log_probe}"* ]]; then
+            echo "darkhttpd 访问日志不应输出到容器控制台"
+            exit 1
+          fi
+
           docker exec "${CONTAINER_NAME}" kill "${before}"
           for _ in {1..10}; do
             after=$(docker exec "${CONTAINER_NAME}" pgrep -x darkhttpd 2>/dev/null || true)
