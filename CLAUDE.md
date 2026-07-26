@@ -217,7 +217,15 @@ v2 路径：
 exec s6-svc -d .
 ```
 
-这用于 `services.d/aria2b/run` 中 `A2B != true` 的情况。不要改成简单 `exit 0`，否则 s6 会不断重启服务。
+这用于可选服务：
+
+* `services.d/aria2b/run`：`A2B != true`
+* `services.d/webui/run`：`WEBUI != true`
+
+不要改成简单 `exit 0`，否则 s6 会不断重启服务。
+
+WebUI 的 `darkhttpd` 必须以前台模式运行，由 s6 直接监管；不要添加 `--daemon`，
+也不要重新放回 `cont-init.d` 后台启动。
 
 ## 目录结构
 
@@ -318,6 +326,14 @@ GET_RPC_INFO || exit 1
 ```
 
 独立 CLI 式脚本可以直接 exit，例如 `lib/tracker.sh` 的命令入口。
+
+### 内容过滤保护
+
+内容过滤只在任务源路径内实际存在多个文件时运行。执行删除前必须用相同规则预判
+所有待删除路径，并对多条规则重复命中的文件去重。
+
+如果规则组合会删除当前任务的全部文件，本次过滤和空目录清理都必须跳过，
+原任务文件继续按正常的完成任务流程保留或移动。不要改回先删除再判断。
 
 ## 配置模型
 
@@ -454,7 +470,7 @@ GET_RPC_INFO || exit 1
 
 当前路径在本 Alpine 基础镜像中有效。
 
-`40-config` 使用：
+`40-config` 仅在 `A2B=true` 且 `/usr/local/bin/aria2b` 实际存在时使用：
 
 ```bash
 crontab -l
@@ -464,7 +480,8 @@ crontab -
 注册 aria2b 重启 cron。aria2b v2.2.0 的实际进程是 Node.js，不能用
 `pkill -x aria2b`；定时任务必须通过
 `s6-svc -r /var/run/s6/services/aria2b` 重启 s6 服务。两个 cron 路径在本镜像中
-可以共存，不冲突。
+可以共存，不冲突。standard 镜像即使被用户误设 `A2B=true`，也不得注册
+指向不存在服务目录的 aria2b cron。
 
 `30-config` 应始终启动 crond。不要改回仅在 `RUT=true` 时启动，否则 aria2b 重启 cron 和 Alpine periodic 会失效。
 
@@ -517,7 +534,7 @@ build → smoke-test → merge
 
 * build 阶段按 digest 推送
 * 所有架构都运行启动与服务连通 smoke-test
-* 完整 RPC 集成测试和容器内 lib 测试仅在 amd64 运行
+* 真实容器场景测试和容器内库级回归测试仅在 amd64 运行
 * smoke-test 通过后才 merge 成用户可见 tag
 * 失败测试绝不发布用户可见 tag
 
@@ -558,14 +575,62 @@ uname -m
 
 不要无理由改成 `ARG TARGETARCH`。
 
-## 测试与常用命令
+## 测试设计
 
-测试脚本路径、调用方式、本地构建、触发/查看 CI、standard 与 a2b 本地 smoke-test 的具体命令块，统一放在 `refactor-guide` 技能（`.claude/skills/refactor-guide/SKILL.md`）中，按需加载，不常驻上下文。
+测试目标不是堆积断言数量，而是用最低层级准确覆盖项目自己维护的行为。
 
-两条不可从代码推断的约束仍在此保留：
+### 测试层级
 
-* 容器内 lib 测试脚本（`.github/scripts/in-container-lib-test.sh`）有意不开 `set -u`，不要强行加；部分日志函数依赖 hook 场景中的隐式变量。
-* aria2 原生 RPC、磁力、torrent、pause/unpause 等能力由上游保证，不在本项目重复测试。
+1. 静态检查：
+
+   * `bash -n`
+   * ShellCheck
+   * YAML / actionlint
+   * `git diff --check`
+
+2. 库级回归测试：`.github/scripts/in-container-lib-test.sh`
+
+   只覆盖适合直接调用的确定性逻辑，例如过滤匹配、路径计算、种子处理模式、
+   tracker JSON 判断和启动信息格式。脚本必须通过以下方式以正式运行用户执行：
+
+   ```bash
+   docker exec --user abc <container> bash /tmp/in-container-lib-test.sh
+   ```
+
+   该脚本有意不开 `set -u`；项目库依赖 hook 上下文中的隐式变量。
+
+3. 真实容器场景测试：`.github/scripts/rpc-integration-test.sh`
+
+   覆盖 `/init`、配置文件、aria2 RPC、正式 `on-download-*` hook、异步移动、
+   文件系统结果、日志和 UID/GID。当前使用本地 AriaNg HTTP 和一个 12 字节的
+   固定多文件 torrent，不依赖公网下载或 tracker。
+
+### 测试编写约束
+
+* 用户可见流程必须优先写真实容器场景，不能只补直接 source 库的测试。
+* 真实场景不得 source `lib/*.sh`，不得手写 `SOURCE_PATH`、`TASK_STATUS`、
+  `INFO_HASH` 等生产全局变量，也不得在测试里复制 `start.sh` / `stop.sh` /
+  `completed.sh` 的条件分支。
+* 真实场景应通过 aria2 RPC、容器重启或正式脚本入口触发行为，只断言用户可观察结果：
+  RPC 状态、最终文件、日志、服务状态和 UID/GID。
+* aria2 hook 权限相关场景必须由以 `abc` 运行的 aria2c 触发；不能用 root
+  直接调用库函数代替。
+* 配置升级必须至少经过一次真实容器重启并复用同一 `/config`，不能只调用
+  `SED_CONF` 后声称升级流程已覆盖。
+* 异步行为使用有上限的条件轮询，不使用固定 `sleep` 作为成功判定。
+* 测试数据优先使用本地固定夹具，避免把 GitHub、公共 tracker 或外部站点波动
+  当成项目测试失败。
+* 每个场景开始前显式准备自己的配置和路径，结束后清理自己的 GID 与文件；
+  不依赖上一个场景遗留的全局变量或文件。
+* 不允许为了增加 PASS 数量，把同一场景中的字段断言包装成多个“测试”。
+  汇总数字表示独立测试组或真实场景，不表示内部断言数量。
+* 不允许静默跳过关键测试。真实场景缺少容器名、RPC 或必要服务时应直接失败。
+* standard 与 a2b 的共享逻辑不机械重复设计两套测试；两变体都运行同一场景是为了
+  验证镜像装配一致性，a2b 专属行为另行增加场景。
+* arm64 / arm/v7 在 QEMU 下继续只跑启动和服务连通 smoke-test；完整文件场景由
+  amd64 覆盖，避免把仿真限制误判为项目问题。
+* 不重复验证 aria2 协议栈的下载性能、BT 算法或 RPC 原生语义。固定 torrent
+  只作为触发本项目多文件 hook 的载体。
 
 ## 修改前 checklist
 
@@ -613,9 +678,11 @@ uname -m
 
 * 是否运行 bash 语法检查？
 * 是否运行 shellcheck？
-* 是否影响 RPC 集成测试？
-* 是否影响容器内 lib 测试？
-* 是否需要更新 smoke-test？
+* 这是纯函数契约，还是必须经过真实容器/hook 的用户流程？
+* 是否错误地在测试里复制了生产分支或手写生产全局变量？
+* hook 场景是否由 abc 用户和真实 aria2 RPC 触发？
+* 是否使用本地固定夹具并通过条件轮询等待异步结果？
+* 是否影响真实容器场景、库级回归或跨架构 smoke-test？
 
 ## 已知且接受的设计
 

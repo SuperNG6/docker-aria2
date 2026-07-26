@@ -88,6 +88,7 @@ _update_rpc() {
         echo -e "$(DATE_TIME) ${INFO} BT trackers 更新成功!"
     else
         echo -e "$(DATE_TIME) ${ERROR} 网络故障或 Aria2 RPC 接口错误!"
+        return 1
     fi
 }
 

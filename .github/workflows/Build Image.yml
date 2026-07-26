@@ -65,7 +65,8 @@ jobs:
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
-          echo "PLATFORM_PAIR=$(echo ${{ matrix.platform }} | tr '/' '-')" >> $GITHUB_ENV
+          platform="${{ matrix.platform }}"
+          printf 'PLATFORM_PAIR=%s\n' "${platform//\//-}" >> "$GITHUB_ENV"
 
       - name: 上传 digest
         uses: actions/upload-artifact@v7
@@ -94,7 +95,7 @@ jobs:
     steps:
       - name: 设置版本标签
         id: set-version
-        run: echo "version=$(date +"%y-%m-%d")" >> $GITHUB_OUTPUT
+        run: printf 'version=%s\n' "$(date +'%y-%m-%d')" >> "$GITHUB_OUTPUT"
 
       - name: 下载 ${{ matrix.variant }} digests
         uses: actions/download-artifact@v8
@@ -125,12 +126,16 @@ jobs:
           TAG_LATEST: ${{ matrix.tag_prefix }}latest
           TAG_DATED: ${{ matrix.tag_prefix }}${{ steps.set-version.outputs.version }}
         run: |
+          refs=()
+          for digest in *; do
+            refs+=("${{ env.DOCKER_IMAGE }}@sha256:${digest}")
+          done
           docker buildx imagetools create \
             -t "${{ env.DOCKER_IMAGE }}:${TAG_LATEST}" \
             -t "${{ env.DOCKER_IMAGE }}:${TAG_DATED}" \
             -t "${{ env.GHCR_IMAGE }}:${TAG_LATEST}" \
             -t "${{ env.GHCR_IMAGE }}:${TAG_DATED}" \
-            $(printf '${{ env.DOCKER_IMAGE }}@sha256:%s ' *)
+            "${refs[@]}"
 
       - name: 检查镜像（${{ matrix.variant }}）
         env:
@@ -153,9 +158,9 @@ jobs:
       fail-fast: false
       matrix:
         # variant × platform 全组合：6 个 job
-        # amd64 跑全量 RPC 集成测试 + 容器内 lib 单测；
+        # amd64 跑真实容器场景测试 + 容器内库级回归测试；
         # arm64 / arm/v7 只验证"启动成功 + aria2c/aria2b 真连通"，
-        # 不跑命中公网 BT tracker 的 E2E（QEMU 仿真 + 共享 runner 上易 flaky）
+        # 不跑完整文件处理场景（QEMU 仿真成本较高）
         variant:
           - standard
           - a2b
@@ -181,7 +186,9 @@ jobs:
         uses: docker/setup-qemu-action@v4
 
       - name: 设置 PLATFORM_PAIR
-        run: echo "PLATFORM_PAIR=$(echo '${{ matrix.platform }}' | tr '/' '-')" >> $GITHUB_ENV
+        run: |
+          platform="${{ matrix.platform }}"
+          printf 'PLATFORM_PAIR=%s\n' "${platform//\//-}" >> "$GITHUB_ENV"
 
       - name: 登录到 GitHub Container Registry
         uses: docker/login-action@v4
@@ -202,11 +209,13 @@ jobs:
           GHCR_IMAGE: ${{ env.GHCR_IMAGE }}
           PLATFORM: ${{ matrix.platform }}
         run: |
-          digest=$(ls /tmp/digest | head -1)
-          if [ -z "${digest}" ]; then
+          shopt -s nullglob
+          digest_files=(/tmp/digest/*)
+          if ((${#digest_files[@]} == 0)); then
             echo "digest 文件为空，artifact 异常"
             exit 1
           fi
+          digest=${digest_files[0]##*/}
           ref="${GHCR_IMAGE}@sha256:${digest}"
           echo "image=${ref}" >> "$GITHUB_OUTPUT"
           # --platform 显式拉目标架构：build 的 push-by-digest 产出的是单架构 manifest，
@@ -230,6 +239,8 @@ jobs:
             --platform "${PLATFORM}"
             -p "${RPC_PORT}:6800"
             -p "${WEB_PORT}:8080"
+            -v "${CONTAINER_NAME}-config:/config"
+            -v "${CONTAINER_NAME}-downloads:/downloads"
             -e SECRET=smoketoken
             -e UT=false
             -e RUT=false
@@ -267,8 +278,9 @@ jobs:
           # 错误响应体里也可能含 "version" 字样（与 lib/tracker.sh 的 JSON 契约一致）
           #
           # a2b 连通判定分平台：
-          #   amd64：断言日志含 "aria2b 已启动"——该行仅在 initial() 内 RPC 探测 +
-          #          iptables/ipset 初始化全部成功后才输出，比"进程存在"严格
+          #   amd64：断言 aria2b 就绪日志。旧版输出 "aria2b 已启动"，v2.2.0 输出
+          #          "[aria2b] ... started!"；两者都只在 RPC 探测和 iptables/ipset
+          #          初始化全部成功后才输出，比"进程存在"严格
           #   arm64/arm-v7：GHA ubuntu runner 内核未加载 ip_set/xt_set 模块，QEMU 仿真
           #          容器无法 modprobe，aria2b 的 ipset 初始化必失败（Cannot open session
           #          to kernel）。这是平台固有限制而非镜像 bug，故 arm 上 a2b 只验 aria2c
@@ -279,7 +291,7 @@ jobs:
           fi
 
           A2B_READY=0
-          for i in {1..30}; do
+          for _ in {1..30}; do
             if docker ps --filter "name=${CONTAINER_NAME}" --filter "status=running" --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}" \
               && curl -fsS "http://127.0.0.1:${RPC_PORT}/jsonrpc" \
                 -H 'Content-Type: application/json' \
@@ -288,10 +300,17 @@ jobs:
               && jq -e '.result.version' /tmp/aria2-rpc.json >/dev/null \
               && curl -fsS "http://127.0.0.1:${WEB_PORT}/" >/dev/null 2> /tmp/aria2-web.err; then
               # aria2c RPC + WebUI 已就绪
+              if [ "${A2B_ENABLED}" = "true" ] \
+                && ! docker exec "${CONTAINER_NAME}" crontab -l \
+                  | grep -Fq 's6-svc -r /var/run/s6/services/aria2b # restart-aria2b'; then
+                echo "a2b 定时重启任务未使用 s6 服务重启命令"
+                exit 1
+              fi
               if [ "${REQUIRE_A2B_READY}" = "1" ]; then
-                if docker logs "${CONTAINER_NAME}" 2>&1 | grep -q 'aria2b 已启动'; then
+                if docker logs "${CONTAINER_NAME}" 2>&1 \
+                  | grep -Eq 'aria2b 已启动|\[aria2b\].*started!'; then
                   A2B_READY=1
-                  echo "Smoke test passed (aria2c RPC + WebUI + aria2b 已启动)"
+                  echo "Smoke test passed (aria2c RPC + WebUI + aria2b 已就绪)"
                   exit 0
                 fi
                 # aria2b 可能还在 initial() 探测中，继续轮询
@@ -310,7 +329,7 @@ jobs:
 
           echo "=== Smoke test FAILED ==="
           if [ "${REQUIRE_A2B_READY}" = "1" ] && [ "${A2B_READY}" = "0" ]; then
-            echo "a2b 变体（amd64）：未在日志中找到 'aria2b 已启动'（aria2b 未成功连上 aria2c 或进入 runIdleMode）"
+            echo "a2b 变体（amd64）：未找到 aria2b 就绪日志（aria2b 未成功连上 aria2c 或进入 runIdleMode）"
           fi
           echo "=== docker ps -a ==="
           docker ps -a
@@ -324,8 +343,86 @@ jobs:
           docker logs --tail 200 "${CONTAINER_NAME}" || true
           exit 1
 
-      - name: RPC 集成测试（${{ matrix.variant }}·仅 amd64）
-        # arm 只做启动与服务连通；下载完成 hook E2E 留给 amd64，避免 QEMU 放大外网波动。
+      - name: WebUI s6 监管测试（${{ matrix.variant }}·仅 amd64）
+        if: matrix.platform == 'linux/amd64'
+        env:
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
+          WEB_PORT: ${{ matrix.web_port }}
+        run: |
+          service_dir=/var/run/s6/services/webui
+          docker exec "${CONTAINER_NAME}" s6-svstat "${service_dir}" | grep -q '^up'
+          before=$(docker exec "${CONTAINER_NAME}" pgrep -x darkhttpd)
+          if [ -z "${before}" ]; then
+            echo "WebUI 已连通但找不到 darkhttpd 进程"
+            exit 1
+          fi
+
+          docker exec "${CONTAINER_NAME}" kill "${before}"
+          for _ in {1..10}; do
+            after=$(docker exec "${CONTAINER_NAME}" pgrep -x darkhttpd 2>/dev/null || true)
+            if [ -n "${after}" ] && [ "${after}" != "${before}" ] \
+              && curl -fsS "http://127.0.0.1:${WEB_PORT}/" >/dev/null; then
+              echo "WebUI s6 监管生效：darkhttpd PID ${before} -> ${after}"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "darkhttpd 退出后未被 s6 正常拉起"
+          docker exec "${CONTAINER_NAME}" s6-svstat "${service_dir}" || true
+          docker logs --tail 100 "${CONTAINER_NAME}" || true
+          exit 1
+
+      - name: WebUI 关闭与 standard A2B 误配置测试（standard·amd64）
+        if: matrix.variant == 'standard' && matrix.platform == 'linux/amd64'
+        env:
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}-webui-off
+          IMAGE: ${{ steps.pull.outputs.image }}
+        run: |
+          docker run -d \
+            --name "${CONTAINER_NAME}" \
+            --platform linux/amd64 \
+            -e SECRET=smoketoken \
+            -e UT=false \
+            -e RUT=false \
+            -e WEBUI=false \
+            -e A2B=true \
+            "${IMAGE}"
+
+          for _ in {1..15}; do
+            if docker ps --filter "name=${CONTAINER_NAME}" --filter "status=running" \
+              --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}" \
+              && docker exec "${CONTAINER_NAME}" s6-svstat /var/run/s6/services/webui \
+                | grep -q '^down' \
+              && ! docker exec "${CONTAINER_NAME}" pgrep -x darkhttpd >/dev/null 2>&1 \
+              && ! docker exec "${CONTAINER_NAME}" test -e /etc/services.d/aria2b/run \
+              && docker exec "${CONTAINER_NAME}" sh -c \
+                '! crontab -l | grep -Fq restart-aria2b'; then
+              echo "WEBUI=false 保持 down；standard A2B=true 未注册无效服务或 cron"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "WEBUI=false 或 standard A2B=true 防护异常"
+          docker exec "${CONTAINER_NAME}" s6-svstat /var/run/s6/services/webui || true
+          docker exec "${CONTAINER_NAME}" crontab -l || true
+          docker exec "${CONTAINER_NAME}" ps -ef || true
+          docker logs --tail 100 "${CONTAINER_NAME}" || true
+          exit 1
+
+      - name: 库级回归测试（abc 用户·${{ matrix.variant }}·仅 amd64）
+        if: matrix.platform == 'linux/amd64'
+        env:
+          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
+        run: |
+          docker cp .github/scripts/in-container-lib-test.sh \
+            "${CONTAINER_NAME}":/tmp/in-container-lib-test.sh
+          docker exec --user abc "${CONTAINER_NAME}" \
+            bash /tmp/in-container-lib-test.sh
+
+      - name: 真实容器场景测试（${{ matrix.variant }}·仅 amd64）
+        # 使用本地 HTTP 与固定多文件 torrent；由 aria2 自动触发正式 hook，不依赖公网下载。
         if: matrix.platform == 'linux/amd64'
         env:
           CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
@@ -333,16 +430,8 @@ jobs:
         run: |
           chmod +x .github/scripts/rpc-integration-test.sh
           .github/scripts/rpc-integration-test.sh \
-            127.0.0.1 "${RPC_PORT}" smoketoken "${CONTAINER_NAME}" "${{ matrix.variant }}"
-
-      - name: 库单元测试（容器内·${{ matrix.variant }}·仅 amd64）
-        if: matrix.platform == 'linux/amd64'
-        env:
-          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
-        run: |
-          docker cp .github/scripts/in-container-lib-test.sh \
-            "${CONTAINER_NAME}":/tmp/in-container-lib-test.sh
-          docker exec "${CONTAINER_NAME}" bash /tmp/in-container-lib-test.sh
+            127.0.0.1 "${RPC_PORT}" smoketoken \
+            "${CONTAINER_NAME}" "${{ matrix.variant }}" 8080
 
       - name: 失败时收集诊断信息
         if: failure()
@@ -362,4 +451,10 @@ jobs:
 
       - name: 清理容器
         if: always()
-        run: docker rm -f "aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}" || true
+        run: |
+          docker rm -f "aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}" || true
+          docker rm -f "aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}-webui-off" || true
+          docker volume rm \
+            "aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}-config" \
+            "aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}-downloads" \
+            || true

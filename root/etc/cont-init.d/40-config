@@ -14,7 +14,7 @@ find /aria2/scripts -name "*.sh" -exec chmod a+x {} \;
 
 # 向 crontab 注册 aria2b 定时重启任务（aria2b 长时间运行可能积压连接，定期重启保活）
 # CRA2B=false 则移除已有任务；CRA2B 为数字小时数（1-24），其他值回退默认 2 小时
-# pkill -x aria2b：精确匹配进程名；s6 会自动重启它（services.d/aria2b/run）
+# aria2b v2.2.0 由 Node.js 启动，进程名不是 aria2b；直接通过 s6 v2 重启对应服务。
 _register_a2b_restart() {
     local marker="restart-aria2b"
     # 无论如何先清除旧任务，避免重复
@@ -32,11 +32,12 @@ _register_a2b_restart() {
         echo "CRA2B 值无效，使用默认值 2 小时。"
     fi
 
-    (crontab -l 2>/dev/null; echo "0 */${hours} * * * pkill -x aria2b # ${marker}") | crontab -
+    (crontab -l 2>/dev/null; echo "0 */${hours} * * * s6-svc -r /var/run/s6/services/aria2b # ${marker}") | crontab -
     echo "已设置定时重启任务：每 ${hours} 小时重启 aria2b 进程。"
 }
 
-# A2B=true 时（a2b 变体）才注册重启任务
-if [ "${A2B}" = "true" ]; then
+# 同时检查环境开关和实际安装结果。standard 镜像即使被误设 A2B=true，
+# 也不能注册一个指向不存在 s6 服务目录的定时任务。
+if [ "${A2B}" = "true" ] && [ -x /usr/local/bin/aria2b ]; then
     _register_a2b_restart
 fi

@@ -40,8 +40,11 @@ SED_CONF() {
         sed -i "s|^\(${key}=\).*|\1${escaped}|" /config/setting.conf.new || failed=1
     done
     if [ "${failed}" -eq 0 ]; then
-        rm -f /config/setting.conf
-        mv /config/setting.conf.new /config/setting.conf
+        if ! mv -f /config/setting.conf.new /config/setting.conf; then
+            echo "错误: 无法替换配置" >&2
+            rm -f /config/setting.conf.new
+            return 1
+        fi
     else
         echo "错误: 无法更新配置" >&2
         rm -f /config/setting.conf.new

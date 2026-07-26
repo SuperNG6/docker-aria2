@@ -1,4 +1,3 @@
-version: "3.6"
 services:
   aria2:
     image: superng6/aria2:a2b-dev-latest

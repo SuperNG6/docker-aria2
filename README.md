@@ -440,6 +440,14 @@ https://hub.docker.com/r/superng6/ariang
 
 > **aria2c 配置覆盖**：以下 key 每次启动都被 `cont-init.d/30-config` 用对应 env var 覆盖到 `/config/aria2.conf`，**不要手工编辑这些行**（编辑了也会丢）：`on-download-*` / `rpc-listen-port` (PORT) / `dht-listen-port` (BTPORT) / `listen-port` (BTPORT) / `bt-save-metadata` (SMD) / `file-allocation` (FA) / `bt-tracker` (UT=true 时由 tracker.sh 写)。其他 aria2.conf 内容用户可自由修改并被保留。
 
+### 容器启动信息
+
+容器启动时会输出镜像版本、组件版本、容器内端口、RPC 安全状态、用户权限以及功能开关摘要。
+其中环境变量控制的项目显示本次启动值，附加下载功能读取 `/config/setting.conf`。
+
+首次启动还没有持久化配置文件时，日志只提示将创建默认配置，不会把模板默认值冒充成用户已有设置。
+RPC token 只显示安全状态，不会在日志中输出实际 token。横幅表示启动配置检查完成，不等同于服务健康检查结果。
+
 ### 自定义tracker地址
 CTU="https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/best_aria2.txt"
 

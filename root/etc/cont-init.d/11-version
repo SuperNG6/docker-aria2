@@ -1,32 +1,281 @@
 #!/usr/bin/with-contenv bash
-# 容器启动第一步：打印版本信息横幅
-# build-date 文件在 Dockerfile 构建阶段写入，包含 aria2、AriaNg（及 aria2b）的版本和构建日期
+# 容器启动第一步：展示镜像、服务配置和功能开关。
+# 此时 20/30-config 尚未执行：会被环境变量覆盖的项目直接显示本次环境变量，
+# setting.conf 已存在时读取持久化值；首次配置则只提示将使用项目默认设置。
 
-echo "
--------------------------------------
+STARTUP_SEPARATOR="==============================================================================="
+STARTUP_BUILD_INFO="/aria2/build-date"
 
-当前正在运行Docker-Aria2 & AriaNg版本为：
-$(cat /aria2/build-date)
+BOOL_STATUS() {
+    if [ "${1:-}" = "true" ]; then
+        printf '[启用]'
+    else
+        printf '[禁用]'
+    fi
+}
 
-Aria2c版本为：
-1.37.0
+SETTING_BOOL_STATUS() {
+    case "${1:-}" in
+        true)  printf '[启用]' ;;
+        false) printf '[禁用]' ;;
+        *)     printf '[配置异常：%s]' "${1:-空值}" ;;
+    esac
+}
 
-更新内容请见：
-https://github.com/SuperNG6/docker-aria2
-https://sleele.com/2019/09/27/docker-aria2的最佳实践
+GET_SETTING_VALUE() {
+    local conf=$1 key=$2 default_value=$3 value
+    value=$(sed -n "s/^${key}=//p" "${conf}" 2>/dev/null | head -n 1)
+    printf '%s' "${value:-${default_value}}"
+}
 
--------------------------------------"
+GET_IMAGE_INFO() {
+    IMAGE_VERSION=$(grep -m 1 -E '^docker-aria2-[0-9]{4}-[0-9]{2}-[0-9]{2}$' \
+        "${STARTUP_BUILD_INFO}" 2>/dev/null)
+    ARIANG_VERSION=$(sed -n 's/^docker-ariang-//p' "${STARTUP_BUILD_INFO}" 2>/dev/null | head -n 1)
+    ARIA2B_VERSION=$(sed -n 's/^docker-aria2b-//p' "${STARTUP_BUILD_INFO}" 2>/dev/null | head -n 1)
+    IMAGE_VERSION=${IMAGE_VERSION:-未知}
+    ARIANG_VERSION=${ARIANG_VERSION#v}
+    ARIANG_VERSION=${ARIANG_VERSION:-未知}
+    ARIA2B_VERSION=${ARIA2B_VERSION:-未知}
 
-# 默认 SECRET 是公开 token，暴露在公网上会被恶意接管 RPC（列任务、改 dir、注入下载）
-# 检测到默认值时打红字警告，提示用户立刻 -e SECRET=<随机串> 重启容器
-if [ "${SECRET}" = "yourtoken" ]; then
-    RED="\033[1;31m"
-    YELLOW="\033[1;33m"
-    RESET="\033[0m"
-    echo -e "
-${RED}⚠ 警告：正在使用默认 SECRET=yourtoken${RESET}
-${YELLOW}该 token 是公开的，任何人都可以通过 RPC 接管你的 aria2。${RESET}
-${YELLOW}请立刻用一个随机字符串重启容器：-e SECRET=<random_string>${RESET}
-${YELLOW}生成随机串：openssl rand -hex 24${RESET}
-"
+    ARIA2_VERSION=$(aria2c --version 2>/dev/null | awk 'NR == 1 {print $NF; exit}')
+    ARIA2_VERSION=${ARIA2_VERSION:-未知}
+
+    case "$(uname -m)" in
+        x86_64)         PLATFORM_ARCH=amd64 ;;
+        aarch64)        PLATFORM_ARCH=arm64 ;;
+        armv7l|armv6l)  PLATFORM_ARCH=arm/v7 ;;
+        i386|i686)      PLATFORM_ARCH=386 ;;
+        *)              PLATFORM_ARCH=$(uname -m) ;;
+    esac
+
+    ALPINE_VERSION=$(cat /etc/alpine-release 2>/dev/null)
+    ALPINE_VERSION=${ALPINE_VERSION:-未知}
+
+    if [ -x /usr/local/bin/aria2b ]; then
+        IMAGE_VARIANT=a2b
+        HAS_ARIA2B=true
+    else
+        IMAGE_VARIANT=standard
+        HAS_ARIA2B=false
+    fi
+}
+
+GET_RUNTIME_INFO() {
+    local aria2_conf=$1
+
+    FILE_ALLOCATION=${FA:-falloc}
+    case "${FILE_ALLOCATION}" in
+        falloc|trunc|prealloc|none) ;;
+        *) FILE_ALLOCATION=falloc ;;
+    esac
+
+    if [ -r "${aria2_conf}" ] && grep -Eq \
+        '^[[:space:]]*rpc-secure[[:space:]]*=[[:space:]]*true([[:space:]]*(#.*)?)?$' \
+        "${aria2_conf}"; then
+        RPC_PROTOCOL=HTTPS
+    else
+        RPC_PROTOCOL=HTTP
+    fi
+
+    if [ -z "${SECRET:-}" ]; then
+        RPC_AUTH_STATUS='[未启用，警告]'
+    elif [ "${SECRET}" = "yourtoken" ]; then
+        RPC_AUTH_STATUS='[默认令牌，危险]'
+    else
+        RPC_AUTH_STATUS='[已配置]'
+    fi
+
+    ABC_UID=$(id -u abc 2>/dev/null)
+    ABC_GID=$(id -g abc 2>/dev/null)
+    ABC_UID=${ABC_UID:-${PUID:-未知}}
+    ABC_GID=${ABC_GID:-${PGID:-未知}}
+}
+
+FORMAT_MOVE_STATUS() {
+    case "${1:-}" in
+        false) printf '[禁用]' ;;
+        true)  printf '[启用]' ;;
+        dmof)  printf '[按规则启用：根目录单文件不移动]' ;;
+        *)     printf '[配置异常：%s]' "${1:-空值}" ;;
+    esac
+}
+
+FORMAT_REMOVE_STATUS() {
+    case "${1:-}" in
+        rmaria)  printf '仅清理 .aria2' ;;
+        recycle) printf '移动到回收站' ;;
+        delete)  printf '永久删除文件' ;;
+        *)       printf '[配置异常：%s]' "${1:-空值}" ;;
+    esac
+}
+
+FORMAT_TORRENT_STATUS() {
+    case "${1:-}" in
+        retain)        printf '保留' ;;
+        delete)        printf '删除' ;;
+        backup)        printf '备份' ;;
+        rename)        printf '重命名' ;;
+        backup-rename) printf '重命名并备份' ;;
+        *)             printf '[配置异常：%s]' "${1:-空值}" ;;
+    esac
+}
+
+PRINT_SETTING_FEATURES() {
+    local setting_conf=$1
+    local rmtask move cf det tor rrt mpt det_status tor_status
+
+    rmtask=$(GET_SETTING_VALUE "${setting_conf}" remove-task rmaria)
+    move=$(GET_SETTING_VALUE "${setting_conf}" move-task false)
+    cf=$(GET_SETTING_VALUE "${setting_conf}" content-filter false)
+    det=$(GET_SETTING_VALUE "${setting_conf}" delete-empty-dir true)
+    tor=$(GET_SETTING_VALUE "${setting_conf}" handle-torrent backup-rename)
+    rrt=$(GET_SETTING_VALUE "${setting_conf}" remove-repeat-task true)
+    mpt=$(GET_SETTING_VALUE "${setting_conf}" move-paused-task false)
+
+    if [ "${det}" = "true" ] && [ "${cf}" != "true" ]; then
+        det_status='[不生效：文件过滤未启用]'
+    else
+        det_status=$(SETTING_BOOL_STATUS "${det}")
+    fi
+
+    tor_status=$(FORMAT_TORRENT_STATUS "${tor}")
+    if [ "${SMD:-true}" != "true" ]; then
+        tor_status+=" [不生效：磁力元数据保存未启用]"
+    fi
+
+    printf '   完成任务自动移动: %s\n' "$(FORMAT_MOVE_STATUS "${move}")"
+    printf '   停止任务处理: %s\n' "$(FORMAT_REMOVE_STATUS "${rmtask}")"
+    printf '   下载完成文件过滤: %s\n' "$(SETTING_BOOL_STATUS "${cf}")"
+    printf '   过滤后删除空目录: %s\n' "${det_status}"
+    printf '   磁力种子处理: %s\n' "${tor_status}"
+    printf '   重复任务拦截: %s\n' "$(SETTING_BOOL_STATUS "${rrt}")"
+    printf '   暂停任务移动: %s\n' "$(SETTING_BOOL_STATUS "${mpt}")"
+}
+
+PRINT_ARIA2B_FEATURES() {
+    local hours
+
+    if [ "${HAS_ARIA2B}" != "true" ]; then
+        printf '   屏蔽吸血客户端: [不可用：standard 镜像未安装]\n'
+        return
+    fi
+
+    printf '   屏蔽吸血客户端: %s\n' "$(BOOL_STATUS "${A2B:-false}")"
+    if [ "${A2B:-false}" != "true" ]; then
+        printf '   Aria2B定时重启: [不生效：Aria2B 未启用]\n'
+        printf '   Aria2B运行日志: [不生效：Aria2B 未启用]\n'
+        return
+    fi
+
+    if [ "${CRA2B:-2h}" = "false" ]; then
+        printf '   Aria2B定时重启: [禁用]\n'
+    else
+        hours=${CRA2B:-2h}
+        hours=${hours//[!0-9]/}
+        if [[ ! "${hours}" =~ ^([1-9]|1[0-9]|2[0-4])$ ]]; then
+            hours=2
+        fi
+        printf '   Aria2B定时重启: 每%s小时\n' "${hours}"
+    fi
+
+    if [ "${A2B_DISABLE_LOG:-false}" = "true" ]; then
+        printf '   Aria2B运行日志: [禁用]\n'
+    else
+        printf '   Aria2B运行日志: [启用]\n'
+    fi
+}
+
+PRINT_SECURITY_WARNING() {
+    local red='\033[1;31m' yellow='\033[1;33m' reset='\033[0m'
+
+    if [ "${SECRET:-}" = "yourtoken" ]; then
+        printf '\n%b⚠ 警告：正在使用默认 SECRET=yourtoken%b\n' "${red}" "${reset}"
+        printf '%b该 token 是公开的，任何人都可以通过 RPC 接管你的 aria2。%b\n' "${yellow}" "${reset}"
+        printf '%b请立刻用一个随机字符串重启容器：-e SECRET=<random_string>%b\n' "${yellow}" "${reset}"
+        printf '%b生成随机串：openssl rand -hex 24%b\n\n' "${yellow}" "${reset}"
+    elif [ -z "${SECRET:-}" ]; then
+        printf '\n%b⚠ 警告：RPC 未配置 SECRET，任何可访问 RPC 端口的人都能控制 aria2。%b\n\n' \
+            "${red}" "${reset}"
+    fi
+}
+
+PRINT_STARTUP_INFO() {
+    local aria2_conf=${1:-/config/aria2.conf}
+    local setting_conf=${2:-/config/setting.conf}
+    local tracker_schedule custom_tracker config_missing=false
+
+    GET_IMAGE_INFO
+    GET_RUNTIME_INFO "${aria2_conf}"
+
+    [ "${RUT:-true}" = "true" ] \
+        && tracker_schedule='[启用，每日05:00]' \
+        || tracker_schedule='[禁用]'
+    [ -n "${CTU:-}" ] \
+        && custom_tracker='[已配置]' \
+        || custom_tracker='[未配置]'
+
+    if [ ! -r "${aria2_conf}" ] || [ ! -r "${setting_conf}" ]; then
+        config_missing=true
+    fi
+
+    printf '\n%s\n' "${STARTUP_SEPARATOR}"
+    printf '                      Docker-Aria2 容器启动信息\n'
+    printf '%s\n\n' "${STARTUP_SEPARATOR}"
+
+    printf '📦 镜像信息:\n'
+    printf '   镜像版本: %s\n' "${IMAGE_VERSION}"
+    printf '   镜像变体: %s\n' "${IMAGE_VARIANT}"
+    printf '   AriaNg版本: %s\n' "${ARIANG_VERSION}"
+    printf '   Aria2版本: %s (Aria2)\n' "${ARIA2_VERSION}"
+    [ "${HAS_ARIA2B}" = "true" ] && printf '   Aria2B版本: %s\n' "${ARIA2B_VERSION}"
+    printf '   平台架构: %s\n' "${PLATFORM_ARCH}"
+    printf '   系统版本: Alpine Linux %s\n' "${ALPINE_VERSION}"
+    printf '   时区设置: %s\n\n' "${TZ:-Asia/Shanghai}"
+
+    printf '🌐 服务配置:\n'
+    printf '   RPC端口: %s\n' "${PORT:-6800}"
+    printf '   RPC协议: %s\n' "${RPC_PROTOCOL}"
+    printf '   RPC鉴权: %s\n' "${RPC_AUTH_STATUS}"
+    printf '   WebUI端口: %s %s\n' "${WEBUI_PORT:-8080}" "$(BOOL_STATUS "${WEBUI:-true}")"
+    printf '   BT/DHT端口: %s (TCP/UDP)\n\n' "${BTPORT:-32516}"
+
+    printf '⚙️  核心配置:\n'
+    printf '   磁盘缓存: %s\n' "${CACHE:-128M}"
+    printf '   文件预分配: %s\n' "${FILE_ALLOCATION}"
+    printf '   静默模式: %s\n' "$(BOOL_STATUS "${QUIET:-true}")"
+    printf '   用户权限: PUID=%s, PGID=%s\n\n' "${ABC_UID}" "${ABC_GID}"
+
+    if [ "${config_missing}" = "true" ]; then
+        printf '📝 配置状态:\n'
+        printf '   首次配置: 检测到配置文件缺失，本次将创建默认配置\n\n'
+    fi
+
+    printf '🎯 功能特性:\n'
+    printf '   启动更新Tracker: %s\n' "$(BOOL_STATUS "${UT:-true}")"
+    printf '   定时更新Tracker: %s\n' "${tracker_schedule}"
+    printf '   自定义Tracker源: %s\n' "${custom_tracker}"
+    printf '   保存磁力为种子: %s\n' "$(BOOL_STATUS "${SMD:-true}")"
+    if [ -r "${setting_conf}" ]; then
+        PRINT_SETTING_FEATURES "${setting_conf}"
+    else
+        printf '   附加下载处理: 本次使用项目默认配置\n'
+    fi
+    PRINT_ARIA2B_FEATURES
+
+    printf '\n📚 帮助链接:\n'
+    printf '   项目地址: https://github.com/SuperNG6/docker-aria2\n'
+    printf '   使用教程: https://sleele.com/2019/09/27/docker-aria2的最佳实践\n'
+    printf '   Docker Hub: https://hub.docker.com/r/superng6/aria2\n\n'
+
+    printf '%s\n' "${STARTUP_SEPARATOR}"
+    printf '                        启动配置检查完成\n'
+    printf '%s\n' "${STARTUP_SEPARATOR}"
+
+    PRINT_SECURITY_WARNING
+}
+
+# 容器执行时打印横幅；容器内单元测试 source 时只加载格式化函数。
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    PRINT_STARTUP_INFO "$@"
 fi

@@ -1,0 +1,14 @@
+#!/usr/bin/with-contenv bash
+# AriaNg WebUI 服务（由 s6-overlay 管理）
+# darkhttpd 必须以前台模式运行，进程退出后由 s6 自动重启。
+
+if [ "${WEBUI}" != "true" ]; then
+    echo "信息：WebUI 功能未启用（WEBUI!=true）"
+    # 保持服务为 down，避免 run 退出后被 s6 反复拉起。
+    exec s6-svc -d .
+fi
+
+echo "信息：WebUI 功能已启用（端口 ${WEBUI_PORT}）"
+exec darkhttpd /www \
+    --index index.html \
+    --port "${WEBUI_PORT}"
