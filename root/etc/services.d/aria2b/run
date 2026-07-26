@@ -23,7 +23,7 @@ RUN_ARIA2B_SERVICE() {
 
     local rpc_url probe_payload i
     local -a curl_args args
-    rpc_url=$(GET_ARIA2B_RPC_URL)
+    rpc_url=$(GET_ARIA2B_RPC_URL /config/aria2.conf)
     curl_args=(-fsS --max-time 1)
     [ "${rpc_url%%:*}" = "https" ] && curl_args+=(-k)
 

@@ -227,7 +227,7 @@ PRINT_STARTUP_INFO() {
     printf '   镜像版本: %s\n' "${IMAGE_VERSION}"
     printf '   镜像变体: %s\n' "${IMAGE_VARIANT}"
     printf '   AriaNg版本: %s\n' "${ARIANG_VERSION}"
-    printf '   Aria2版本: %s (Aria2)\n' "${ARIA2_VERSION}"
+    printf '   Aria2版本: %s\n' "${ARIA2_VERSION}"
     [ "${HAS_ARIA2B}" = "true" ] && printf '   Aria2B版本: %s\n' "${ARIA2B_VERSION}"
     printf '   平台架构: %s\n' "${PLATFORM_ARCH}"
     printf '   系统版本: Alpine Linux %s\n' "${ALPINE_VERSION}"

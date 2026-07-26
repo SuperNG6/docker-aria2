@@ -386,6 +386,7 @@ t_startup_banner_contract() {
         || fail+=" setting"
     [[ "${out}" == *"磁力种子处理: 重命名并备份 [不生效：磁力元数据保存未启用]"* ]] \
         || fail+=" dependency"
+    [[ "${out}" != *"(Aria2)"* ]] || fail+=" aria2-version"
     [[ "${out}" != *"${secret}"* ]] || fail+=" secret"
 
     rm -f "${missing}"
