@@ -9,13 +9,15 @@ RUN case "$(uname -m)" in \
          i386|i686)     ARCH=i386 ;; \
          *) echo "unsupported arch: $(uname -m)" >&2; exit 1 ;; \
        esac \
-    && REL=$(curl -fsSL https://api.github.com/repos/SuperNG6/Aria2-Pro-Core/releases/latest \
-             | grep '"tag_name"' | cut -d\" -f4) \
-    && curl -fsSL "https://github.com/SuperNG6/Aria2-Pro-Core/releases/download/${REL}/aria2-static-linux-${ARCH}.tar.gz" \
-       | tar -xz -C /usr/local/bin
+    && curl -fsSL -o /tmp/aria2.tar.gz \
+       "https://github.com/SuperNG6/Aria2-Pro-Core/releases/latest/download/aria2-static-linux-${ARCH}.tar.gz" \
+    && tar -xzf /tmp/aria2.tar.gz -C /usr/local/bin \
+    && rm -f /tmp/aria2.tar.gz
 
-RUN VER=$(curl -fsSL https://api.github.com/repos/SuperNG6/AriaNg/tags \
-             | grep '"name"' | cut -d\" -f4 | head -1) \
+RUN LATEST_URL=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+             https://github.com/SuperNG6/AriaNg/releases/latest) \
+    && VER=${LATEST_URL##*/} \
+    && [ -n "${VER}" ] \
     && curl -fsSL -o /tmp/ariang.zip \
        "https://github.com/SuperNG6/AriaNg/releases/download/${VER}/AriaNg-${VER}-AllInOne.zip" \
     && unzip -o /tmp/ariang.zip -d /tmp \
@@ -45,7 +47,10 @@ RUN apk add --no-cache darkhttpd jq findutils \
 # a2b 变体：装额外包 + 拉 aria2b 二进制；standard 直接删空服务目录
 RUN if [ "${VARIANT}" = "a2b" ]; then \
         apk add --no-cache iptables iptables-legacy ipset nodejs && \
-        A2B_VER=$(curl -fsSL https://api.github.com/repos/SuperNG6/aria2b/tags | grep '"name"' | cut -d\" -f4 | head -1) && \
+        LATEST_URL=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+          https://github.com/SuperNG6/aria2b/releases/latest) && \
+        A2B_VER=${LATEST_URL##*/} && \
+        [ -n "${A2B_VER}" ] && \
         curl -fsSL "https://github.com/SuperNG6/aria2b/releases/download/${A2B_VER}/aria2b" -o /usr/local/bin/aria2b && \
         chmod a+x /usr/local/bin/aria2b && \
         echo "${A2B_VER}" > /tmp/a2b.ver; \
