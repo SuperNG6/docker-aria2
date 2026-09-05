@@ -1,50 +1,5 @@
 #!/usr/bin/env bash
-# 小范围库级回归测试。
-#
-# 这里只测试适合直接调用的确定性逻辑：过滤匹配、路径计算、种子文件模式、
-# tracker 响应解析和启动信息格式。真实 aria2 回调、移动、回收、权限与配置重启
-# 由 rpc-integration-test.sh 的容器场景覆盖。
-#
-# 用法:
-#   docker cp in-container-lib-test.sh <container>:/tmp/
-#   docker exec --user abc <container> bash /tmp/in-container-lib-test.sh
-
-set -o pipefail
-# 不开 set -u：项目库通过 hook 上下文共享隐式变量；测试通过每组隔离和显式断言验证。
-
-PASS=0
-FAIL=0
-declare -a FAILED
-
-ok()  { printf '  ✓ %s\n' "$*"; PASS=$((PASS + 1)); }
-ng()  { printf '  ✗ %s\n' "$*"; FAIL=$((FAIL + 1)); FAILED+=("$*"); }
-hdr() { printf '\n──── %s ────\n' "$*"; }
-
-LIB=/aria2/scripts/lib
-TEST_ROOT="/downloads/__lib_unit_test__"
-LOG_DIR="/tmp/docker-aria2-lib-test-$$"
-
-if [ "$(id -u)" != "$(id -u abc)" ]; then
-    echo "库测试必须使用 docker exec --user abc 运行。" >&2
-    exit 2
-fi
-
-mkdir -p "${TEST_ROOT}" "${LOG_DIR}"
-trap 'rm -rf "${TEST_ROOT}" "${LOG_DIR}"' EXIT
-
-# event.sh 按正式入口的顺序加载 config/files/filter/torrent/rpc/log。
-. "${LIB}/event.sh"
-. "${LIB}/tracker.sh"
-[ -f /etc/services.d/aria2b/run ] && . /etc/services.d/aria2b/run
-
-DOWNLOAD_PATH=/downloads
-CF_LOG="${LOG_DIR}/filter.log"
-MOVE_LOG="${LOG_DIR}/move.log"
-DELETE_LOG="${LOG_DIR}/delete.log"
-RECYCLE_LOG="${LOG_DIR}/recycle.log"
-BAK_TORRENT_DIR="${TEST_ROOT}/backup-torrent"
-mkdir -p "${BAK_TORRENT_DIR}"
-
+# 纯规则组；生产全局变量只允许在库层构造。
 reset_filter_vars() {
     MIN_SIZE=""
     INCLUDE_FILE=""
@@ -58,12 +13,12 @@ make_task() {
     local name=$1
     shift
     local task="${TEST_ROOT}/${name}" spec file size
-    rm -rf "${task}"
-    mkdir -p "${task}"
+    assert "清理规则夹具 ${name}" rm -rf "${task}"
+    assert "创建规则夹具 ${name}" mkdir -p "${task}"
     for spec in "$@"; do
         file=${spec%%:*}
         size=${spec##*:}
-        dd if=/dev/zero of="${task}/${file}" bs=1024 count="${size}" 2>/dev/null
+        assert "写入规则夹具 ${file}" dd if=/dev/zero of="${task}/${file}" bs=1024 count="${size}" 2>/dev/null
     done
     printf '%s' "${task}"
 }
@@ -73,7 +28,7 @@ t_filter_rules() {
     local fail="" task conf
 
     task=$(make_task filter-ext \
-        movie.mp4:2 cover.jpg:1 readme.txt:1 sub.srt:1)
+        movie.mp4:2 cover.jpg:1 readme.txt:1 sub.srt:1) || die "规则夹具准备失败"
     SOURCE_PATH="${task}"
     reset_filter_vars
     EXCLUDE_FILE='txt|jpg'
@@ -84,7 +39,7 @@ t_filter_rules() {
         && [ ! -e "${task}/readme.txt" ] \
         || fail+=" extension"
 
-    task=$(make_task 广告合集 movie.mp4:2 sample.mp4:1 episode.mkv:1)
+    task=$(make_task 广告合集 movie.mp4:2 sample.mp4:1 episode.mkv:1) || die "规则夹具准备失败"
     SOURCE_PATH="${task}"
     reset_filter_vars
     KEYWORD_FILE='广告|sample'
@@ -94,7 +49,7 @@ t_filter_rules() {
         && [ ! -e "${task}/sample.mp4" ] \
         || fail+=" basename"
 
-    task=$(make_task filter-size big.bin:10 exact.bin:5 small.bin:3)
+    task=$(make_task filter-size big.bin:10 exact.bin:5 small.bin:3) || die "规则夹具准备失败"
     SOURCE_PATH="${task}"
     reset_filter_vars
     MIN_SIZE=5k
@@ -130,7 +85,7 @@ t_filter_eligibility_and_guard() {
     hdr "2. 多文件判定与全部文件保护"
     local fail="" task output
 
-    task=$(make_task filter-single only.txt:1)
+    task=$(make_task filter-single only.txt:1) || die "规则夹具准备失败"
     SOURCE_PATH="${task}"
     reset_filter_vars
     EXCLUDE_FILE=txt
@@ -138,7 +93,7 @@ t_filter_eligibility_and_guard() {
     [ -f "${task}/only.txt" ] && [ "${REAL_FILE_NUM}" -eq 1 ] \
         || fail+=" single-file"
 
-    task=$(make_task filter-all keep.mp4:2 remove.txt:1)
+    task=$(make_task filter-all keep.mp4:2 remove.txt:1) || die "规则夹具准备失败"
     mkdir -p "${task}/empty-dir"
     SOURCE_PATH="${task}"
     DET=true
@@ -156,7 +111,7 @@ t_filter_eligibility_and_guard() {
         && grep -Fq '会删除当前任务全部文件' "${output}" \
         || fail+=" all-file-guard"
 
-    task=$(make_task filter-dedup ad.txt:1 keep.mp4:2)
+    task=$(make_task filter-dedup ad.txt:1 keep.mp4:2) || die "规则夹具准备失败"
     SOURCE_PATH="${task}"
     DET=false
     reset_filter_vars
@@ -233,69 +188,35 @@ t_path_contracts() {
 }
 
 t_torrent_modes() {
-    hdr "4. 种子处理模式"
-    local fail="" dir tf output rc
-    dir="${TEST_ROOT}/torrent"
-    rm -rf "${dir}" "${BAK_TORRENT_DIR}"
-    mkdir -p "${dir}" "${BAK_TORRENT_DIR}"
-    DOWNLOAD_DIR="${dir}"
-    TASK_NAME=fixture
-
-    tf="${dir}/retain.torrent"
-    printf data > "${tf}"
-    TORRENT_FILE="${tf}"
-    TOR=retain
-    HANDLE_TORRENT >/dev/null
-    [ -f "${tf}" ] || fail+=" retain"
-
-    tf="${dir}/delete.torrent"
-    printf data > "${tf}"
-    TORRENT_FILE="${tf}"
-    TOR=delete
-    HANDLE_TORRENT >/dev/null
-    [ ! -e "${tf}" ] || fail+=" delete"
-
-    tf="${dir}/rename-source.torrent"
-    printf data > "${tf}"
-    TORRENT_FILE="${tf}"
-    TOR=rename
-    HANDLE_TORRENT >/dev/null
-    [ -f "${dir}/fixture.torrent" ] || fail+=" rename"
-
-    tf="${dir}/backup-source.torrent"
-    printf data > "${tf}"
-    TORRENT_FILE="${tf}"
-    TOR=backup-rename
-    HANDLE_TORRENT >/dev/null
-    [ -f "${BAK_TORRENT_DIR}/fixture.torrent" ] || fail+=" backup-rename"
-
-    tf="${dir}/unknown.torrent"
-    printf data > "${tf}"
-    TORRENT_FILE="${tf}"
-    TOR=future-mode
-    output=$(HANDLE_TORRENT 2>&1)
-    [ -f "${tf}" ] && [[ "${output}" == *"未知的 TOR 值"* ]] \
-        || fail+=" unknown"
-
-    tf="${dir}/failure.torrent"
-    printf data > "${tf}"
-    TORRENT_FILE="${tf}"
+    local row mode expected base rc output
+    # 表格是用户可见的文件布局，不根据生产分支推导期望值。
+    for row in retain:source/source.torrent delete:absent rename:source/fixture.torrent \
+        backup:backup/source.torrent backup-rename:backup/fixture.torrent future-mode:source/source.torrent; do
+        mode=${row%%:*}
+        expected=${row#*:}
+        base="${TEST_ROOT}/torrent-${mode}"
+        assert '创建种子夹具目录' mkdir -p "${base}/source" "${base}/backup"
+        assert '写入种子夹具' bash -c 'printf TORRENT > "$1"' bash "${base}/source/source.torrent"
+        DOWNLOAD_DIR="${base}/source"
+        BAK_TORRENT_DIR="${base}/backup"
+        TASK_NAME=fixture
+        TORRENT_FILE="${base}/source/source.torrent"
+        TOR=${mode}
+        assert "种子处理 ${mode}" HANDLE_TORRENT
+        if [ "${expected}" = absent ]; then
+            equal 0 "$(find "${base}" -type f | wc -l | tr -d '[:space:]')" '删除后不应留副本'
+        else
+            equal TORRENT "$(cat "${base}/${expected}")" "种子内容 ${mode}"
+            equal 1 "$(find "${base}" -type f | wc -l | tr -d '[:space:]')" "种子只有一个副本 ${mode}"
+        fi
+    done
     TOR=backup-rename
     BAK_TORRENT_DIR=/proc/aria2-test-unavailable
-    output=$(HANDLE_TORRENT 2>&1)
-    rc=$?
-    [ "${rc}" -ne 0 ] \
-        && [ -f "${tf}" ] \
-        && [[ "${output}" == *"重命名并备份种子文件失败"* ]] \
-        && [[ "${output}" != *"重命名并备份种子文件:"* ]] \
-        || fail+=" failure-report"
-    BAK_TORRENT_DIR="${TEST_ROOT}/backup-torrent"
-
-    if [ -z "${fail}" ]; then
-        ok "保留、删除、重命名、备份、未知值和失败日志正确"
-    else
-        ng "种子处理组异常:${fail}"
-    fi
+    rc=0
+    output=$(HANDLE_TORRENT 2>&1) || rc=$?
+    [ "${rc}" -ne 0 ] || die '备份失败应返回非零'
+    equal TORRENT "$(cat "${TORRENT_FILE}")" '备份失败保留种子'
+    [[ "${output}" == *"重命名并备份种子文件失败"* ]] || die '缺少备份失败日志'
 }
 
 t_tracker_contracts() {
@@ -405,7 +326,7 @@ t_startup_banner_contract() {
 }
 
 t_aria2b_rpc_scheme() {
-    [ -f /etc/services.d/aria2b/run ] || return 0
+    [ -f /etc/services.d/aria2b/run ] || die "a2b 服务入口不存在"
     hdr "7. aria2b 本地 RPC 协议选择"
     local fail="" conf url
     conf="${LOG_DIR}/aria2b.conf"
@@ -425,20 +346,3 @@ t_aria2b_rpc_scheme() {
     fi
 }
 
-printf '以 abc 用户运行库级回归测试 ...\n'
-t_filter_rules
-t_filter_eligibility_and_guard
-t_path_contracts
-t_torrent_modes
-t_tracker_contracts
-t_startup_banner_contract
-t_aria2b_rpc_scheme
-
-printf '\n═════════════════════════════════\n'
-printf '  UNIT GROUPS: PASS=%s FAIL=%s\n' "${PASS}" "${FAIL}"
-if ((FAIL > 0)); then
-    printf '  失败测试组:\n'
-    printf '    - %s\n' "${FAILED[@]}"
-    exit $((FAIL > 255 ? 255 : FAIL))
-fi
-printf '  ✓ 所有库级测试组通过\n'

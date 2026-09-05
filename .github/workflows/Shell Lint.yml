@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - 'root/**'
-      - '.github/scripts/*.sh'
+      - 'tests/**'
       - 'build.sh'
       - '.shellcheckrc'
       - '.github/workflows/**'
@@ -15,7 +15,7 @@ on:
       - 'dev-*'
     paths:
       - 'root/**'
-      - '.github/scripts/*.sh'
+      - 'tests/**'
       - 'build.sh'
       - '.shellcheckrc'
       - '.github/workflows/**'
@@ -34,26 +34,8 @@ jobs:
           sudo apt-get install -y -qq shellcheck
           shellcheck --version
 
-      - name: 自动发现并检查 Shell 脚本
-        run: |
-          # 从 Git 跟踪文件中按 shebang 识别脚本，新增脚本无需手工维护清单。
-          files=()
-          while IFS= read -r -d '' file; do
-            if head -n 1 "${file}" \
-              | grep -Eq '^#!/(usr/bin/env (ba)?sh|bin/(ba)?sh|usr/bin/with-contenv (ba)?sh)($| )'; then
-              files+=("${file}")
-            fi
-          done < <(git ls-files -z -- root .github/scripts build.sh)
-
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "未发现 Shell 脚本" >&2
-            exit 1
-          fi
-
-          printf '检查 %d 个 Shell 脚本：\n' "${#files[@]}"
-          printf '  %s\n' "${files[@]}"
-          bash -n "${files[@]}"
-          shellcheck --severity=warning -x "${files[@]}"
+      - name: Shell 语法与 ShellCheck
+        run: bash tests/lint.sh
 
   actionlint:
     name: GitHub Actions 编排检查

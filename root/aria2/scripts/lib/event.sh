@@ -35,12 +35,12 @@ RECYCLE_PATH() {
 # 保留下载目录内的相对层级，使 completed/recycle 目录结构与下载目录一致
 # SOURCE_PATH 不在 DOWNLOAD_PATH 范围内（aria2 dir 配错指到 /downloads 之外）→ 标记 error
 GET_TARGET_PATH() {
-    if ! IS_TASK_SOURCE_PATH "${SOURCE_PATH}"; then
+    if ! SOURCE_PATH=$(realpath -ms -- "${SOURCE_PATH}") \
+        || ! IS_TASK_SOURCE_PATH "${SOURCE_PATH}"; then
         # 越界或根目录：拒绝在 completed/recycle 下凭空拼出怪路径，也避免操作 /downloads 本身
         GET_PATH_INFO="error"
         return 1
     fi
-    SOURCE_PATH="${SOURCE_PATH%/}"
     RELATIVE_PATH="${SOURCE_PATH#"${DOWNLOAD_PATH}/"}"
     TARGET_PATH="${TARGET_DIR}/$(dirname "${RELATIVE_PATH}")"
     if [ "${TARGET_PATH}" = "${TARGET_DIR}/." ]; then
@@ -67,6 +67,17 @@ GET_FINAL_PATH() {
         # 磁力链接刚添加时 FILE_PATH 为空，等待元数据
         return
     fi
+    # 在推断 BT 根目录前统一路径写法，保证目录比较、相对路径和后续操作一致。
+    if ! DOWNLOAD_DIR=$(realpath -ms -- "${DOWNLOAD_DIR}") \
+        || ! FILE_PATH=$(realpath -ms -- "${FILE_PATH}"); then
+        GET_PATH_INFO="error"
+        return 1
+    fi
+    # 文件越出任务下载目录时不能推断任务根目录，否则可能误操作整个分类目录。
+    case "${FILE_PATH}" in
+        "${DOWNLOAD_DIR}/"*) ;;
+        *) GET_PATH_INFO="error"; return 1 ;;
+    esac
     RELATIVE_PATH="${FILE_PATH#"${DOWNLOAD_DIR}/"}"
     if [ "${FILE_NUM}" -gt 1 ] \
         || { [ "${INFO_HASH}" != "null" ] && [ "$(dirname "${FILE_PATH}")" != "${DOWNLOAD_DIR}" ]; }; then

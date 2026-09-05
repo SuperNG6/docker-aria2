@@ -419,27 +419,22 @@ jobs:
           docker logs --tail 100 "${CONTAINER_NAME}" || true
           exit 1
 
-      - name: 库级回归测试（abc 用户·${{ matrix.variant }}·仅 amd64）
+      - name: 行为回归测试（隔离容器·仅 amd64）
         if: matrix.platform == 'linux/amd64'
         env:
-          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
-        run: |
-          docker cp .github/scripts/in-container-lib-test.sh \
-            "${CONTAINER_NAME}":/tmp/in-container-lib-test.sh
-          docker exec --user abc "${CONTAINER_NAME}" \
-            bash /tmp/in-container-lib-test.sh
+          IMAGE: ${{ steps.pull.outputs.image }}
+          VARIANT: ${{ matrix.variant }}
+          TEST_PLATFORM: linux/amd64
+          TEST_ARTIFACTS: ${{ runner.temp }}/behavior-tests
+        run: bash tests/run.sh "${IMAGE}" "${VARIANT}"
 
-      - name: 真实容器场景测试（${{ matrix.variant }}·仅 amd64）
-        # 使用本地 HTTP 与固定多文件 torrent；由 aria2 自动触发正式 hook，不依赖公网下载。
-        if: matrix.platform == 'linux/amd64'
-        env:
-          CONTAINER_NAME: aria2-smoke-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
-          RPC_PORT: ${{ matrix.rpc_port }}
-        run: |
-          chmod +x .github/scripts/rpc-integration-test.sh
-          .github/scripts/rpc-integration-test.sh \
-            127.0.0.1 "${RPC_PORT}" smoketoken \
-            "${CONTAINER_NAME}" "${{ matrix.variant }}" 8080
+      - name: 上传行为测试诊断
+        if: failure() && matrix.platform == 'linux/amd64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: behavior-${{ matrix.variant }}-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/behavior-tests
+          retention-days: 7
 
       - name: 失败时收集诊断信息
         if: failure()

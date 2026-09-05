@@ -12,8 +12,11 @@
 # 不能把历史 completed/recycle/move-failed 内容当成本次任务整体操作。
 IS_TASK_SOURCE_PATH() {
     local root="${DOWNLOAD_PATH%/}" path="${1:-}"
-    path="${path%/}"
     [ -n "${root}" ] && [ -n "${path}" ] || return 1
+    # 消除重复斜杠和 . / ..，避免共享目录的等价写法绕过检查。
+    # -m 允许任务文件尚未落盘；-s 保留软链接的原有操作语义。
+    root=$(realpath -ms -- "${root}") || return 1
+    path=$(realpath -ms -- "${path}") || return 1
     case "${path}" in
         "${root}"|"${root}/completed"|"${root}/recycle"|"${root}/move-failed")
             return 1

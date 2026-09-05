@@ -32,7 +32,11 @@ LOAD_CONF() {
 # 用临时文件保证原子性；任意一条 sed 失败则整体回滚
 # 值中的 sed 元字符（反斜杠、&、分隔符 |）逐一转义，避免新增配置项值含特殊字符时炸裂
 SED_CONF() {
-    cp /aria2/conf/setting.conf /config/setting.conf.new
+    if ! cp /aria2/conf/setting.conf /config/setting.conf.new; then
+        echo "错误: 无法复制配置模板，保留原配置" >&2
+        rm -f /config/setting.conf.new
+        return 1
+    fi
     local failed=0 key var_name default_value escaped
     for config_item in "${CONFIG_ITEMS[@]}"; do
         IFS=':' read -r key var_name default_value <<< "$config_item"

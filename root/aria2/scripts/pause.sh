@@ -22,6 +22,8 @@ RUN_PAUSE_HOOK() {
 
     sleep 30
     LOAD_CONF
+    # 等待期间关闭功能时，取消本次尚未执行的移动。
+    [ "${MPT}" = "true" ] || return 0
     if ! GET_RPC_RESULT || ! GET_TASK_STATUS; then
         echo -e "$(DATE_TIME) ${WARNING} 无法确认暂停任务状态，跳过移动（GID=${TASK_GID}）" >&2
         return 0

@@ -589,23 +589,42 @@ uname -m
    * YAML / actionlint
    * `git diff --check`
 
-2. 库级回归测试：`.github/scripts/in-container-lib-test.sh`
+2. 库级回归测试：`tests/library.sh`（规则位于 `tests/cases/library.sh` 和 `boundaries.sh`）
 
    只覆盖适合直接调用的确定性逻辑，例如过滤匹配、路径计算、种子处理模式、
    tracker JSON 判断和启动信息格式。脚本必须通过以下方式以正式运行用户执行：
 
    ```bash
-   docker exec --user abc <container> bash /tmp/in-container-lib-test.sh
+   docker exec --user abc <container> bash /tmp/tests/library.sh paths
    ```
 
    该脚本有意不开 `set -u`；项目库依赖 hook 上下文中的隐式变量。
 
-3. 真实容器场景测试：`.github/scripts/rpc-integration-test.sh`
+3. 真实容器场景测试：`tests/runtime.sh`（场景位于 `tests/cases/`）
 
    覆盖 `/init`、配置文件初始化/热修改/升级、aria2 RPC、正式
    `on-download-start/pause/stop/complete` hook、过滤、异步移动、回收和永久删除，
    并检查最终文件、磁盘日志、服务状态和 UID/GID。当前使用本地 AriaNg HTTP 和
-   一个 12 字节的固定多文件 torrent，不依赖公网下载或 tracker。
+   固定的单文件、多文件、共享目录重名 torrent，不依赖公网下载或 tracker。
+
+### 统一入口与隔离
+
+```bash
+bash tests/lint.sh
+bash tests/run.sh superng6/aria2:dev-latest standard
+bash tests/run.sh superng6/aria2:dev-latest standard pause-disable
+bash tests/run.sh superng6/aria2:a2b-dev-latest a2b
+bash tests/mutate.sh superng6/aria2:dev-latest standard
+```
+
+`tests/run.sh` 为每个场景创建独立容器和匿名卷，复用镜像而不复用运行状态。
+配置升级场景在同一容器/卷上重启；库与生命周期场景均以 `abc` 执行。
+CI 在 amd64 两变体中调用相同入口，ARM 继续只运行原有 smoke-test。
+失败日志由 `TEST_ARTIFACTS` 指定目录收集；默认存入宿主临时目录。
+
+`tests/mutate.sh` 只在专用容器覆盖指定生产文件，不改工作区。每个变异先运行正常
+基线，再验证错误被对应场景的断言捕获；基础设施故障不算捕获成功。
+详情与行为约定参见 `tests/README.md`。
 
 ### 测试编写约束
 

@@ -369,6 +369,9 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 </details>
 
 # Document
+
+开发与回归测试入口见 [tests/README.md](tests/README.md)，包含隔离容器运行、单场景调试和测试有效性验证。
+
 ## 在线webui
 
 我在Gitee上构建了基于ariang主线稳定版的在线webui:  
