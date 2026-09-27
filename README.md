@@ -35,34 +35,27 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
    > 支持检测到重复任务自动删除新创立的重复任务
  - 不能够暂停任务后结束/移动文件
    > BT任务有个特点，就说很容易卡在一个进度就不动了，如果主要文件已下载完成可以执行其他操作就好了
-   > 本镜像支持暂停任务后清理垃圾文件，并移动到已完成目录，并结束该任务
+   > 本镜像支持暂停任务后整理文件，并移动到已完成目录
  - 可屏蔽迅雷等吸血客户端
    > 集成自@makeding/aria2b 项目，感谢
 # 本镜像的一些优点
-- 全平台架构`x86-64`、`arm64`、`armhf`,统一latest tag
-- 做了usermapping，使用你自己的账户权限来运行，这点对于群辉来说尤其重要
-- (a2b-latest镜像）可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端`A2B=true`(集成自[@makeding/aria2b](https://github.com/makeding/aria2b)，感谢)
-- 纯aria2，没有包含多于的服务
-- 超小镜像体积 10.77 MB
-- 可以自定义任意二级目录
-- 开放了BT下载DTH监听端口、BT下载监听端口（TCP/UDP 6881），加快下载速度
-- 默认开启DHT并且创建了DHT文件，加速下载
-- 包含了下载完成后自动删除.aria2文件脚本
-- 包含了执行删除正在下载任务事时自动执行删除文件（删除已完成的任务不会删除文件，请放心）和aria2文件的脚本
-- 内置最优的aria2配置文件（修改自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
-- 内置400多条最新trackers（来自[XIU2 / TrackersListCollection](https://github.com/XIU2/TrackersListCollection)，感谢）
-- 每天自动更新trackers，不需要重启aria2即可生效（来自[P3TERX/aria2.conf](https://github.com/P3TERX/aria2.conf)，感谢）
-- 默认上海时区 Asia/Shanghai
-- 直接设置token，不需要在配置文件里修改
-- 最新静态编译版的aria2c1.3.7（来自[P3TERX/aria2-builder](https://github.com/SuperNG6/Aria2-Pro-Core)，感谢）
-- 解除aria2c下载线程限制
-- 支持自动更新tracker，每次启动容器时会自动更新tracker
-- 手动设置磁盘缓存`CACHE`，默认参数`128M`
-- 可选则开启回收站，删除文件后移动至回收站，防止丢失文件
-- 可选下载任务完成后，保留目录结构移动文件
-- 相对来说最完善的任务处理脚本
-- 更多可手动调节参数，大量选项不需要修改conf文件
-- 全平台镜像统一tag
+- `latest` 提供 aria2c 与 [SuperNG6/AriaNg 增强版](https://github.com/SuperNG6/AriaNg)，`a2b-latest` 额外提供可开关的 aria2b；两种镜像均覆盖 x86-64、arm64、armv7。
+- AriaNg 可在下载中、等待和已停止的任务列表直接展开文件清单；新建 BT／磁力任务时可按文件大小预先排除小文件。
+- 容器可在下载完成后按扩展名、关键词、正则和大小清理文件，并可保留相对目录结构移动到 `completed`。
+- 以 `PUID`／`PGID` 指定的用户运行 aria2c；`/config` 持久化配置、会话、过滤规则和日志。
+- 可选回收站、重复任务检测、磁力元数据种子备份与重命名、暂停后移动。
+- RPC、WebUI、BT/DHT 端口和磁盘缓存可配置，并支持自动更新 tracker。
+
+## 新版 AriaNg 功能
+
+镜像内置 [SuperNG6/AriaNg 增强版](https://github.com/SuperNG6/AriaNg)：
+
+- **任务列表内嵌文件清单**：在下载中、等待和已停止的任务列表直接展开文件，查看文件名、大小和进度；多目录 BT 任务以目录树展示。
+- **BT／磁力任务文件过滤**：新建磁力链接或种子任务时，可按文件大小筛选要下载的文件；任务列表显示“过滤中”状态。筛选流程可在页面刷新或 RPC 重连后继续，失败时自动安全回退，任务处理更稳定。
+
+## 新版 aria2b 功能
+
+`a2b-latest` 集成 [SuperNG6/aria2b](https://github.com/SuperNG6/aria2b)：通过 aria2 RPC 识别 BT 连接，按客户端特征和持续上传却无下载进度的行为封禁吸血 peer；支持 IPv4／IPv6 黑名单及自动解除封禁。新版通过 RPC 长连接、批量查询和更高效的进度检测降低长期运行开销；断线重试、启动时同步封禁状态和优雅退出让服务运行更稳定。
 
 # Architecture
 ### 全平台镜像统一Tag
@@ -458,14 +451,14 @@ CTU="https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/best_aria2.t
 
 ### 上游组件
 
-本镜像由三部分组合而成，遇到问题时可以分别去对应仓库提 issue：
+本镜像由以下组件组合而成，遇到问题时可以分别去对应仓库提 issue：
 
 | 组件 | 仓库 | 当前版本 |
 |------|------|----------|
 | 基础镜像 | [SuperNG6/docker-baseimage-alpine](https://github.com/SuperNG6/docker-baseimage-alpine) | Alpine 3.23 + s6-overlay v2.2.0.3 |
 | aria2c 二进制 | [SuperNG6/Aria2-Pro-Core](https://github.com/SuperNG6/Aria2-Pro-Core) | 构建时拉 latest release（aria2 1.37.0 + OpenSSL 3.5） |
-| AriaNg WebUI | [mayswind/AriaNg](https://github.com/mayswind/AriaNg) | 构建时拉最新 tag |
-| aria2b（仅 a2b 镜像） | [SuperNG6/aria2b](https://github.com/SuperNG6/aria2b) | v2.1.0+（构建时拉最新 tag） |
+| AriaNg WebUI | [SuperNG6/AriaNg](https://github.com/SuperNG6/AriaNg)（基于 mayswind/AriaNg） | 构建时拉最新 release |
+| aria2b（仅 a2b 镜像） | [SuperNG6/aria2b](https://github.com/SuperNG6/aria2b) | 构建时拉最新 release |
 
 aria2b 是 Node.js 程序，启动需要 `--cap-add NET_ADMIN`（用 iptables + ipset 屏蔽吸血客户端）。它会从 `/config/aria2.conf` 读以 `ab-` 为前缀的扩展配置项（如 `ab-bt-scan-interval`、`ab-bt-ban-timeout` 等），用户可以在 aria2.conf 里自定义屏蔽参数。详见 aria2b 仓库 README。
 
@@ -485,8 +478,7 @@ remove-task=rmaria
 # `dmof`非自定义目录任务，单文件，不执行移动操作。自定义目录、单文件，保留目录结构移动（推荐）
 move-task=false
 
-# 文件过滤，任务下载完成后删除不需要的文件内容，`false`、`true`
-# 由于aria2自身限制，无法在下载前取消不需要的文件（只能在任务完成后删除文件）
+# 容器端文件过滤，在下载完成后的文件整理中清理不需要的文件，`false`、`true`
 content-filter=false
 
 # 下载完成后删除空文件夹，默认`true`，需要开启文件过滤功能才能生效
