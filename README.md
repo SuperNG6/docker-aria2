@@ -39,7 +39,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
  - 可屏蔽迅雷等吸血客户端
    > 集成自@makeding/aria2b 项目，感谢
 # 本镜像的一些优点
-- `latest` 提供 aria2c 与 [SuperNG6/AriaNg 增强版](https://github.com/SuperNG6/AriaNg)，`a2b-latest` 额外提供可开关的 aria2b；两种镜像均覆盖 x86-64、arm64、armv7。
+- `latest` 提供 aria2c 与 [SuperNG6/AriaNg 增强版](https://github.com/SuperNG6/AriaNg)，`a2b-latest` 额外提供可开关的 aria2b。
 - AriaNg 可在下载中、等待和已停止的任务列表直接展开文件清单；新建 BT／磁力任务时可按文件大小预先排除小文件。
 - 容器可在下载完成后按扩展名、关键词、正则和大小清理文件，并可保留相对目录结构移动到 `completed`。
 - 以 `PUID`／`PGID` 指定的用户运行 aria2c；`/config` 持久化配置、会话、过滤规则和日志。
@@ -51,7 +51,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 镜像内置 [SuperNG6/AriaNg 增强版](https://github.com/SuperNG6/AriaNg)：
 
 - **任务列表内嵌文件清单**：在下载中、等待和已停止的任务列表直接展开文件，查看文件名、大小和进度；多目录 BT 任务以目录树展示。
-- **BT／磁力任务文件过滤**：新建磁力链接或种子任务时，可按文件大小筛选要下载的文件；任务列表显示“过滤中”状态。筛选流程可在页面刷新或 RPC 重连后继续，失败时自动安全回退，任务处理更稳定。
+- **BT／磁力任务文件过滤**：新建磁力链接或种子任务时，可按文件大小筛选要下载的文件。
 
 ## 新版 aria2b 功能
 
@@ -88,6 +88,13 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Changelogs
 
+## 2026/09/27
+
+      1、集成 AriaNg 增强版 2.2.3：任务列表可直接展开文件清单，查看文件大小、进度和多目录结构
+      2、新建 BT／磁力任务支持按文件大小筛选下载内容
+      3、更新 aria2b v2.2.5：优化吸血客户端识别与无进度上传检测，降低扫描开销，增强长期运行稳定性
+      4、重构下载事件与配置初始化流程，完善路径保护、文件移动和回收失败时的处理
+
 ## 2026/05/24
 
       1、更新基础环境到 Alpine 3.23
@@ -114,6 +121,9 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
       1、新增移动文件前判断磁盘空间是否足够功能
       
+<details>
+   <summary>Change Log History</summary>
+
 ## 2025/02/18
 
       1、更新 AriaNg 1.3.10
@@ -180,8 +190,7 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
       1、自定义tracker地址变更至`/config/setting.conf`
          现在无需重启容器也能方便修改自定义tracker了
 
-<details>
-   <summary>Change Log History</summary>
+
 
 ## 2021/07/08
 
@@ -362,10 +371,6 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 </details>
 
 # Document
-
-开发与回归测试入口见 [tests/README.md](tests/README.md)，包含隔离容器运行、单场景调试和测试有效性验证。
-
-当前产品行为见 [PRD](docs/PRD.md)；架构、启动顺序、配置模型与任务生命周期见 [开发 Spec](docs/DEVELOPMENT_SPEC.md)。
 
 ## 在线webui
 
