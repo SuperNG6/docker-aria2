@@ -8,9 +8,19 @@ env:
   GHCR_IMAGE: ghcr.io/superng6/aria2
 
 jobs:
-  build:
-    if: github.ref == 'refs/heads/master'
+  release-guard:
+    name: 检查正式发布分支
     runs-on: ubuntu-latest
+    steps:
+      - name: 只允许从 master 发布
+        if: github.ref != 'refs/heads/master'
+        run: |
+          echo '正式镜像只能从 master 分支发布。' >&2
+          exit 1
+
+  build:
+    runs-on: ubuntu-latest
+    needs: release-guard
     permissions:
       contents: read
       packages: write

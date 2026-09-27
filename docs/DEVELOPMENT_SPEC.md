@@ -78,7 +78,7 @@ RPC 用 `jq` 构造 JSON，请求先试本地 HTTP，失败再试 HTTPS 并允�
 
 [`tests/lint.sh`](../tests/lint.sh) 运行 `bash -n`、ShellCheck、测试工具自检和 `git diff --check`。[`tests/run.sh`](../tests/run.sh) 为每个场景建独立容器与匿名卷，以 `abc` 运行库或生命周期测试；配置升级场景复用同一卷并重启。真实生命周期测试通过 aria2 RPC、正式 hook 和本地固定夹具验证结果，不直接 source 生产库或手写其全局变量；异步结果使用有上限的条件轮询。[`tests/mutate.sh`](../tests/mutate.sh) 在专用容器注入故障以验证关键断言。场景清单见 [测试说明](../tests/README.md)。
 
-[构建工作流](../.github/workflows/Build%20Image.yml) 仅在 `master` 上手动触发构建，覆盖 `standard`、`a2b` 两种变体与 `linux/amd64`、`linux/arm/v7`、`linux/arm64` 三种平台，共六种组合。单架构镜像先按 digest 推送，再做服务连通 smoke-test；amd64 额外运行完整行为测试，a2b 完整就绪也只在 amd64 验证。构建矩阵和 smoke-test 均成功后才合并 manifest，并发布 `latest`、`<date>`、`a2b-latest`、`a2b-<date>` 到 Docker Hub 与 GHCR。[Shell Lint 工作流](../.github/workflows/Shell%20Lint.yml) 对相关 PR/push 运行 ShellCheck 与 actionlint。
+[构建工作流](../.github/workflows/Build%20Image.yml) 手动触发；非 `master` 分支会明确失败，防止误发布正式镜像。`master` 上覆盖 `standard`、`a2b` 两种变体与 `linux/amd64`、`linux/arm/v7`、`linux/arm64` 三种平台，共六种组合。单架构镜像先按 digest 推送，再做服务连通 smoke-test；amd64 额外运行完整行为测试，a2b 完整就绪也只在 amd64 验证。构建矩阵和 smoke-test 均成功后才合并 manifest，并发布 `latest`、`<date>`、`a2b-latest`、`a2b-<date>` 到 Docker Hub 与 GHCR。[Shell Lint 工作流](../.github/workflows/Shell%20Lint.yml) 对相关 PR/push 运行 ShellCheck 与 actionlint。
 
 ```bash
 bash tests/lint.sh
