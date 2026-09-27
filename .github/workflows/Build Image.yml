@@ -36,7 +36,7 @@ jobs:
           - a2b
     steps:
       - name: 检出代码
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: 设置 QEMU
         uses: docker/setup-qemu-action@v4
@@ -193,7 +193,7 @@ jobs:
             a2b_enabled: "true"
     steps:
       - name: 检出代码
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # arm 容器在 x86 runner 上经 QEMU 仿真运行；amd64 不需要但 setup-qemu 无害
       - name: 设置 QEMU
