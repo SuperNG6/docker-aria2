@@ -2,7 +2,7 @@
 # 在专用容器注入五个明确错误，检查场景是否真的能发现它们。工作区代码不变。
 set -euo pipefail
 TESTS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-IMAGE=${1:-superng6/aria2:dev-latest}
+IMAGE=${1:-superng6/aria2:latest}
 VARIANT=${2:-standard}
 TEMP=$(mktemp -d)
 ARTIFACTS=${TEST_ARTIFACTS:-"${TMPDIR:-/tmp}/aria2-mutations-$(date +%s)-$$"}

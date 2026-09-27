@@ -9,15 +9,15 @@
 ```bash
 bash build.sh standard
 bash tests/lint.sh
-bash tests/run.sh superng6/aria2:dev-latest standard
+bash tests/run.sh superng6/aria2:latest standard
 
 # 列出或只运行一个场景
-bash tests/run.sh superng6/aria2:dev-latest standard --list
-bash tests/run.sh superng6/aria2:dev-latest standard reserved
-bash tests/run.sh superng6/aria2:dev-latest standard lib:paths
+bash tests/run.sh superng6/aria2:latest standard --list
+bash tests/run.sh superng6/aria2:latest standard reserved
+bash tests/run.sh superng6/aria2:latest standard lib:paths
 
 bash build.sh a2b
-bash tests/run.sh superng6/aria2:a2b-dev-latest a2b
+bash tests/run.sh superng6/aria2:a2b-latest a2b
 ```
 
 宿主只需 Bash 和 Docker；静态检查还需要 ShellCheck。测试使用镜像里的 GNU 工具、aria2 和真实 `/init`。
@@ -57,7 +57,7 @@ bash tests/run.sh superng6/aria2:a2b-dev-latest a2b
 ## 验证测试确实有用
 
 ```bash
-bash tests/mutate.sh superng6/aria2:dev-latest standard
+bash tests/mutate.sh superng6/aria2:latest standard
 ```
 
 宿主额外需要 Python 3。待测镜像必须由当前工作区构建。

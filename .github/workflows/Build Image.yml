@@ -9,7 +9,11 @@ env:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: true
       matrix:
@@ -89,9 +93,9 @@ jobs:
       matrix:
         include:
           - variant: standard
-            tag_prefix: dev-       # 推 :dev-latest / :dev-<date>
+            tag_prefix: ''         # 推 :latest / :<date>
           - variant: a2b
-            tag_prefix: a2b-dev-   # 推 :a2b-dev-latest / :a2b-dev-<date>
+            tag_prefix: a2b-       # 推 :a2b-latest / :a2b-<date>
     steps:
       - name: 设置版本标签
         id: set-version

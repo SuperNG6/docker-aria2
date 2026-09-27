@@ -2,7 +2,7 @@
 # 一个入口：指定镜像和场景；每个场景使用自己的容器与匿名卷。
 set -euo pipefail
 TESTS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-IMAGE=${1:-superng6/aria2:dev-latest}
+IMAGE=${1:-superng6/aria2:latest}
 VARIANT=${2:-standard}
 SELECT=${3:-all}
 case "${VARIANT}" in standard|a2b) ;; *) echo 'variant 必须为 standard 或 a2b' >&2; exit 2 ;; esac

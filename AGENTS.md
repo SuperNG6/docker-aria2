@@ -15,9 +15,9 @@
 ```bash
 bash tests/lint.sh
 ./build.sh standard
-bash tests/run.sh superng6/aria2:dev-latest standard
+bash tests/run.sh superng6/aria2:latest standard
 ./build.sh a2b
-bash tests/run.sh superng6/aria2:a2b-dev-latest a2b
+bash tests/run.sh superng6/aria2:a2b-latest a2b
 ```
 
 `build.sh all` 可构建两种变体；`tests/run.sh <镜像> <变体> --list` 列出场景，末尾改为 `lib:paths` 等名称可只运行一个。容器测试前先构建当前工作区镜像。脚本改动至少运行 `tests/lint.sh`（Bash 语法、ShellCheck、自检和 diff 检查）；用户可见行为还需运行相关容器场景。宿主需 Bash、Docker，静态检查需 ShellCheck。

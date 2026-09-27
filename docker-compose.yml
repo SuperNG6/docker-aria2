@@ -1,6 +1,6 @@
 services:
   aria2:
-    image: superng6/aria2:a2b-dev-latest
+    image: superng6/aria2:a2b-latest
     container_name: aria2
     network_mode: host
     cap_add:
