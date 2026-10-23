@@ -284,10 +284,8 @@ jobs:
           WEB_PORT: ${{ matrix.web_port }}
           A2B_ENABLED: ${{ matrix.a2b_enabled }}
         run: |
-          echo "Observe container logs for 30 seconds before probing services..."
-          timeout 30s docker logs -f "${CONTAINER_NAME}" || true
-          echo "Start service probes."
-
+          # 不再固定观察 30 秒日志：直接轮询，服务就绪即开始检查；总上限仍为 90 秒，
+          # 照顾 QEMU 仿真下较慢的 ARM 启动。失败时下方会输出容器日志。
           # aria2c 连通判定：jq -e '.result.version' 解析 JSON，不用 grep '"version"'——
           # 错误响应体里也可能含 "version" 字样（与 lib/tracker.sh 的 JSON 契约一致）
           #
@@ -305,7 +303,7 @@ jobs:
           fi
 
           A2B_READY=0
-          for _ in {1..30}; do
+          for _ in {1..45}; do
             if docker ps --filter "name=${CONTAINER_NAME}" --filter "status=running" --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}" \
               && curl -fsS "http://127.0.0.1:${RPC_PORT}/jsonrpc" \
                 -H 'Content-Type: application/json' \
