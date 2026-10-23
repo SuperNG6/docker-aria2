@@ -372,12 +372,6 @@ https://sleele.com/2021/09/04/nas-ssd-aria2-qbittorrent/
 
 # Document
 
-## 在线webui
-
-我在Gitee上构建了基于ariang主线稳定版的在线webui:  
-仅https https://sleele.gitee.io/#!/downloading  
-http  http://sleele.gitee.io/ariang/#!/downloading  
-
 ## 自行构建webui
 在docker上部署最新版ariang  
 https://sleele.com/2020/06/03/tiny-docker-ariang/  
@@ -441,7 +435,7 @@ https://hub.docker.com/r/superng6/ariang
 
 > **附加功能配置**：`MOVE / RMTASK / CF / DET / TOR / RRT / MPT` 等附加功能开关一律在 `/config/setting.conf` 配置（持久化、即时生效），不接受 env var。详见下文 `/config/setting.conf 配置说明`。
 
-> **aria2c 配置覆盖**：以下 key 每次启动都被 `cont-init.d/30-config` 用对应 env var 覆盖到 `/config/aria2.conf`，**不要手工编辑这些行**（编辑了也会丢）：`on-download-*` / `rpc-listen-port` (PORT) / `dht-listen-port` (BTPORT) / `listen-port` (BTPORT) / `bt-save-metadata` (SMD) / `file-allocation` (FA) / `bt-tracker` (UT=true 时由 tracker.sh 写)。其他 aria2.conf 内容用户可自由修改并被保留。
+> **aria2c 配置覆盖**：以下 key 每次启动都被 `cont-init.d/30-config` 用对应 env var 覆盖到 `/config/aria2.conf`，**不要手工编辑这些行**（编辑了也会丢；缺失时会自动补上）：`on-download-*` / `rpc-listen-port` (PORT) / `dht-listen-port` (BTPORT) / `listen-port` (BTPORT) / `bt-save-metadata` (SMD) / `file-allocation` (FA) / `bt-tracker` (UT=true 时由 tracker.sh 写)。其他 aria2.conf 内容用户可自由修改并被保留。
 
 ### 容器启动信息
 
@@ -476,6 +470,8 @@ aria2b 是 Node.js 程序，启动需要 `--cap-add NET_ADMIN`（用 iptables + 
 # 所有设置无需重启容器,即刻生效
 
 # 删除任务，`delete`为删除任务后删除文件，`recycle`为删除文件至回收站，`rmaria`为只删除.aria2文件
+# 仅在删除正在下载的任务时生效；aria2 删除已暂停的任务、或从“已完成/已停止”列表移除记录时
+# 不触发任何事件，文件保持原位，需要时请先恢复任务再删除，或手动清理
 remove-task=rmaria
 
 # 下载完成后执行操作选项，默认`false`
@@ -483,7 +479,8 @@ remove-task=rmaria
 # `dmof`非自定义目录任务，单文件，不执行移动操作。自定义目录、单文件，保留目录结构移动（推荐）
 move-task=false
 
-# 容器端文件过滤，在下载完成后的文件整理中清理不需要的文件，`false`、`true`
+# 文件过滤，任务下载完成后删除不需要的文件内容，`false`、`true`
+# 由于aria2自身限制，无法在下载前取消不需要的文件（只能在任务完成后删除文件）
 content-filter=false
 
 # 下载完成后删除空文件夹，默认`true`，需要开启文件过滤功能才能生效
@@ -496,7 +493,8 @@ delete-empty-dir=true
 # 种子备份位于`/config/backup-torrent`
 handle-torrent=backup-rename
 
-# 删除重复任务，检测已完成文件夹，如果有该任务文件，则删除任务，并删除文件，仅针对文件数量大于1的任务生效
+# 删除重复任务，检测已完成文件夹，如果有该任务文件，则删除任务，并删除文件
+# 仅对文件夹任务生效（多文件任务，或位于子目录中的单文件 BT 任务），普通单文件任务不检测
 # 默认`true`，可选`false`关闭该功能
 remove-repeat-task=true
 
@@ -517,6 +515,7 @@ move-paused-task=false
 # 可自定义；如需启用请删除对应行的注释 # 
 
 # 排除小文件。低于此大小的文件将在下载完成后被删除。
+# 按实际字节数比较；单位可用 k、M、G（1024 进制），不带单位时按 512 字节块计算。
 #min-size=10M
 
 # 保留文件类型。其它文件类型将在下载完成后被删除。
@@ -566,14 +565,14 @@ docker run -d \
   -v $PWD/config:/config \
   -v $PWD/downloads:/downloads \
   --restart unless-stopped \
-  superng6/aria2:webui-latest
+  superng6/aria2:latest
   ```
 docker-compose  
   ```yml
 version: "3.1"
 services:
   aria2:
-    image: superng6/aria2:webui-latest
+    image: superng6/aria2:latest
     container_name: aria2
     network_mode: host
     environment:

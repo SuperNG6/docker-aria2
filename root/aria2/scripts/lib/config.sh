@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 脚本配置库：读取和回写 /config/setting.conf
-# setting.conf 控制移动、删除、过滤、种子处理等行为，用户可在 WebUI 里修改
+# setting.conf 控制移动、删除、过滤、种子处理等行为，用户直接编辑该文件，下次 hook 触发时生效
 # 本文件在被 source 时会自动调用 LOAD_CONF，把配置值注入到全局变量
 
 SETTING_CONF="/config/setting.conf"
@@ -8,7 +8,7 @@ SETTING_CONF="/config/setting.conf"
 # 配置项定义数组，每项格式：配置文件 key:全局变量名:默认值
 # 新增配置项只需在这里追加，LOAD_CONF / SED_CONF 自动处理
 declare -a CONFIG_ITEMS=(
-    "remove-task:RMTASK:rmaria"       # 停止任务后的处理方式：rmaria(仅移除aria2任务) / recycle(回收站) / delete(彻底删除)
+    "remove-task:RMTASK:rmaria"       # 停止任务后的处理方式：rmaria(仅删除 .aria2 文件) / recycle(回收站) / delete(彻底删除)
     "move-task:MOVE:false"            # 是否自动移动已完成任务到 completed 目录：false / true / dmof(根目录单文件不移动)
     "content-filter:CF:false"         # 是否启用文件内容过滤（按扩展名/关键字删除不需要的文件）
     "delete-empty-dir:DET:true"       # 过滤后是否自动删除空文件夹
@@ -23,7 +23,8 @@ LOAD_CONF() {
     for config_item in "${CONFIG_ITEMS[@]}"; do
         IFS=':' read -r key var_name default_value <<< "$config_item"
         local value=""
-        [ -f "${SETTING_CONF}" ] && value="$(grep "^${key}=" "${SETTING_CONF}" 2>/dev/null | cut -d= -f2-)"
+        # 去掉 CR：Windows 编辑器保存的 CRLF 会让 "true\r" 无法匹配任何开关值
+        [ -f "${SETTING_CONF}" ] && value="$(grep "^${key}=" "${SETTING_CONF}" 2>/dev/null | cut -d= -f2- | tr -d '\r')"
         declare -g "${var_name}"="${value:-${default_value}}"
     done
 }

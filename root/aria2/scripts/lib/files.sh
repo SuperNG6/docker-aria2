@@ -26,15 +26,37 @@ IS_TASK_SOURCE_PATH() {
     esac
 }
 
+# 任务源路径移走或删除后，逐级删除已变空的父目录，止于任务下载目录（不含）。
+# 单文件任务的 --out 子目录（如 分类/剧名/第1集.mp4）移走文件后会留下空目录；
+# 只用 rmdir：目录里还有兄弟任务或用户文件时天然失败，因此不会误删共享分类目录。
+# 文件夹任务的父目录就是任务下载目录本身，循环不会执行。
+PRUNE_EMPTY_PARENTS() {
+    local stop=${DOWNLOAD_DIR%/} dir
+    [ -n "${stop}" ] || return 0
+    dir=$(dirname "${SOURCE_PATH}")
+    while [ "${dir}" != "${stop}" ] && IS_TASK_SOURCE_PATH "${dir}"; do
+        case "${dir}" in
+            "${stop}/"*) ;;
+            *) break ;;
+        esac
+        rmdir -- "${dir}" 2>/dev/null || break
+        echo -e "$(DATE_TIME) ${INFO} 已删除空文件夹: ${LIGHT_GREEN_FONT_PREFIX}${dir}${FONT_COLOR_SUFFIX}"
+        dir=$(dirname "${dir}")
+    done
+    return 0
+}
+
 REMOVE_SOURCE_PATH() {
     IS_TASK_SOURCE_PATH "${SOURCE_PATH:-}" || return 1
-    rm -rf "${SOURCE_PATH}"
+    rm -rf "${SOURCE_PATH}" || return 1
+    PRUNE_EMPTY_PARENTS
 }
 
 MOVE_SOURCE_PATH() {
     local target=$1
     IS_TASK_SOURCE_PATH "${SOURCE_PATH:-}" || return 1
-    mv -f "${SOURCE_PATH}" "${target}"
+    mv -f "${SOURCE_PATH}" "${target}" || return 1
+    PRUNE_EMPTY_PARENTS
 }
 
 # 删除 aria2 下载控制文件（.aria2 后缀），任务结束后清理用
@@ -59,8 +81,12 @@ CLEAN_UP() {
 
 # 判断源路径与目标路径是否跨磁盘（不同设备号即跨盘）
 # 跨盘 mv 实际是 cp + rm，耗时随文件大小线性增长，需要预先校验目标盘空间
+# 任一路径 stat 失败时返回"不跨盘"：交给随后的 mv 按真实错误失败，
+# 而不是误走空间检查并报"空间不足"
 _IS_CROSS_DEVICE() {
-    [ "$(stat -c %d "$1")" != "$(stat -c %d "$2")" ]
+    local src_dev dst_dev
+    src_dev=$(stat -c %d "$1" 2>/dev/null) && dst_dev=$(stat -c %d "$2" 2>/dev/null) || return 1
+    [ "${src_dev}" != "${dst_dev}" ]
 }
 
 # 检查目标路径所在文件系统的可用空间是否容得下源路径全部数据
@@ -78,7 +104,7 @@ _CHECK_SPACE() {
 }
 
 # 把任务移到 /downloads/move-failed 回退目录
-# 两种情况调用：跨盘前空间不足、主路径 mv 失败
+# 三种情况调用：目标目录无法创建、跨盘前空间不足、主路径 mv 失败
 # 传入 reason 描述会出现在日志前缀，区分调用上下文
 _MOVE_TO_FAILED() {
     local reason=${1:-}
@@ -120,7 +146,14 @@ MOVE_FILE() {
     TASK_INFO
     CLEAN_UP
     echo -e "$(DATE_TIME) ${INFO} 开始移动该任务文件到: ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
-    mkdir -p "${TARGET_PATH}"
+    # 目标目录建不出来时，stat 取不到设备号会被误判为跨盘，再误报"空间不足"；
+    # 直接按移动失败走 move-failed，日志写明真实原因
+    if ! mkdir -p "${TARGET_PATH}"; then
+        echo -e "$(DATE_TIME) ${ERROR} 无法创建目标文件夹: ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
+        log_line "${MOVE_LOG}" ERROR "无法创建目标文件夹: ${TARGET_PATH}"
+        _MOVE_TO_FAILED "因无法创建目标文件夹，"
+        return 1
+    fi
 
     # 跨盘前先验空间，空间不足走 move-failed 回退避免半成品
     if _IS_CROSS_DEVICE "${SOURCE_PATH}" "${TARGET_PATH}"; then
@@ -185,17 +218,19 @@ MOVE_RECYCLE() {
 
 # stop.sh 的 RMTASK 分流。未知值必须不触碰 .aria2 / .torrent，
 # 否则用户拼错配置会破坏断点续传或种子保留语义。
+# recycle/delete 先删 .aria2：单文件任务的控制文件与任务同目录，
+# 留到最后会让移走/删除后的空父目录清理因目录非空而失败。
 HANDLE_STOP_TASK() {
     case "${RMTASK}" in
         recycle)
+            RM_ARIA2
             MOVE_RECYCLE
             CHECK_TORRENT
-            RM_ARIA2
             ;;
         delete)
+            RM_ARIA2
             DELETE_FILE
             CHECK_TORRENT
-            RM_ARIA2
             ;;
         rmaria)
             CHECK_TORRENT

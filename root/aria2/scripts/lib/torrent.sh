@@ -13,6 +13,7 @@
 # 未知值时打印警告并保留原文件，避免静默丢失数据
 # 颜色规约：种子文件路径用紫色（与 TASK_INFO 紫色字段一致），未知值用黄色
 HANDLE_TORRENT() {
+    local target action
     case "${TOR}" in
         retain)
             return
@@ -24,35 +25,23 @@ HANDLE_TORRENT() {
                 echo -e "$(DATE_TIME) ${ERROR} 删除种子文件失败: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX}" >&2
                 return 1
             fi
+            return
             ;;
-        rename)
-            if mv -f "${TORRENT_FILE}" "${DOWNLOAD_DIR}/${TASK_NAME}.torrent"; then
-                echo -e "$(DATE_TIME) ${INFO} 重命名种子文件: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX} -> ${LIGHT_PURPLE_FONT_PREFIX}${DOWNLOAD_DIR}/${TASK_NAME}.torrent${FONT_COLOR_SUFFIX}"
-            else
-                echo -e "$(DATE_TIME) ${ERROR} 重命名种子文件失败: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX} -> ${LIGHT_PURPLE_FONT_PREFIX}${DOWNLOAD_DIR}/${TASK_NAME}.torrent${FONT_COLOR_SUFFIX}" >&2
-                return 1
-            fi
-            ;;
-        backup)
-            if mv -f "${TORRENT_FILE}" "${BAK_TORRENT_DIR}/"; then
-                echo -e "$(DATE_TIME) ${INFO} 备份种子文件: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX} -> ${LIGHT_PURPLE_FONT_PREFIX}${BAK_TORRENT_DIR}/${FONT_COLOR_SUFFIX}"
-            else
-                echo -e "$(DATE_TIME) ${ERROR} 备份种子文件失败: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX} -> ${LIGHT_PURPLE_FONT_PREFIX}${BAK_TORRENT_DIR}/${FONT_COLOR_SUFFIX}" >&2
-                return 1
-            fi
-            ;;
-        backup-rename)
-            if mv -f "${TORRENT_FILE}" "${BAK_TORRENT_DIR}/${TASK_NAME}.torrent"; then
-                echo -e "$(DATE_TIME) ${INFO} 重命名并备份种子文件: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX} -> ${LIGHT_PURPLE_FONT_PREFIX}${BAK_TORRENT_DIR}/${TASK_NAME}.torrent${FONT_COLOR_SUFFIX}"
-            else
-                echo -e "$(DATE_TIME) ${ERROR} 重命名并备份种子文件失败: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX} -> ${LIGHT_PURPLE_FONT_PREFIX}${BAK_TORRENT_DIR}/${TASK_NAME}.torrent${FONT_COLOR_SUFFIX}" >&2
-                return 1
-            fi
-            ;;
+        rename)        target="${DOWNLOAD_DIR}/${TASK_NAME}.torrent";    action=重命名种子文件 ;;
+        backup)        target="${BAK_TORRENT_DIR}/";                     action=备份种子文件 ;;
+        backup-rename) target="${BAK_TORRENT_DIR}/${TASK_NAME}.torrent"; action=重命名并备份种子文件 ;;
         *)
             echo -e "$(DATE_TIME) ${WARNING} 未知的 TOR 值: ${YELLOW_FONT_PREFIX}${TOR}${FONT_COLOR_SUFFIX}（保留原文件不处理）" >&2
+            return
             ;;
     esac
+    # 其余三种模式都是一次 mv，只是目标不同
+    if mv -f "${TORRENT_FILE}" "${target}"; then
+        echo -e "$(DATE_TIME) ${INFO} ${action}: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX} -> ${LIGHT_PURPLE_FONT_PREFIX}${target}${FONT_COLOR_SUFFIX}"
+    else
+        echo -e "$(DATE_TIME) ${ERROR} ${action}失败: ${LIGHT_PURPLE_FONT_PREFIX}${TORRENT_FILE}${FONT_COLOR_SUFFIX} -> ${LIGHT_PURPLE_FONT_PREFIX}${target}${FONT_COLOR_SUFFIX}" >&2
+        return 1
+    fi
 }
 
 # 检查种子文件是否存在，存在则调用 HANDLE_TORRENT 处理

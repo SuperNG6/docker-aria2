@@ -7,6 +7,7 @@
 
 _D="$(dirname "${BASH_SOURCE[0]}")"
 . "${_D}/log.sh"  # 颜色变量和 DATE_TIME
+. "${_D}/rpc.sh"  # RPC_CALL
 
 # curl 下载器，3 秒连接超时、3 秒最大时长、最多重试 2 次
 # 用数组装参数：未来若 URL 含空格或加新 flag，可避免词法分割引发的隐性 bug
@@ -58,8 +59,12 @@ _update_file() {
         echo -e "$(DATE_TIME) ${ERROR} '${conf}' 不存在"
         exit 1
     fi
-    # 若 bt-tracker= 行尚不存在，先追加空行，确保 sed 能匹配
-    grep -q "^bt-tracker=" "${conf}" || echo "bt-tracker=" >> "${conf}"
+    # 若 bt-tracker= 行尚不存在，先追加空行，确保 sed 能匹配；
+    # 文件末尾缺换行时先补一个，避免新行接在最后一行的值后面
+    if ! grep -q "^bt-tracker=" "${conf}"; then
+        [ -z "$(tail -c 1 "${conf}")" ] || echo >> "${conf}"
+        echo "bt-tracker=" >> "${conf}"
+    fi
     # sed replacement 中的 \、& 和分隔符 @ 都有特殊含义，写入配置前必须转义
     escaped_tracker=$(printf '%s' "${TRACKER}" | sed -e 's/[\\&@]/\\&/g')
     sed -i "s@^\(bt-tracker=\).*@\1${escaped_tracker}@" "${conf}" && \
@@ -67,23 +72,10 @@ _update_file() {
 }
 
 # 通过 RPC 调用 aria2.changeGlobalOption 动态更新 tracker
-# 优先 http，失败自动降级为 https（自签证书用 -k 跳过验证）
-# 加 connect-timeout + max-time，防止 aria2c 卡死时 cron 任务阻塞累积
 # 用 jq 严格判定 .result=="OK"，避免错误响应里附带 "OK" 文本被误判为成功
 _update_rpc() {
-    local addr="localhost:${PORT}/jsonrpc"
-    local payload result
-    # jq 构造 payload：SECRET / TRACKER 中的特殊字符会被正确转义
-    payload=$(jq -nc \
-        --arg secret "${SECRET}" \
-        --arg tracker "${TRACKER}" \
-        '{jsonrpc:"2.0",method:"aria2.changeGlobalOption",id:"NG6",
-          params:(if $secret == ""
-                  then [{"bt-tracker": $tracker}]
-                  else ["token:" + $secret, {"bt-tracker": $tracker}]
-                  end)}')
-    result=$(curl --connect-timeout 5 --max-time 15 "${addr}" -fsSd "${payload}" \
-        || curl --connect-timeout 5 --max-time 15 "https://${addr}" -kfsSd "${payload}")
+    local result
+    result=$(RPC_CALL aria2.changeGlobalOption "$(jq -nc --arg tracker "${TRACKER}" '[{"bt-tracker": $tracker}]')")
     if echo "${result}" | jq -e '.result == "OK"' >/dev/null 2>&1; then
         echo -e "$(DATE_TIME) ${INFO} BT trackers 更新成功!"
     else

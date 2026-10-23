@@ -7,20 +7,24 @@
 # RPC 地址：源自 PORT 环境变量，整个事件生命周期内不变；source 时初始化一次，避免每函数重设
 RPC_ADDRESS="localhost:${PORT}/jsonrpc"
 
-# 构造 aria2.tellStatus 请求体并发起查询，返回原始 JSON
-# 用 jq 构造 payload：自动转义 SECRET / TASK_GID 中的 " \ 换行等特殊字符，杜绝 JSON 注入
-RPC_TASK_INFO() {
-    local payload
+# 发送一次 JSON-RPC 调用并输出原始响应；$2 为不含 token 的参数数组（JSON）
+# 用 jq 构造 payload：自动转义 SECRET 与参数中的 " \ 换行等特殊字符，杜绝 JSON 注入
+# 两次 curl 屏蔽 stderr：http 失败降级 https 是正常路径，curl 错误噪音不应进 docker logs；
+# 失败语义由调用方的返回码或空响应判定。超时防止 aria2c 卡死时 hook / cron 无限阻塞
+RPC_CALL() {
+    local method=$1 params=$2 payload
     payload=$(jq -nc \
         --arg secret "${SECRET}" \
-        --arg gid "${TASK_GID}" \
-        '{jsonrpc:"2.0",method:"aria2.tellStatus",id:"NG6",
-          params:(if $secret == "" then [$gid] else ["token:" + $secret, $gid] end)}')
-    # 两次 curl 屏蔽 stderr：http 失败降级 https 是正常路径，curl 错误噪音不应进 docker logs
-    # 失败语义由 GET_RPC_RESULT 的空响应判定捕获，不依赖 stderr
-    curl "${RPC_ADDRESS}" -fsSd "${payload}" 2>/dev/null \
-        || curl "https://${RPC_ADDRESS}" -kfsSd "${payload}" 2>/dev/null
+        --arg method "${method}" \
+        --argjson params "${params}" \
+        '{jsonrpc:"2.0",method:$method,id:"NG6",
+          params:((if $secret == "" then [] else ["token:" + $secret] end) + $params)}') || return 1
+    curl --connect-timeout 5 --max-time 15 "${RPC_ADDRESS}" -fsSd "${payload}" 2>/dev/null \
+        || curl --connect-timeout 5 --max-time 15 "https://${RPC_ADDRESS}" -kfsSd "${payload}" 2>/dev/null
 }
+
+# 本事件任务的 GID 参数数组
+_gid_params() { jq -nc --arg gid "${TASK_GID}" '[$gid]'; }
 
 # 移除重复任务（aria2 中删除指定 GID 的任务）
 # 调用前需等待 3 秒，确保 aria2 已完成本次任务的内部状态更新
@@ -28,22 +32,15 @@ RPC_TASK_INFO() {
 # 调用方需检查返回值——失败时本地文件已删，但 aria2 任务仍存活，可能继续下载
 REMOVE_REPEAT_TASK() {
     sleep 3
-    local payload result
-    payload=$(jq -nc \
-        --arg secret "${SECRET}" \
-        --arg gid "${TASK_GID}" \
-        '{jsonrpc:"2.0",method:"aria2.remove",id:"NG6",
-          params:(if $secret == "" then [$gid] else ["token:" + $secret, $gid] end)}')
-    result=$(curl "${RPC_ADDRESS}" -fsSd "${payload}" 2>/dev/null) \
-        || result=$(curl "https://${RPC_ADDRESS}" -kfsSd "${payload}" 2>/dev/null) \
-        || return 1
+    local result
+    result=$(RPC_CALL aria2.remove "$(_gid_params)") || return 1
     # 响应里 .result 字段（值为被移除的 GID）存在才算真成功；.error 字段表示 aria2 拒绝
     [ -n "$(echo "${result}" | jq -r '.result // empty' 2>/dev/null)" ]
 }
 
 # 发起 RPC 查询，结果存入 RPC_RESULT；空响应（curl 失败 / aria2 未起）即报错
 GET_RPC_RESULT() {
-    RPC_RESULT="$(RPC_TASK_INFO)"
+    RPC_RESULT="$(RPC_CALL aria2.tellStatus "$(_gid_params)")"
     if [ -z "${RPC_RESULT}" ]; then
         echo -e "$(DATE_TIME) ${ERROR} Aria2 RPC interface error!" >&2
         return 1

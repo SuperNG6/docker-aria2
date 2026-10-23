@@ -3,6 +3,8 @@
 # 此时 20/30-config 尚未执行：会被环境变量覆盖的项目直接显示本次环境变量，
 # setting.conf 已存在时读取持久化值；首次配置则只提示将使用项目默认设置。
 
+. /aria2/scripts/lib/config.sh  # LOAD_CONF：与 hook 相同的 setting.conf 读取规则
+
 STARTUP_SEPARATOR="==============================================================================="
 STARTUP_BUILD_INFO="/aria2/build-date"
 
@@ -20,12 +22,6 @@ SETTING_BOOL_STATUS() {
         false) printf '[禁用]' ;;
         *)     printf '[配置异常：%s]' "${1:-空值}" ;;
     esac
-}
-
-GET_SETTING_VALUE() {
-    local conf=$1 key=$2 default_value=$3 value
-    value=$(sed -n "s/^${key}=//p" "${conf}" 2>/dev/null | head -n 1)
-    printf '%s' "${value:-${default_value}}"
 }
 
 GET_IMAGE_INFO() {
@@ -122,35 +118,30 @@ FORMAT_TORRENT_STATUS() {
 }
 
 PRINT_SETTING_FEATURES() {
-    local setting_conf=$1
-    local rmtask move cf det tor rrt mpt det_status tor_status
+    local det_status tor_status
 
-    rmtask=$(GET_SETTING_VALUE "${setting_conf}" remove-task rmaria)
-    move=$(GET_SETTING_VALUE "${setting_conf}" move-task false)
-    cf=$(GET_SETTING_VALUE "${setting_conf}" content-filter false)
-    det=$(GET_SETTING_VALUE "${setting_conf}" delete-empty-dir true)
-    tor=$(GET_SETTING_VALUE "${setting_conf}" handle-torrent backup-rename)
-    rrt=$(GET_SETTING_VALUE "${setting_conf}" remove-repeat-task true)
-    mpt=$(GET_SETTING_VALUE "${setting_conf}" move-paused-task false)
+    # 与 hook 共用 LOAD_CONF：取值、默认值和 CRLF 处理保持一致，横幅显示的就是 hook 实际使用的值
+    SETTING_CONF=$1
+    LOAD_CONF
 
-    if [ "${det}" = "true" ] && [ "${cf}" != "true" ]; then
+    if [ "${DET}" = "true" ] && [ "${CF}" != "true" ]; then
         det_status='[不生效：文件过滤未启用]'
     else
-        det_status=$(SETTING_BOOL_STATUS "${det}")
+        det_status=$(SETTING_BOOL_STATUS "${DET}")
     fi
 
-    tor_status=$(FORMAT_TORRENT_STATUS "${tor}")
+    tor_status=$(FORMAT_TORRENT_STATUS "${TOR}")
     if [ "${SMD:-true}" != "true" ]; then
         tor_status+=" [不生效：磁力元数据保存未启用]"
     fi
 
-    printf '   完成任务自动移动: %s\n' "$(FORMAT_MOVE_STATUS "${move}")"
-    printf '   停止任务处理: %s\n' "$(FORMAT_REMOVE_STATUS "${rmtask}")"
-    printf '   下载完成文件过滤: %s\n' "$(SETTING_BOOL_STATUS "${cf}")"
+    printf '   完成任务自动移动: %s\n' "$(FORMAT_MOVE_STATUS "${MOVE}")"
+    printf '   停止任务处理: %s\n' "$(FORMAT_REMOVE_STATUS "${RMTASK}")"
+    printf '   下载完成文件过滤: %s\n' "$(SETTING_BOOL_STATUS "${CF}")"
     printf '   过滤后删除空目录: %s\n' "${det_status}"
     printf '   磁力种子处理: %s\n' "${tor_status}"
-    printf '   重复任务拦截: %s\n' "$(SETTING_BOOL_STATUS "${rrt}")"
-    printf '   暂停任务移动: %s\n' "$(SETTING_BOOL_STATUS "${mpt}")"
+    printf '   重复任务拦截: %s\n' "$(SETTING_BOOL_STATUS "${RRT}")"
+    printf '   暂停任务移动: %s\n' "$(SETTING_BOOL_STATUS "${MPT}")"
 }
 
 PRINT_ARIA2B_FEATURES() {

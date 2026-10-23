@@ -15,7 +15,7 @@ mkdir -p \
 [ -e /config/aria2.conf ] || cp /aria2/conf/aria2.conf.default /config/aria2.conf
 
 # setting.conf：首次启动复制默认；已存在则合并到新模板（保留旧值 + 引入新键）
-# 注：setting.conf 是用户行为配置的唯一接口，env var 不在此参与（修改请走 WebUI 或直接编辑文件）
+# 注：setting.conf 是用户行为配置的唯一接口，env var 不在此参与（修改请直接编辑该文件）
 if [ -e /config/setting.conf ]; then
     . /aria2/scripts/lib/config.sh
     SED_CONF

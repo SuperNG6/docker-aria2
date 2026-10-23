@@ -21,16 +21,6 @@ GET_BASE_PATH() {
     RECYCLE_LOG="/config/logs/recycle.log"    # 回收站操作日志
 }
 
-# 设置"移动到已完成"模式的目标根目录
-COMPLETED_PATH() {
-    TARGET_DIR="${DOWNLOAD_PATH}/completed"
-}
-
-# 设置"移动到回收站"模式的目标根目录
-RECYCLE_PATH() {
-    TARGET_DIR="${DOWNLOAD_PATH}/recycle"
-}
-
 # 根据 SOURCE_PATH 计算文件在目标目录中的子路径
 # 保留下载目录内的相对层级，使 completed/recycle 目录结构与下载目录一致
 # SOURCE_PATH 不在 DOWNLOAD_PATH 范围内（aria2 dir 配错指到 /downloads 之外）→ 标记 error
@@ -104,11 +94,8 @@ INIT_EVENT() {
     FILE_NUM=$3
     FILE_PATH=$4
     GET_BASE_PATH
-    if [ "${path_type}" = "recycle" ]; then
-        RECYCLE_PATH
-    else
-        COMPLETED_PATH
-    fi
+    # 目标根目录：/downloads/completed 或 /downloads/recycle
+    TARGET_DIR="${DOWNLOAD_PATH}/${path_type}"
     GET_RPC_INFO || exit 1
     GET_FINAL_PATH
 }

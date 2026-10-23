@@ -1,26 +1,40 @@
 #!/usr/bin/with-contenv bash
 # 容器启动第三步：将环境变量应用到 aria2.conf，并配置定时任务
-# 所有可通过环境变量控制的 aria2 参数都在这里用 sed 写入配置文件
+# 所有可通过环境变量控制的 aria2 参数都在这里写入配置文件
 # 统一用 ^\(key=\).* 锚定模式：只替换值，永不误匹配注释行
-# 钩子路径 + 端口号合并到单次 sed -i，省 6 个 sed 进程
-#
-# 注：aria2.conf 是项目模板（root/aria2/conf/aria2.conf.default），下面 sed 替换的
-# 9 个 key 在模板里都有；用户手动删除这些 key 行属于自己折腾，不做兜底
+
+ARIA2_CONF=/config/aria2.conf
+
+# 写入一个由项目接管的 aria2 选项：已有行替换值，缺行时追加。
+# 用户换用其他项目的 aria2.conf 时常缺少或注释掉 on-download-* 等行；
+# 只替换不追加会让事件 hook 静默失效，下载完成后既不处理文件也没有任何日志。
+SET_ARIA2_OPTION() {
+    local key=$1 value=$2 escaped
+    # 环境变量被显式置空时保留文件原值（或 aria2 默认值），写入空值会让 aria2c 无法启动
+    [ -n "${value}" ] || return 0
+    if grep -q "^${key}=" "${ARIA2_CONF}"; then
+        # sed replacement 中的 \、& 和分隔符 @ 有特殊含义，写入前转义
+        escaped=$(printf '%s' "${value}" | sed -e 's/[\\&@]/\\&/g')
+        sed -i "s@^\(${key}=\).*@\1${escaped}@" "${ARIA2_CONF}"
+    else
+        # 文件末尾缺换行时先补一个，避免新行接在最后一行后面
+        [ -z "$(tail -c 1 "${ARIA2_CONF}")" ] || echo >> "${ARIA2_CONF}"
+        printf '%s=%s\n' "${key}" "${value}" >> "${ARIA2_CONF}"
+    fi
+}
 
 # 写入下载事件钩子脚本路径 + RPC/BT 端口
-sed -i \
-    -e 's@^\(on-download-stop=\).*@\1/aria2/scripts/stop.sh@' \
-    -e 's@^\(on-download-complete=\).*@\1/aria2/scripts/completed.sh@' \
-    -e 's@^\(on-download-pause=\).*@\1/aria2/scripts/pause.sh@' \
-    -e 's@^\(on-download-start=\).*@\1/aria2/scripts/start.sh@' \
-    -e "s@^\(rpc-listen-port=\).*@\1${PORT}@" \
-    -e "s@^\(dht-listen-port=\).*@\1${BTPORT}@" \
-    -e "s@^\(listen-port=\).*@\1${BTPORT}@" \
-    /config/aria2.conf
+SET_ARIA2_OPTION on-download-stop /aria2/scripts/stop.sh
+SET_ARIA2_OPTION on-download-complete /aria2/scripts/completed.sh
+SET_ARIA2_OPTION on-download-pause /aria2/scripts/pause.sh
+SET_ARIA2_OPTION on-download-start /aria2/scripts/start.sh
+SET_ARIA2_OPTION rpc-listen-port "${PORT}"
+SET_ARIA2_OPTION dht-listen-port "${BTPORT}"
+SET_ARIA2_OPTION listen-port "${BTPORT}"
 
 # SMD=true：保存磁力链接的元数据（.torrent 文件），方便种子文件备份功能使用
 [ "$SMD" = "true" ] && SMD_VAL=true || SMD_VAL=false
-sed -i "s@^\(bt-save-metadata=\).*@\1${SMD_VAL}@" /config/aria2.conf
+SET_ARIA2_OPTION bt-save-metadata "${SMD_VAL}"
 
 # FA 环境变量控制文件预分配方式（影响下载初始化速度和磁盘性能）
 # falloc：快速预分配（推荐 ext4/xfs），trunc：截断预分配，prealloc：慢速预分配，none：不预分配
@@ -30,7 +44,7 @@ case "$FA" in
     falloc|trunc|prealloc|none) FA_VAL="$FA" ;;
     *)                          FA_VAL=falloc ;;
 esac
-sed -i "s@^\(file-allocation=\).*@\1${FA_VAL}@" /config/aria2.conf
+SET_ARIA2_OPTION file-allocation "${FA_VAL}"
 
 # UT=true：容器启动时立即更新 BT tracker 列表（写入 aria2.conf 文件，aria2c 启动后生效）
 [ "$UT" = "true" ] && bash /aria2/scripts/lib/tracker.sh

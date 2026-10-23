@@ -42,9 +42,9 @@ services.d  由 s6 监管 aria2c、webui、aria2b
 
 | 路径 | 所有权与更新规则 |
 | --- | --- |
-| `/config/aria2.conf` | 首次复制模板；后续保留用户配置，但 `30-config` 每次启动重写四个 `on-download-*`、RPC/BT 端口、`bt-save-metadata`、`file-allocation`，`UT=true` 时更新 `bt-tracker`。锚定 `sed` 只替换已有 key，不补齐缺行。 |
-| `/config/setting.conf` | 文件处理行为的唯一接口；每次 hook 通过 [`lib/config.sh`](../root/aria2/scripts/lib/config.sh) 重新加载。重启时以新版模板创建 `.new`，填入旧文件中已知 key 的值，再原子替换；未知 key 和旧注释不保留。 |
-| `/config/文件过滤.conf` | 执行过滤时由 [`lib/filter.sh`](../root/aria2/scripts/lib/filter.sh) 读取。 |
+| `/config/aria2.conf` | 首次复制模板；后续保留用户配置，但 `30-config` 每次启动重写四个 `on-download-*`、RPC/BT 端口、`bt-save-metadata`、`file-allocation`，`UT=true` 时更新 `bt-tracker`。这些 key 用锚定 `sed` 替换已有行，缺行（含只有注释行）时追加，保证用户自带配置也能注册 hook；其余内容原样保留。 |
+| `/config/setting.conf` | 文件处理行为的唯一接口；每次 hook 通过 [`lib/config.sh`](../root/aria2/scripts/lib/config.sh) 重新加载，值中的 CR 会被去掉以兼容 CRLF 行尾。重启时以新版模板创建 `.new`，填入旧文件中已知 key 的值，再原子替换；未知 key 和旧注释不保留。 |
+| `/config/文件过滤.conf` | 执行过滤时由 [`lib/filter.sh`](../root/aria2/scripts/lib/filter.sh) 读取，同样去掉 CR。 |
 | `/config/aria2.session`、`dht.dat` | aria2 会话与 DHT 数据。 |
 | `/config/logs/`、`backup-torrent/` | 文件操作日志与磁力元数据种子备份。 |
 | `/downloads` | 原始任务；`completed`、`recycle` 为共享目录，`move-failed` 按需创建。 |
@@ -55,18 +55,18 @@ services.d  由 s6 监管 aria2c、webui、aria2b
 
 `start.sh`、`pause.sh`、`stop.sh`、`completed.sh` 均加载 [`lib/event.sh`](../root/aria2/scripts/lib/event.sh)。aria2 传入 GID、文件数和第一个文件路径；事件初始化依次执行 **公共路径 → completed/recycle 目标 → [`lib/rpc.sh`](../root/aria2/scripts/lib/rpc.sh) 查询任务 → 计算源与目标路径**。目标目录必须先于路径计算确定。库以 `${BASH_SOURCE[0]}` 找到自身；事件辅助函数以返回码和 stderr 报错，由入口决定是否退出。
 
-RPC 用 `jq` 构造 JSON，请求先试本地 HTTP，失败再试 HTTPS 并允许自签证书。`tellStatus` 提供状态、下载目录、infoHash；非 BT 的 `infoHash=null` 是正常结果。磁力任务在尚无文件路径或文件数为零时跳过文件操作。
+RPC 统一经 [`lib/rpc.sh`](../root/aria2/scripts/lib/rpc.sh) 的 `RPC_CALL` 发出：用 `jq` 构造 JSON，先试本地 HTTP，失败再试 HTTPS 并允许自签证书，单次请求最长 15 秒。`tellStatus` 提供状态、下载目录、infoHash；非 BT 的 `infoHash=null` 是正常结果。磁力任务在尚无文件路径或文件数为零时跳过文件操作。
 
-路径规则是删除和移动的安全边界：多文件任务，以及位于任务下载目录子目录中的 BT 任务，取首层任务目录整体处理；单文件 HTTP/FTP 和根目录单文件 BT 只处理文件本身，以保留共享分类目录中的其他文件。目标保留 `/downloads` 内相对路径。规范化后拒绝 `/downloads` 根目录、其外部路径，以及 `completed`、`recycle`、`move-failed` 三个共享目录本身。只有文件夹任务计算 `COMPLETED_DIR`，用于开始事件的去重。
+路径规则是删除和移动的安全边界：多文件任务，以及位于任务下载目录子目录中的 BT 任务，取首层任务目录整体处理；单文件 HTTP/FTP 和根目录单文件 BT 只处理文件本身，以保留共享分类目录中的其他文件。目标保留 `/downloads` 内相对路径。源路径移走或删除后，`PRUNE_EMPTY_PARENTS` 用 `rmdir` 逐级清理已变空的父目录，止于任务下载目录；停止路径因此先删 `.aria2` 再处理文件。若 aria2 恰在 `mkdir` 与打开文件之间启动同目录的新任务，`rmdir` 有极小窗口与之竞争，这是已接受的取舍。规范化后拒绝 `/downloads` 根目录、其外部路径，以及 `completed`、`recycle`、`move-failed` 三个共享目录本身。只有文件夹任务计算 `COMPLETED_DIR`，用于开始事件的去重。
 
 | 入口 | 主要分支 |
 | --- | --- |
 | `start.sh` | `RRT=true`、推算出文件夹任务的 `COMPLETED_DIR`、该目录已存在且状态非 error 时，清理新任务文件/种子，等待内部状态更新后尝试 RPC 移除；失败记警告。 |
 | `pause.sh` | `MPT=true` 时后台等待 30 秒，重新加载开关与 RPC 状态；仍 paused 才强制移动。 |
-| `stop.sh` | 源文件存在且状态非 error 时，按 `RMTASK` 保留内容、回收或删除；三种已知模式均处理可用的元数据种子并清理 `.aria2`，未知值全部不处理。 |
+| `stop.sh` | 源文件存在且状态非 error 时，按 `RMTASK` 保留内容、回收或删除；三种已知模式均处理可用的元数据种子并清理 `.aria2`，未知值全部不处理。aria2 仅在活动任务停止时调用本 hook，删除已暂停任务和 `removeDownloadResult` 不会触发。 |
 | `completed.sh` | `MOVE_FILE` 后台处理大文件移动，种子操作在前台；等待 BT 做种结束后的 complete 事件。 |
 
-[`lib/files.sh`](../root/aria2/scripts/lib/files.sh) 在 `MOVE=false` 或 `dmof` 跳过移动时只清理 `.aria2`；真正移动时先执行 `CLEAN_UP`，再仅对跨文件系统移动比较源大小与目标可用空间。空间不足或主移动失败时尝试 `/downloads/move-failed`。回收站移动失败转永久删除；`mv -f` 可能覆盖同名文件，遇到同名非空目录则可能失败。过滤仅在任务源路径内实际存在多个文件、且进入移动清理流程时运行，暂停 hook 强制移动时也会运行：[`lib/filter.sh`](../root/aria2/scripts/lib/filter.sh) 用同一规则预览与删除，NUL 分隔并去重；全部文件将被匹配时跳过本次过滤和空目录清理。种子处理位于 [`lib/torrent.sh`](../root/aria2/scripts/lib/torrent.sh)，仅在推算出的 `.torrent` 存在时按 `TOR` 执行。
+[`lib/files.sh`](../root/aria2/scripts/lib/files.sh) 在 `MOVE=false` 或 `dmof` 跳过移动时只清理 `.aria2`；真正移动时先执行 `CLEAN_UP`，再仅对跨文件系统移动比较源大小与目标可用空间。目标目录无法创建、空间不足或主移动失败时尝试 `/downloads/move-failed`。回收站移动失败转永久删除；`mv -f` 可能覆盖同名文件，遇到同名非空目录则可能失败。过滤仅在任务源路径内实际存在多个文件、且进入移动清理流程时运行，暂停 hook 强制移动时也会运行：[`lib/filter.sh`](../root/aria2/scripts/lib/filter.sh) 用同一规则预览与删除，NUL 分隔并去重；全部文件将被匹配时跳过本次过滤和空目录清理。`min-size` 沿用 find 单位写法，但先换算为字节再以 `-size -Nc` 比较，避免 find 按单位向上取整而漏删；无法识别的值只忽略该规则并记日志。种子处理位于 [`lib/torrent.sh`](../root/aria2/scripts/lib/torrent.sh)，仅在推算出的 `.torrent` 存在时按 `TOR` 执行。
 
 ## 6. Tracker 与 cron
 
@@ -76,7 +76,7 @@ RPC 用 `jq` 构造 JSON，请求先试本地 HTTP，失败再试 HTTPS 并允�
 
 ## 7. 验证与发布
 
-[`tests/lint.sh`](../tests/lint.sh) 运行 `bash -n`、ShellCheck、测试工具自检和 `git diff --check`。[`tests/run.sh`](../tests/run.sh) 为每个场景建独立容器与匿名卷，以 `abc` 运行库或生命周期测试；配置升级场景复用同一卷并重启。真实生命周期测试通过 aria2 RPC、正式 hook 和本地固定夹具验证结果，不直接 source 生产库或手写其全局变量；异步结果使用有上限的条件轮询。[`tests/mutate.sh`](../tests/mutate.sh) 在专用容器注入故障以验证关键断言。场景清单见 [测试说明](../tests/README.md)。
+[`tests/lint.sh`](../tests/lint.sh) 运行 `bash -n`、ShellCheck、测试工具自检和 `git diff --check`。[`tests/run.sh`](../tests/run.sh) 为每个场景建独立容器与匿名卷并行执行，以 `abc` 运行库或生命周期测试；需要重启的场景复用同一卷。真实生命周期测试通过 aria2 RPC、正式 hook 和本地固定夹具验证结果，不直接 source 生产库或手写其全局变量；异步结果使用有上限的条件轮询。[`tests/mutate.sh`](../tests/mutate.sh) 在专用容器注入故障以验证关键断言。场景清单见 [测试说明](../tests/README.md)。
 
 [构建工作流](../.github/workflows/Build%20Image.yml) 手动触发；非 `master` 分支会明确失败，防止误发布正式镜像。`master` 上覆盖 `standard`、`a2b` 两种变体与 `linux/amd64`、`linux/arm/v7`、`linux/arm64` 三种平台，共六种组合。单架构镜像先按 digest 推送，再做服务连通 smoke-test；amd64 额外运行完整行为测试，a2b 完整就绪也只在 amd64 验证。构建矩阵和 smoke-test 均成功后才合并 manifest，并发布 `latest`、`<date>`、`a2b-latest`、`a2b-<date>` 到 Docker Hub 与 GHCR。[Shell Lint 工作流](../.github/workflows/Shell%20Lint.yml) 对相关 PR/push 运行 ShellCheck 与 actionlint。
 
