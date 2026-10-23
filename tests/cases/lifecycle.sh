@@ -183,3 +183,108 @@ reserved_directory() {
     assert '不对共享目录整删' test -f /downloads/completed/keep.mp4
     sentinels_unchanged
 }
+http_nested() {
+    local gid
+    # 单文件任务移走后，--out 带出的空子目录逐级清理；仍有内容的分类目录必须保留。
+    setting move-task true
+    curl -fsS --max-time 3 http://127.0.0.1:8080/index.html -o /tmp/expected.html
+    mkdir -p '/downloads/剧集 [A]/其他'
+    printf 'NEIGHBOR\n' > '/downloads/剧集 [A]/其他/neighbor'
+    gid=$(add_http '剧集 [A]/第1季, 特别篇/a.html') || die 'HTTP 添加失败'
+    wait_status "${gid}" complete
+    eventually 15 '嵌套文件移动' test -f '/downloads/completed/剧集 [A]/第1季, 特别篇/a.html'
+    eventually 15 '移动 hook 完成' hook_idle
+    same_file /tmp/expected.html '/downloads/completed/剧集 [A]/第1季, 特别篇/a.html'
+    absent '/downloads/剧集 [A]/第1季, 特别篇'
+    equal NEIGHBOR "$(cat '/downloads/剧集 [A]/其他/neighbor')" '非空分类目录保留'
+    gid=$(add_http 'OpenList/测试/b.html') || die 'HTTP 添加失败'
+    wait_status "${gid}" complete
+    eventually 15 '多级目录文件移动' test -f /downloads/completed/OpenList/测试/b.html
+    eventually 15 '移动 hook 完成' hook_idle
+    absent /downloads/OpenList
+    owner_is_abc /downloads/completed/OpenList/测试/b.html
+    # 停止路径同样清理：限速让 HTTP 任务保持活动，再按 remove-task=delete 删除。
+    setting remove-task delete
+    gid=$(add_http '删除/剧名/c.html' '{"max-download-limit":"1K"}') || die 'HTTP 添加失败'
+    wait_status "${gid}" active
+    eventually 15 '活动文件落盘' test -f '/downloads/删除/剧名/c.html.aria2'
+    rpc aria2.forceRemove "[\"${gid}\"]" >/dev/null
+    wait_status "${gid}" removed
+    eventually 15 '停止后删除并清理空目录' test ! -e /downloads/删除
+    eventually 15 '停止 hook 完成' hook_idle
+}
+complex_bt() {
+    local gid root="/downloads/completed/${COMPLEX_TASK}"
+    # 多级目录 + 特殊字符名称：完整移动、按扩展名过滤、过滤后清理空目录。
+    setting move-task true
+    setting content-filter true
+    printf 'exclude-file=txt\n' > /config/文件过滤.conf
+    complex_fixture
+    gid=$(add_torrent complex '{"check-integrity":"true"}') || die '复杂路径 BT 添加失败'
+    wait_status "${gid}" complete
+    eventually 15 '复杂路径移动' test -f "${root}/Season 2/第01集.mkv"
+    equal EPISODE1 "$(cat "${root}/Season 1/第01集 [1080p].mkv")" '第一季内容完整'
+    equal EPISODE2 "$(cat "${root}/Season 2/第01集.mkv")" '第二季内容完整'
+    absent "${root}/Season 1/Extras"
+    absent "/downloads/${COMPLEX_TASK}"
+    owner_is_abc "${root}/Season 1/第01集 [1080p].mkv"
+}
+magnet_default() {
+    local hash gid follow
+    # 零配置用户：不改 setting.conf，走磁力两阶段流程（元数据 → .torrent → 接续任务 → 完成）。
+    # 默认 move-task=false、handle-torrent=backup-rename：内容留在原处，种子按任务名备份。
+    start_seeder
+    hash=$(torrent_hash multi)
+    gid=$(add_magnet "${hash}") || die '磁力任务添加失败'
+    wait_status "${gid}" complete
+    follow=$(rpc aria2.tellStatus "[\"${gid}\"]" | jq -er '.result.followedBy[0]') || die '磁力任务未接续下载任务'
+    wait_status "${follow}" complete
+    eventually 15 '种子按任务名备份' test -f /config/backup-torrent/fixture-task.torrent
+    eventually 15 'hook 完成' hook_idle
+    equal "${hash}" "$(aria2c -S /config/backup-torrent/fixture-task.torrent | sed -n 's/^Info Hash: //p')" '备份种子即本任务'
+    absent "/downloads/${hash}.torrent"
+    same_file "${TESTS}/fixtures/keep.mp4" /downloads/fixture-task/keep.mp4
+    same_file "${TESTS}/fixtures/remove.txt" /downloads/fixture-task/remove.txt
+    absent /downloads/fixture-task.aria2
+    absent /downloads/completed/fixture-task
+}
+inactive_files_kept() {
+    [ -f /downloads/fixture-task/keep.mp4 ] && [ -f /downloads/fixture-task/remove.txt ]
+}
+forget_task() {
+    # 已暂停任务被删除后不留记录，清除记录失败是预期内的。
+    rpc aria2.removeDownloadResult "[\"$1\"]" >/dev/null 2>&1 || true
+    rm -rf /downloads/fixture-task /downloads/fixture-task.aria2
+}
+stop_inactive() {
+    local gid
+    # aria2 只在活动任务停止时调用 hook；删除已暂停任务、移除已完成记录不发事件。
+    # 固定已文档化的行为：remove-task=delete 时这两种操作都不动文件。
+    setting remove-task delete
+    gid=$(add_torrent multi) || die '活动任务添加失败'
+    wait_status "${gid}" active
+    eventually 15 '活动文件落盘' test -f /downloads/fixture-task/remove.txt
+    rpc aria2.remove "[\"${gid}\"]" >/dev/null
+    wait_status "${gid}" removed
+    eventually 15 '活动任务删除文件' test ! -e /downloads/fixture-task
+    eventually 15 'hook 完成' hook_idle
+    forget_task "${gid}"
+
+    gid=$(add_torrent multi) || die '暂停任务添加失败'
+    wait_status "${gid}" active
+    eventually 15 '暂停前文件落盘' test -f /downloads/fixture-task/remove.txt
+    rpc aria2.forcePause "[\"${gid}\"]" >/dev/null
+    wait_status "${gid}" paused
+    rpc aria2.remove "[\"${gid}\"]" >/dev/null
+    eventually 15 '已暂停任务离开队列' not_queued "${gid}"
+    consistently 5 '删除已暂停任务不动文件' inactive_files_kept
+    forget_task "${gid}"
+
+    complete_fixture
+    gid=$(add_torrent multi '{"check-integrity":"true"}') || die '完成任务添加失败'
+    wait_status "${gid}" complete
+    eventually 15 'hook 完成' hook_idle
+    rpc aria2.removeDownloadResult "[\"${gid}\"]" >/dev/null
+    consistently 5 '移除已完成记录不动文件' inactive_files_kept
+    equal 1 "$(grep -c '文件删除成功' /config/logs/delete.log)" '只有活动任务触发删除'
+}

@@ -25,7 +25,7 @@ make_task() {
 
 t_filter_rules() {
     hdr "1. 过滤规则与文件名边界"
-    local fail="" task conf
+    local fail="" task conf invalid
 
     task=$(make_task filter-ext \
         movie.mp4:2 cover.jpg:1 readme.txt:1 sub.srt:1) || die "规则夹具准备失败"
@@ -50,6 +50,8 @@ t_filter_rules() {
         || fail+=" basename"
 
     task=$(make_task filter-size big.bin:10 exact.bin:5 small.bin:3) || die "规则夹具准备失败"
+    # 4.5k 按 find 的 k 单位会向上取整为 5k；低于 min-size 的实际字节数仍须删除。
+    assert '写入非整数单位夹具' bash -c 'head -c 4608 /dev/zero > "$1"' bash "${task}/fraction.bin"
     SOURCE_PATH="${task}"
     reset_filter_vars
     MIN_SIZE=5k
@@ -57,10 +59,27 @@ t_filter_rules() {
     [ -f "${task}/big.bin" ] \
         && [ -f "${task}/exact.bin" ] \
         && [ ! -e "${task}/small.bin" ] \
+        && [ ! -e "${task}/fraction.bin" ] \
         || fail+=" size-boundary"
 
+    for invalid in 5X 17179869184G; do
+        # 第二个值的字节数为 2^64，会在 64 位运算中回绕为 0
+        task=$(make_task filter-size-invalid big.bin:10 small.bin:3) || die "规则夹具准备失败"
+        SOURCE_PATH="${task}"
+        reset_filter_vars
+        MIN_SIZE=${invalid}
+        : > "${CF_LOG}"
+        DELETE_EXCLUDE_FILE >/dev/null 2>&1
+        [ -f "${task}/big.bin" ] \
+            && [ -f "${task}/small.bin" ] \
+            && grep -Fq "无法识别 min-size=${invalid}" "${CF_LOG}" \
+            || fail+=" size-invalid(${invalid})"
+    done
+
+    # CRLF 行尾模拟 Windows 编辑器保存的配置；CR 不得成为规则值的一部分。
     conf="${LOG_DIR}/quoted-filter.conf"
-    printf '%s\n' \
+    printf '%s\r\n' \
+        'min-size=10M' \
         'include-file=mp4|mkv' \
         'include-file-regex=^.*\.(mp4|mkv)$' \
         'exclude-file-regex="(.*/)_+(padding)(_*)(file)(.*)(_+)"' \
@@ -68,14 +87,15 @@ t_filter_rules() {
     FILTER_CONF="${conf}"
     reset_filter_vars
     LOAD_FILTER_CONF
-    [ "${INCLUDE_FILE}" = 'mp4|mkv' ] \
+    [ "${MIN_SIZE}" = 10M ] \
+        && [ "${INCLUDE_FILE}" = 'mp4|mkv' ] \
         && [ "${INCLUDE_FILE_REGEX}" = '^.*\.(mp4|mkv)$' ] \
         && [ "${EXCLUDE_FILE_REGEX}" = '(.*/)_+(padding)(_*)(file)(.*)(_+)' ] \
         || fail+=" config-parse"
     FILTER_CONF=/config/文件过滤.conf
 
     if [ -z "${fail}" ]; then
-        ok "扩展名、文件名关键词、大小边界和配置解析正确"
+        ok "扩展名、文件名关键词、大小边界、非法大小和 CRLF 配置解析正确"
     else
         ng "过滤规则组异常:${fail}"
     fi
@@ -224,10 +244,13 @@ t_tracker_contracts() {
     local fail="" conf output rc result tmp1 tmp2
 
     conf="${LOG_DIR}/aria2.conf"
-    printf 'listen-port=6881\n' > "${conf}"
+    # 用户自带配置可能缺 bt-tracker 行且末尾无换行；追加时不得拼进最后一行
+    printf 'listen-port=6881' > "${conf}"
     TRACKER='udp://example.test/announce?key=a&b=c'
     _update_file "${conf}" >/dev/null
-    grep -Fxq "bt-tracker=${TRACKER}" "${conf}" || fail+=" file-write"
+    grep -Fxq "bt-tracker=${TRACKER}" "${conf}" \
+        && grep -Fxq 'listen-port=6881' "${conf}" \
+        || fail+=" file-write"
 
     # _update_rpc 通过命令查找间接调用测试桩，ShellCheck 无法静态追踪。
     # shellcheck disable=SC2329

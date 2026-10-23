@@ -28,10 +28,12 @@ case "${CASE}" in
     filter-rules) t_filter_rules ;;
     filter-guard) t_filter_eligibility_and_guard ;;
     paths) t_path_contracts; path_aliases ;;
+    move-fallback) move_target_unavailable ;;
     torrent) t_torrent_modes ;;
     tracker) t_tracker_contracts ;;
     banner) t_startup_banner_contract ;;
     a2b-scheme) t_aria2b_rpc_scheme ;;
     config-failure) config_copy_failure ;;
+    config-crlf) crlf_settings ;;
     *) die "未知库测试组: ${CASE}" ;;
 esac

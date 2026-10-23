@@ -1,6 +1,8 @@
 # 行为回归测试
 
 测试保护文件和配置的用户可见结果。预期路径与内容写在场景中，不调用生产函数计算正确答案。
+aria2c 是上游组件，不是被测对象：场景只用它产生真实的事件、hook 参数和 RPC 状态，
+被测的是本项目的封装（环境变量、配置、身份、服务）、hook 文件处理，以及用户经 RPC 操作时的结果。
 
 ## 运行
 
@@ -20,8 +22,10 @@ bash build.sh a2b
 bash tests/run.sh superng6/aria2:a2b-latest a2b
 ```
 
-宿主只需 Bash 和 Docker；静态检查还需要 ShellCheck。测试使用镜像里的 GNU 工具、aria2 和真实 `/init`。
+宿主需要 Bash、Docker 和 openssl（`rpc-tls` 临时生成自签证书，私钥不进仓库）；静态检查还需要 ShellCheck。
+测试使用镜像里的 GNU 工具、aria2 和真实 `/init`。
 不挂载用户的下载目录、不使用现有容器、不发布宿主端口。每个场景新建一个容器与匿名卷，退出时删除。
+场景之间互不共享状态，默认 4 个并行（`TEST_JOBS` 调整）；含 30 秒暂停等待的慢场景最先启动。
 两个变体默认用本机架构；CI 用 `TEST_PLATFORM=linux/amd64` 明确指定。ARM 的 CI smoke-test 保留原编排。
 
 失败时打印场景名、断言、预期/实际值，并保存场景输出、容器日志、文件清单和项目磁盘日志。
@@ -47,8 +51,18 @@ bash tests/run.sh superng6/aria2:a2b-latest a2b
 | `recycle-failure` | 回收目标不可写、RPC 删除任务 | 遵守项目已接受的永久删除退路，并记录日志 |
 | `reserved` | 下载目录带尾斜杠、BT 根目录叫 completed | 停止时不得整体操作历史共享目录 |
 | `config-upgrade` | 精简非默认配置、真实重启同一容器 | 用户值保留、新键补齐、键唯一、仍可写 |
-| `lib:*` | abc 调用正式库函数 | 过滤边界、路径等价、种子模式、tracker JSON、横幅脱敏、a2b 协议 |
+| `http-nested` | HTTP 下载到多级、带特殊字符的分类子目录 | 移动后空子目录逐级清理，仍有内容的分类目录保留 |
+| `complex-bt` | 多级目录、中文/方括号/逗号/单引号名称的 BT 完成 | 结构完整移动，过滤与空目录清理正确 |
+| `magnet` | 零配置用户添加磁力链接（本地做种端 + 静态 tracker） | 元数据接续为下载任务；默认不移动、种子按任务名备份、无残留控制文件 |
+| `stop-inactive` | `remove-task=delete` 下删除活动任务、已暂停任务、已完成记录 | 只有活动任务触发删除；后两种 aria2 不发事件，文件保持原位 |
+| `ownership-root` / `ownership-custom` | `PUID/PGID` 为 0 或 1234 | aria2c 身份、配置与移动后文件所有者均为指定值 |
+| `hook-registration` | 用户自带 aria2.conf 缺 hook 行、hook 指向别处、末尾无换行，再重启 | 托管键补齐且唯一，用户注释保留，真实完成事件触发 hook |
+| `rpc-tls` | 开启 `rpc-secure` 后重启 | 明文 RPC 关闭，hook 经 HTTPS 回退仍完成移动 |
+| `a2b-restart`（仅 a2b） | root 执行 crontab 中的 aria2b 定时重启命令 | 间隔符合 `CRA2B`，aria2b 重启而 aria2c 不受影响 |
+| `lib:*` | abc 调用正式库函数 | 过滤边界（含 min-size 字节比较与 CRLF 规则）、路径等价、种子模式、tracker JSON、横幅脱敏、a2b 协议 |
 | `lib:config-failure` | 仅替换 cp，模拟写失败留下空临时文件 | 正式 SED_CONF 返回失败，旧配置字节不变 |
+| `lib:move-fallback` | 目标目录位于不可创建的位置 | 任务移入 move-failed，日志写明无法创建目标目录而非空间不足 |
+| `lib:config-crlf` | CRLF 行尾的 setting.conf | 开关与横幅识别用户值，升级合并后不残留 CR |
 
 所有生命周期文件场景额外检查两个无关哨兵文件，防止“目标正确、旁边全删了”。
 库层允许构造生产全局变量、替换外部故障边界；生命周期层只使用 RPC、配置编辑和容器重启。
@@ -62,7 +76,7 @@ bash tests/mutate.sh superng6/aria2:latest standard
 
 宿主额外需要 Python 3。待测镜像必须由当前工作区构建。
 脚本依次取消共享路径保护、将升级改为默认覆盖、取消全文件过滤保护、忽略暂停开关、
-把 HTTP 文件移动改成移动父目录。每项先验证正常镜像通过，再向专用容器复制有错误的文件。
+把 HTTP 文件移动改成移动父目录、不追加缺失的 hook 行、不清理空父目录、种子备份不按任务名重命名。每项先验证正常镜像通过，再向专用容器复制有错误的文件。
 对应场景必须输出明确失败断言；Docker 启动失败或脚本语法错误不算捕获成功。
 工作区不会被修改。此项用于修改测试后的人工验收，常规 CI 不重复运行慢场景。
 
@@ -73,7 +87,11 @@ bash tests/mutate.sh superng6/aria2:latest standard
 
 `fixtures/multi.torrent` 包含 `fixture-task/keep.mp4`（`KEEP\n`）和
 `fixture-task/remove.txt`（`REMOVE\n`）；`reserved.torrent` 仅将根目录改为 `completed`；
-`single.torrent` 包含 `single.iso`（`SINGLE\n`）。所有 piece length 为 16384，
+`single.torrent` 包含 `single.iso`（`SINGLE\n`）；`complex.torrent` 的根目录为 `[字幕组] 名字 Vol.1, 测试's`，
+包含 `Season 1/第01集 [1080p].mkv`（`EPISODE1\n`）、`Season 1/Extras/说明.txt`（`README\n`）和
+`Season 2/第01集.mkv`（`EPISODE2\n`），内容由场景写入。所有 piece length 为 16384，
 piece hash 为顺序拼接内容的 SHA-1，announce 指向本地不可用端口。
 完成场景预置正确内容，让真实 aria2 校验后触发 hook；活动场景由 aria2 自己创建文件。
 HTTP 场景通过本容器 AriaNg 获取固定页面，不访问公网。
+磁力场景在容器内另起一个不读配置的 aria2c 做种（端口 51413），并把 compact peer 列表写成
+WebUI 下的静态 `announce` 文件充当 tracker，全程离线。

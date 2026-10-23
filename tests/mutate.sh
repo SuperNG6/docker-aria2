@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 在专用容器注入五个明确错误，检查场景是否真的能发现它们。工作区代码不变。
+# 在专用容器注入八个明确错误，检查场景是否真的能发现它们。工作区代码不变。
 set -euo pipefail
 TESTS=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 IMAGE=${1:-superng6/aria2:latest}
@@ -9,7 +9,7 @@ ARTIFACTS=${TEST_ARTIFACTS:-"${TMPDIR:-/tmp}/aria2-mutations-$(date +%s)-$$"}
 mkdir -p "${ARTIFACTS}"
 printf '变异验证日志: %s\n' "${ARTIFACTS}"
 trap 'rm -rf "${TEMP}"' EXIT
-for mutation in reserved config-upgrade filter-all pause-disable http; do
+for mutation in reserved config-upgrade filter-all pause-disable http hook-registration http-nested magnet; do
     printf '\n验证原始镜像: %s\n' "${mutation}"
     TEST_ROOTFS="" TEST_ARTIFACTS="${ARTIFACTS}/baseline-${mutation}" bash "${TESTS}/run.sh" "${IMAGE}" "${VARIANT}" "${mutation}"
     overlay="${TEMP}/overlay-${mutation}"
@@ -23,6 +23,9 @@ changes = {
     'filter-all': ('aria2/scripts/lib/filter.sh', 'if [ "${candidate_num}" -ge "${REAL_FILE_NUM}" ]; then', 'if false; then'),
     'pause-disable': ('aria2/scripts/pause.sh', '    # 等待期间关闭功能时，取消本次尚未执行的移动。\n    [ "${MPT}" = "true" ] || return 0', '    # mutation: 忽略等待期间关闭的开关'),
     'http': ('aria2/scripts/lib/event.sh', 'SOURCE_PATH="${FILE_PATH}"', 'SOURCE_PATH="$(dirname "${FILE_PATH}")"'),
+    'hook-registration': ('etc/cont-init.d/30-config', 'printf \'%s=%s\\n\' "${key}" "${value}" >> "${ARIA2_CONF}"', ':'),
+    'http-nested': ('aria2/scripts/lib/files.sh', 'rmdir -- "${dir}" 2>/dev/null || break', 'break'),
+    'magnet': ('aria2/scripts/lib/torrent.sh', 'backup-rename) target="${BAK_TORRENT_DIR}/${TASK_NAME}.torrent";', 'backup-rename) target="${BAK_TORRENT_DIR}/";'),
 }
 relative, before, after = changes[mutation]
 source = (repo / 'root' / relative).read_text()
