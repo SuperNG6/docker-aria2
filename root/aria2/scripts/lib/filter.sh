@@ -123,7 +123,7 @@ DELETE_EXCLUDE_FILE() {
     rm -f "${candidate_file}"
 
     if [ "${candidate_num}" -ge "${REAL_FILE_NUM}" ]; then
-        echo -e "$(DATE_TIME) ${WARNING} 检测到过滤规则会删除当前任务全部文件，已跳过本次文件过滤。"
+        echo -e "$(DATE_TIME) ${WARNING} 检测到过滤规则会删除当前任务全部文件，已跳过本次文件过滤。" >&2
         log_line "${CF_LOG}" WARNING "过滤规则会删除当前任务全部文件，已跳过本次文件过滤: ${SOURCE_PATH}"
         return
     fi

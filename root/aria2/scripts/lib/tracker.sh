@@ -15,18 +15,16 @@ DOWNLOADER=(curl -fsSL --connect-timeout 3 --max-time 3 --retry 2)
 NL=$'\n'  # 换行符，用于分隔多个自定义 URL
 
 # 获取最新 BT tracker 列表，结果存入 TRACKER 变量（逗号分隔格式，适配 aria2 bt-tracker 参数）
-# 无自定义地址（CTU 为空）时按优先级尝试三个公共源：
+# 无自定义地址（CTU 为空）时按优先级尝试两个公共源：
 #   1. trackerslist.com（主源）
 #   2. jsdelivr CDN 镜像（主源不可达时备用）
-#   3. ghp.ci GitHub 代理（中国大陆备用）
 # 有自定义地址（CTU 环境变量，逗号分隔多个 URL）时从自定义源获取并去重合并
 GET_TRACKERS() {
     if [[ -z "${CTU}" ]]; then
         echo && echo -e "$(DATE_TIME) ${INFO} 获取 BT trackers..."
         TRACKER=$(
             "${DOWNLOADER[@]}" https://trackerslist.com/all_aria2.txt ||
-            "${DOWNLOADER[@]}" https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/all_aria2.txt ||
-            "${DOWNLOADER[@]}" https://ghp.ci/https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all_aria2.txt
+            "${DOWNLOADER[@]}" https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/all_aria2.txt
         )
     else
         echo && echo -e "$(DATE_TIME) ${INFO} 从自定义地址获取 BT trackers: ${CTU}"
@@ -37,10 +35,10 @@ GET_TRACKERS() {
         # 去重、去空行，然后用 paste 把多行折成单行逗号分隔（适配 aria2 bt-tracker 参数）
         TRACKER="$(echo "$TRACKER" | awk NF | sort -u | paste -sd , -)"
     fi
-    [[ -z "${TRACKER}" ]] && {
-        echo -e "$(DATE_TIME) ${ERROR} 无法获取 trackers，网络故障或链接无效"
-        exit 1
-    }
+    if [[ -z "${TRACKER}" ]]; then
+        echo -e "$(DATE_TIME) ${ERROR} 无法获取 trackers，网络故障或链接无效" >&2
+        return 1
+    fi
 }
 
 # 将获取到的 tracker 列表打印到终端（用于日志确认）
@@ -56,8 +54,8 @@ ${TRACKER}
 _update_file() {
     local conf=$1 escaped_tracker
     if [ ! -f "${conf}" ]; then
-        echo -e "$(DATE_TIME) ${ERROR} '${conf}' 不存在"
-        exit 1
+        echo -e "$(DATE_TIME) ${ERROR} '${conf}' 不存在" >&2
+        return 1
     fi
     # 若 bt-tracker= 行尚不存在，先追加空行，确保 sed 能匹配；
     # 文件末尾缺换行时先补一个，避免新行接在最后一行的值后面
@@ -79,21 +77,21 @@ _update_rpc() {
     if echo "${result}" | jq -e '.result == "OK"' >/dev/null 2>&1; then
         echo -e "$(DATE_TIME) ${INFO} BT trackers 更新成功!"
     else
-        echo -e "$(DATE_TIME) ${ERROR} 网络故障或 Aria2 RPC 接口错误!"
+        echo -e "$(DATE_TIME) ${ERROR} 网络故障或 Aria2 RPC 接口错误!" >&2
         return 1
     fi
 }
 
 main() {
-    GET_TRACKERS   # 从公共源或自定义地址（CTU 变量）拉取 tracker 列表
+    GET_TRACKERS || return 1  # 从公共源或自定义地址（CTU 变量）拉取 tracker 列表
     ECHO_TRACKERS  # 打印到终端，便于日志确认
 
     case "${1:-file}" in
         file) _update_file "${2:-/config/aria2.conf}" ;;
         rpc)  _update_rpc ;;
         *)
-            echo -e "$(DATE_TIME) ${ERROR} 未知模式: ${1}（应为 file 或 rpc）"
-            exit 1
+            echo -e "$(DATE_TIME) ${ERROR} 未知模式: ${1}（应为 file 或 rpc）" >&2
+            return 1
             ;;
     esac
 }

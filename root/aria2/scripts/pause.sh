@@ -5,8 +5,8 @@
 # 适用场景：暂停后手动整理文件，且不再恢复该任务
 #
 # ⚠ 重要：MPT=true 会破坏 aria2 的"暂停后恢复"能力
-#    aria2 的恢复依赖原始 --dir 下的文件 + .aria2 控制文件；本脚本把整个任务文件夹移到
-#    completed 后，后续 resume 找不到文件，会从头下载（除非 continue=true + 控制文件保留路径）。
+#    aria2 的恢复依赖原始 --dir 下的文件 + .aria2 控制文件；本脚本删除控制文件并把任务移到
+#    completed 后，后续 resume 找不到文件，会从头下载。
 #    仅在确认"暂停 = 任务终结"语义时启用 MPT=true。
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib/event.sh"
@@ -32,6 +32,12 @@ RUN_PAUSE_HOOK() {
         echo -e "$(DATE_TIME) ${INFO} 暂停任务已恢复（状态=${TASK_STATUS}），跳过移动（GID=${TASK_GID}）"
         return 0
     fi
+    # 暂停→恢复→再暂停会让同一任务有多个等待中的 hook。按 GID 加锁只让一个执行移动：
+    # 跨盘移动是"复制后删源"，源路径在复制期间仍存在，不加锁会两个进程同时复制同一份数据。
+    # 拿不到锁说明另一个 hook 正在移动；拿到锁后源路径已不存在说明已被移走。
+    exec 9> "/tmp/aria2-pause-${TASK_GID}.lock"
+    flock -n 9 || return 0
+    [ -e "${SOURCE_PATH}" ] || return 0
     MOVE=true   # 强制开启移动（覆盖 setting.conf 中的 move-task 设置）
     MOVE_FILE
     CHECK_TORRENT

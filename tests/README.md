@@ -41,11 +41,11 @@ bash tests/run.sh superng6/aria2:a2b-latest a2b
 | `filter-partial` | 真实多文件 BT 完成 | 扩展名与关键词重复命中只删目标文件，剩余内容完整 |
 | `filter-all` | 多条规则合计匹配全部文件 | 整次过滤及空目录清理跳过，仍正常移动 |
 | `selected` | BT 只选第一个文件 | 正确处理选中内容的任务路径，不重复测试 aria2 原生选择算法 |
-| `single-bt` | 自定义目录、尾斜杠、单文件 BT | 只移动单文件，分类目录其他内容保留 |
+| `single-bt` | 自定义目录、尾斜杠、单文件 BT，再从 completed 续种 | 只移动单文件，分类目录其他内容保留；续种完成后不嵌套移动 |
 | `cross-device` | completed 挂载为独立 tmpfs | 真实跨文件系统移动后内容完整、所有者正确 |
 | `move-failure` | completed 对 abc 不可写 | 原任务完整移动至 move-failed 并记录原因 |
 | `repeat` | completed 中已有相同任务目录 | 新任务被取消，旧副本保持完整 |
-| `pause-move` | 暂停并保持暂停 | 延迟后移动，内容完整，清理旧控制文件 |
+| `pause-move` | 暂停→恢复→再暂停并保持暂停 | 延迟后只移动一次，内容完整，清理旧控制文件，不记录移动失败 |
 | `pause-disable` / `pause-resume` | hook 等待期间关闭功能或恢复任务 | 整个观察窗口内原文件与控制文件保留 |
 | `recycle` / `delete` | RPC 删除活动任务 | 按配置回收或删除，记录结果，不触碰无关文件 |
 | `recycle-failure` | 回收目标不可写、RPC 删除任务 | 遵守项目已接受的永久删除退路，并记录日志 |

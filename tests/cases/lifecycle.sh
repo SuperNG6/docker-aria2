@@ -67,6 +67,12 @@ single_bt() {
     same_file "${TESTS}/fixtures/single.iso" '/downloads/completed/custom dir/single.iso'
     absent '/downloads/custom dir/single.iso'
     equal NEIGHBOR "$(cat '/downloads/custom dir/neighbor')" '保留自定义目录其他内容'
+    # 从 completed 续种：任务已在目标根目录内，完成后不得再嵌套移动到 completed/completed
+    gid=$(add_torrent single '{"dir":"/downloads/completed/custom dir","check-integrity":"true"}') || die '续种任务添加失败'
+    wait_status "${gid}" complete
+    consistently 5 '续种任务不嵌套移动' test ! -e /downloads/completed/completed
+    eventually 15 '续种 hook 完成' hook_idle
+    same_file "${TESTS}/fixtures/single.iso" '/downloads/completed/custom dir/single.iso'
 }
 move_storage() {
     local mode=$1 gid destination
@@ -117,11 +123,18 @@ pause_task() {
     cp /downloads/fixture-task/remove.txt /tmp/paused-remove
     case "${mode}" in
         pause-move)
+            # 暂停→恢复→再暂停：两个等待中的 hook 只能移动一次，后到的不得报移动失败
+            rpc aria2.unpause "[\"${gid}\"]" >/dev/null
+            wait_status "${gid}" active
+            rpc aria2.pause "[\"${gid}\"]" >/dev/null
+            wait_status "${gid}" paused
             eventually 50 '暂停后移动' test -f /downloads/completed/fixture-task/keep.mp4
+            eventually 40 '暂停 hook 全部退出' hook_idle
             same_file /tmp/paused-keep /downloads/completed/fixture-task/keep.mp4
             same_file /tmp/paused-remove /downloads/completed/fixture-task/remove.txt
             absent /downloads/fixture-task
-            absent /downloads/fixture-task.aria2 ;;
+            absent /downloads/fixture-task.aria2
+            if grep -q ERROR /config/logs/move.log; then die "重复的暂停 hook 不应记录移动失败: $(cat /config/logs/move.log)"; fi ;;
         pause-disable|pause-resume)
             if [ "${mode}" = pause-disable ]; then
                 setting move-paused-task false

@@ -1,6 +1,6 @@
 #!/usr/bin/with-contenv bash
 # aria2b 服务启动脚本（由 s6-overlay 管理）
-# aria2b 是一个 BT 流量优化代理，仅在 a2b 变体（VARIANT=a2b）中安装
+# aria2b 经 aria2 RPC 识别吸血客户端，并用 iptables/ipset 屏蔽；仅在 a2b 变体（VARIANT=a2b）中安装
 
 # 根据 aria2.conf 的有效 rpc-secure 配置选择本地 RPC 协议。
 # 注释行不生效；HTTPS 为本地自签证书场景，与 lib/rpc.sh 一样跳过证书校验。

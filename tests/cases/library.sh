@@ -292,6 +292,16 @@ t_tracker_contracts() {
         && [[ "${result}" == *"c.test:3"* ]] \
         || fail+=" ctu-dedup"
 
+    # 以脚本入口执行：获取成功才写入并返回 0；获取失败返回非零且不改配置
+    printf 'bt-tracker=old\n' > "${conf}"
+    CTU="file://${tmp1}" bash /aria2/scripts/lib/tracker.sh file "${conf}" >/dev/null 2>&1 \
+        && grep -Fxq 'bt-tracker=udp://a.test:1,udp://b.test:2' "${conf}" \
+        || fail+=" main-success"
+    printf 'bt-tracker=old\n' > "${conf}"
+    ! CTU="file://${LOG_DIR}/missing.txt" bash /aria2/scripts/lib/tracker.sh file "${conf}" >/dev/null 2>&1 \
+        && grep -Fxq 'bt-tracker=old' "${conf}" \
+        || fail+=" main-failure"
+
     if [ -z "${fail}" ]; then
         ok "特殊字符写入、严格 JSON 成功判断和 CTU 去重正确"
     else

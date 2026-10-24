@@ -62,11 +62,11 @@ RPC 统一经 [`lib/rpc.sh`](../root/aria2/scripts/lib/rpc.sh) 的 `RPC_CALL` �
 | 入口 | 主要分支 |
 | --- | --- |
 | `start.sh` | `RRT=true`、推算出文件夹任务的 `COMPLETED_DIR`、该目录已存在且状态非 error 时，清理新任务文件/种子，等待内部状态更新后尝试 RPC 移除；失败记警告。 |
-| `pause.sh` | `MPT=true` 时后台等待 30 秒，重新加载开关与 RPC 状态；仍 paused 才强制移动。 |
+| `pause.sh` | `MPT=true` 时后台等待 30 秒，重新加载开关与 RPC 状态；仍 paused 才强制移动。同一 GID 的多个 hook 用 `flock` 互斥，源路径已被移走时直接结束。 |
 | `stop.sh` | 源文件存在且状态非 error 时，按 `RMTASK` 保留内容、回收或删除；三种已知模式均处理可用的元数据种子并清理 `.aria2`，未知值全部不处理。aria2 仅在活动任务停止时调用本 hook，删除已暂停任务和 `removeDownloadResult` 不会触发。 |
 | `completed.sh` | `MOVE_FILE` 后台处理大文件移动，种子操作在前台；等待 BT 做种结束后的 complete 事件。 |
 
-[`lib/files.sh`](../root/aria2/scripts/lib/files.sh) 在 `MOVE=false` 或 `dmof` 跳过移动时只清理 `.aria2`；真正移动时先执行 `CLEAN_UP`，再仅对跨文件系统移动比较源大小与目标可用空间。目标目录无法创建、空间不足或主移动失败时尝试 `/downloads/move-failed`。回收站移动失败转永久删除；`mv -f` 可能覆盖同名文件，遇到同名非空目录则可能失败。过滤仅在任务源路径内实际存在多个文件、且进入移动清理流程时运行，暂停 hook 强制移动时也会运行：[`lib/filter.sh`](../root/aria2/scripts/lib/filter.sh) 用同一规则预览与删除，NUL 分隔并去重；全部文件将被匹配时跳过本次过滤和空目录清理。`min-size` 沿用 find 单位写法，但先换算为字节再以 `-size -Nc` 比较，避免 find 按单位向上取整而漏删；无法识别的值只忽略该规则并记日志。种子处理位于 [`lib/torrent.sh`](../root/aria2/scripts/lib/torrent.sh)，仅在推算出的 `.torrent` 存在时按 `TOR` 执行。
+[`lib/files.sh`](../root/aria2/scripts/lib/files.sh) 在 `MOVE=false` 或 `dmof` 跳过移动时只清理 `.aria2`；任务源路径本就位于 completed（或停止时位于 recycle）内时视为已就位，不再嵌套移动；真正移动时先执行 `CLEAN_UP`，再仅对跨文件系统移动比较源大小与目标可用空间。目标目录无法创建、空间不足或主移动失败时尝试 `/downloads/move-failed`。回收站移动失败转永久删除；`mv -f` 可能覆盖同名文件，遇到同名非空目录则可能失败。过滤仅在任务源路径内实际存在多个文件、且进入移动清理流程时运行，暂停 hook 强制移动时也会运行：[`lib/filter.sh`](../root/aria2/scripts/lib/filter.sh) 用同一规则预览与删除，NUL 分隔并去重；全部文件将被匹配时跳过本次过滤和空目录清理。`min-size` 沿用 find 单位写法，但先换算为字节再以 `-size -Nc` 比较，避免 find 按单位向上取整而漏删；无法识别的值只忽略该规则并记日志。种子处理位于 [`lib/torrent.sh`](../root/aria2/scripts/lib/torrent.sh)，仅在推算出的 `.torrent` 存在时按 `TOR` 执行。
 
 ## 6. Tracker 与 cron
 

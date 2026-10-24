@@ -46,6 +46,17 @@ PRUNE_EMPTY_PARENTS() {
     return 0
 }
 
+# 任务本身已位于目标根目录内（如从 completed 续种、在 recycle 里重新下载）。
+# 再移动只会嵌套出 completed/completed/...，视为已就位。
+_IN_TARGET_DIR() {
+    # TARGET_DIR 为空时模式会退化成 "/"*，匹配一切路径
+    [ -n "${TARGET_DIR:-}" ] || return 1
+    case "${SOURCE_PATH}" in
+        "${TARGET_DIR}/"*) return 0 ;;
+    esac
+    return 1
+}
+
 REMOVE_SOURCE_PATH() {
     IS_TASK_SOURCE_PATH "${SOURCE_PATH:-}" || return 1
     rm -rf "${SOURCE_PATH}" || return 1
@@ -114,8 +125,9 @@ _MOVE_TO_FAILED() {
         echo -e "$(DATE_TIME) ${INFO} ${reason}已将文件移动至: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX} -> ${YELLOW_FONT_PREFIX}${fail_dir}${FONT_COLOR_SUFFIX}"
         log_line "${MOVE_LOG}" INFO "${reason}已将文件移动至: ${SOURCE_PATH} -> ${fail_dir}"
     else
-        echo -e "$(DATE_TIME) ${ERROR} 移动到 ${YELLOW_FONT_PREFIX}${fail_dir}${FONT_COLOR_SUFFIX} 依然失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
+        echo -e "$(DATE_TIME) ${ERROR} 移动到 ${YELLOW_FONT_PREFIX}${fail_dir}${FONT_COLOR_SUFFIX} 依然失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}" >&2
         log_line "${MOVE_LOG}" ERROR "移动到 ${fail_dir} 依然失败: ${SOURCE_PATH}"
+        return 1
     fi
 }
 
@@ -141,6 +153,11 @@ MOVE_FILE() {
         true) ;;
         *) return ;;
     esac
+    if _IN_TARGET_DIR; then
+        RM_ARIA2
+        echo -e "$(DATE_TIME) ${INFO} 任务已位于 ${LIGHT_GREEN_FONT_PREFIX}${TARGET_DIR}${FONT_COLOR_SUFFIX} 内，不再移动: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
+        return
+    fi
 
     TASK_TYPE=": 移动任务文件"
     TASK_INFO
@@ -149,7 +166,7 @@ MOVE_FILE() {
     # 目标目录建不出来时，stat 取不到设备号会被误判为跨盘，再误报"空间不足"；
     # 直接按移动失败走 move-failed，日志写明真实原因
     if ! mkdir -p "${TARGET_PATH}"; then
-        echo -e "$(DATE_TIME) ${ERROR} 无法创建目标文件夹: ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
+        echo -e "$(DATE_TIME) ${ERROR} 无法创建目标文件夹: ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}" >&2
         log_line "${MOVE_LOG}" ERROR "无法创建目标文件夹: ${TARGET_PATH}"
         _MOVE_TO_FAILED "因无法创建目标文件夹，"
         return 1
@@ -159,7 +176,7 @@ MOVE_FILE() {
     if _IS_CROSS_DEVICE "${SOURCE_PATH}" "${TARGET_PATH}"; then
         echo -e "$(DATE_TIME) ${INFO} 检测到跨磁盘移动，正在检查目标磁盘空间..."
         if ! _CHECK_SPACE "${SOURCE_PATH}" "${TARGET_PATH}"; then
-            echo -e "$(DATE_TIME) ${WARNING} 尝试将任务移动到: ${YELLOW_FONT_PREFIX}${DOWNLOAD_PATH}/move-failed${FONT_COLOR_SUFFIX}"
+            echo -e "$(DATE_TIME) ${WARNING} 尝试将任务移动到: ${YELLOW_FONT_PREFIX}${DOWNLOAD_PATH}/move-failed${FONT_COLOR_SUFFIX}" >&2
             _MOVE_TO_FAILED "因目标磁盘空间不足，"
             return 1
         fi
@@ -171,9 +188,10 @@ MOVE_FILE() {
         echo -e "$(DATE_TIME) ${INFO} 已移动文件至目标文件夹: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX} -> ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${MOVE_LOG}" INFO "已移动文件至目标文件夹: ${SOURCE_PATH} -> ${TARGET_PATH}"
     else
-        echo -e "$(DATE_TIME) ${ERROR} 文件移动失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
+        echo -e "$(DATE_TIME) ${ERROR} 文件移动失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}" >&2
         log_line "${MOVE_LOG}" ERROR "文件移动失败: ${SOURCE_PATH}"
         _MOVE_TO_FAILED
+        return 1
     fi
 }
 
@@ -186,14 +204,19 @@ DELETE_FILE() {
         echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${DELETE_LOG}" INFO "文件删除成功: ${SOURCE_PATH}"
     else
-        echo -e "$(DATE_TIME) ${ERROR} 文件删除失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
+        echo -e "$(DATE_TIME) ${ERROR} 文件删除失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}" >&2
         log_line "${DELETE_LOG}" ERROR "文件删除失败: ${SOURCE_PATH}"
+        return 1
     fi
 }
 
 # 将任务文件移动到回收站（RMTASK=recycle 时由 stop.sh 调用）
 # 移动失败时降级为直接删除，避免文件滞留在下载目录
 MOVE_RECYCLE() {
+    if _IN_TARGET_DIR; then
+        echo -e "$(DATE_TIME) ${INFO} 任务已位于回收站内，不再移动: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
+        return
+    fi
     TASK_TYPE=": 移动任务文件至回收站"
     TASK_INFO
     echo -e "$(DATE_TIME) ${INFO} 开始移动已下载的任务至回收站 ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
@@ -205,14 +228,15 @@ MOVE_RECYCLE() {
     fi
 
     # 移到回收站失败，降级为删除
-    echo -e "$(DATE_TIME) ${ERROR} 移动文件到回收站失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
+    echo -e "$(DATE_TIME) ${ERROR} 移动文件到回收站失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}" >&2
     echo -e "$(DATE_TIME) ${INFO} 尝试删除文件: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
     if REMOVE_SOURCE_PATH; then
         echo -e "$(DATE_TIME) ${INFO} 已删除文件: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
         log_line "${RECYCLE_LOG}" WARNING "移动文件到回收站失败，已删除文件: ${SOURCE_PATH}"
     else
-        echo -e "$(DATE_TIME) ${ERROR} 删除文件也失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}"
+        echo -e "$(DATE_TIME) ${ERROR} 删除文件也失败: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX}" >&2
         log_line "${RECYCLE_LOG}" ERROR "移动到回收站和删除文件都失败: ${SOURCE_PATH}"
+        return 1
     fi
 }
 

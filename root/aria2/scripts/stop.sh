@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # 下载停止事件脚本
-# aria2 在任务被手动停止/删除时调用，参数：$1=GID $2=文件数量 $3=第一个文件路径
+# aria2 在活动任务被删除或出错停止时调用（删除已暂停任务、移除已完成记录不会触发），
+# 参数：$1=GID $2=文件数量 $3=第一个文件路径
 # 功能：根据 RMTASK 配置决定如何处理已（部分）下载的文件
 #   recycle - 移动到回收站（/downloads/recycle）
 #   delete  - 彻底删除
-#   rmaria  - 仅移除 aria2 任务记录，不动文件（默认）
+#   rmaria  - 仅删除 .aria2 控制文件，不动下载内容（默认）
 # TASK_STATUS=error 时（下载出错）不执行任何文件操作，避免误删损坏文件
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib/event.sh"
