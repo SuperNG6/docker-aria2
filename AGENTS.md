@@ -28,6 +28,16 @@ bash tests/run.sh superng6/aria2:a2b-latest a2b
 
 确定性规则放 `tests/cases/library.sh` 或 `boundaries.sh`；下载、暂停、删除、配置升级等用户流程放 `lifecycle.sh` 或 `configuration.sh`。aria2c 是上游，只用来产生真实事件；真实场景通过 aria2 RPC、正式 hook 或容器重启触发，以 `abc` 身份运行（观察 s6 服务的放 `tests/root.sh`），使用本地夹具和有上限的条件轮询；不要直接 source 生产库或手写生产全局变量来代替用户流程。
 
+## 代码审查约定
+
+审查结论必须基于实际情况，不能只凭读代码推测“可能会怎样”。
+
+- 报告前先查 [PRD §4](docs/PRD.md) 和 [Spec §8](docs/DEVELOPMENT_SPEC.md)：已列入的取舍和已评估的边界不要重复报告，除非本次改动让它变得真正有害。
+- 每个问题都要在容器里复现，并写明触发前提（哪个非默认开关、什么用户操作）和观察到的实际后果。排查时可用 `TEST_ROOTFS="$PWD/root" bash tests/run.sh <镜像> <变体> <场景>` 把工作区代码注入现有镜像，免去重建；提交前的正式验证仍按上文先构建镜像。
+- 没有复现的只能标“未验证”，不给严重度。默认配置、现有发布流程（x86 + QEMU 的 CI、`build.sh` 本机架构）都走不到的路径不算问题；泛泛的最佳实践（版本固定、日志轮转等）也不算。
+- 活动任务相关的行为用带 peer 的夹具验证（`peer.torrent`，见 [tests/README.md](tests/README.md)）：其余小夹具没有 peer，任务始终零进度，aria2 回写 `.aria2` 之类的现场不会出现。
+- 所有者确认某项为设计或接受某个取舍后，把它连同理由补进 Spec §8。
+
 ## 提交与安全
 
 近期提交标题使用 `fix:`、`test:`、`refactor:`、`docs:`、`ci:` 等前缀。拉取请求说明行为变化、受影响变体及验证命令；相关 issue 存在时附链接。不要提交 token、用户配置或下载数据；对外开放 RPC 前替换公开默认值 `SECRET=yourtoken`。

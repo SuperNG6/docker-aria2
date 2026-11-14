@@ -39,7 +39,10 @@ case "${CASE}" in
     cross-device|move-failure) move_storage "${CASE}" ;;
     repeat) repeat_task ;;
     pause-move|pause-disable|pause-resume) pause_task "${CASE}" ;;
-    recycle|delete|recycle-failure) stop_task "${CASE}" ;;
+    recycle|delete|recycle-failure|recycle-conflict) stop_task "${CASE}" ;;
+    peer-complete) peer_complete ;;
+    repeat-active) repeat_active ;;
+    recycle-active) recycle_active ;;
     stop-inactive) stop_inactive ;;
     reserved) reserved_directory ;;
     ownership-root|ownership-custom) ownership ;;

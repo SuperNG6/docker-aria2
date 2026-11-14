@@ -48,6 +48,10 @@ bash tests/run.sh superng6/aria2:a2b-latest a2b
 | `pause-move` | 暂停→恢复→再暂停并保持暂停 | 延迟后只移动一次，内容完整，清理旧控制文件，不记录移动失败 |
 | `pause-disable` / `pause-resume` | hook 等待期间关闭功能或恢复任务 | 整个观察窗口内原文件与控制文件保留 |
 | `recycle` / `delete` | RPC 删除活动任务 | 按配置回收或删除，记录结果，不触碰无关文件 |
+| `recycle-conflict` | 回收站已有同名任务目录、RPC 删除任务 | 旧内容不变，新任务以带后缀的名字入站，不走永久删除 |
+| `peer-complete` | 多文件 BT 全部内容由本地做种端下载完成 | 内容与做种端逐文件一致，整体移入 completed，无残留控制文件 |
+| `repeat-active` | completed 中已有相同任务目录，新任务正从 peer 下载 | 任务带着下载进度被取消，源目录与 `.aria2` 均不残留，旧副本完整 |
+| `recycle-active` | RPC 删除已有部分进度的任务 | 文件整体进入回收站，`.aria2` 不残留 |
 | `recycle-failure` | 回收目标不可写、RPC 删除任务 | 遵守项目已接受的永久删除退路，并记录日志 |
 | `reserved` | 下载目录带尾斜杠、BT 根目录叫 completed | 停止时不得整体操作历史共享目录 |
 | `config-upgrade` | 精简非默认配置、真实重启同一容器 | 用户值保留、新键补齐、键唯一、仍可写 |
@@ -95,3 +99,8 @@ piece hash 为顺序拼接内容的 SHA-1，announce 指向本地不可用端口
 HTTP 场景通过本容器 AriaNg 获取固定页面，不访问公网。
 磁力场景在容器内另起一个不读配置的 aria2c 做种（端口 51413），并把 compact peer 列表写成
 WebUI 下的静态 `announce` 文件充当 tracker，全程离线。
+`fixtures/peer.torrent` 的根目录为 `peer-task`，含 `a.bin`、`b.bin`、`sub/c.bin`、`sub/d.bin` 各 512 KiB，
+piece length 为 65536，announce 指向上述静态 tracker。内容不入库：每个文件由 `peer-fixture <路径>\n`
+循环填满，做种端在容器内现场写出；种子由 `fixtures/make-peer-torrent.py` 生成。
+上面的小夹具没有 peer，活动任务始终零进度；`peer-*`、`*-active` 场景用同一做种端真实供数，
+并以上传限速（100K）让任务停在“已有进度、尚未完成”的状态。

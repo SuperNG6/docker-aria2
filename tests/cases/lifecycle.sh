@@ -158,6 +158,11 @@ stop_task() {
         setting remove-task recycle
         # abc 无写权限，构造真实 mv 失败，不替换生产函数。
         chmod a-w /downloads/recycle
+    elif [ "${mode}" = recycle-conflict ]; then
+        setting remove-task recycle
+        # 回收站里已有同名任务（如同一个种子删过一次）。
+        mkdir /downloads/recycle/fixture-task
+        printf OLD > /downloads/recycle/fixture-task/old
     else
         setting remove-task "${mode}"
     fi
@@ -176,6 +181,15 @@ stop_task() {
         same_file /tmp/stopped-keep "${destination}/keep.mp4"
         same_file /tmp/stopped-remove "${destination}/remove.txt"
         assert '记录回收结果' grep -Fq '成功移动文件到回收站' /config/logs/recycle.log
+    elif [ "${mode}" = recycle-conflict ]; then
+        # 重名不能覆盖旧内容，也不能落到永久删除退路；新任务以带后缀的名字入站。
+        equal OLD "$(cat /downloads/recycle/fixture-task/old)" '回收站旧内容保持不变'
+        absent /downloads/recycle/fixture-task/keep.mp4
+        destination=$(find /downloads/recycle -mindepth 1 -maxdepth 1 -name 'fixture-task.*')
+        assert '新任务以新名字进入回收站' test -d "${destination}"
+        same_file /tmp/stopped-keep "${destination}/keep.mp4"
+        same_file /tmp/stopped-remove "${destination}/remove.txt"
+        assert '记录回收结果' grep -Fq "成功移动文件到回收站: /downloads/fixture-task -> ${destination}" /config/logs/recycle.log
     elif [ "${mode}" = recycle-failure ]; then
         absent /downloads/recycle/fixture-task
         assert '记录已接受的永久删除退路' grep -Fq '已删除文件' /config/logs/recycle.log
@@ -183,6 +197,59 @@ stop_task() {
         absent /downloads/recycle/fixture-task
         assert '记录删除结果' grep -Fq '文件删除成功' /config/logs/delete.log
     fi
+}
+peer_complete() {
+    local gid file
+    # 内容全部来自 peer（其余完成场景是预置文件后校验通过），再走完成后移动。
+    setting move-task true
+    start_peer_seeder 0
+    gid=$(add_torrent peer) || die 'peer 任务添加失败'
+    wait_status "${gid}" complete
+    eventually 15 '完成后移动' test -f /downloads/completed/peer-task/sub/d.bin
+    eventually 15 'hook 完成' hook_idle
+    for file in "${PEER_FILES[@]}"; do
+        same_file "/tmp/seed/peer-task/${file}" "/downloads/completed/peer-task/${file}"
+    done
+    absent /downloads/peer-task
+    absent /downloads/peer-task.aria2
+}
+repeat_active() {
+    local gid attempt progressed=false
+    # 与 repeat 相同的用户操作，但新任务真的在下载：去重删掉源目录后、RPC 移除任务前，
+    # aria2 仍在收数据并回写控制文件，零进度的 repeat 场景看不到这段残留。
+    setting remove-repeat-task true
+    mkdir /downloads/completed/peer-task
+    printf OLD > /downloads/completed/peer-task/old
+    start_peer_seeder 100K
+    # 去重只给任务约 3 秒；连接 peer 偶尔来不及，重加任务直到确实带着进度被取消。
+    for attempt in 1 2 3; do
+        gid=$(add_torrent peer) || die '重复任务添加失败'
+        wait_status "${gid}" removed
+        eventually 15 '重复任务清理完成' hook_idle
+        if has_progress "${gid}"; then progressed=true; break; fi
+        rpc aria2.removeDownloadResult "[\"${gid}\"]" >/dev/null
+    done
+    [ "${progressed}" = true ] || die '任务未在被取消前获得下载进度，场景没有验证到目标现场'
+    absent /downloads/peer-task
+    absent /downloads/peer-task.aria2
+    equal OLD "$(cat /downloads/completed/peer-task/old)" '已有副本完整'
+}
+recycle_active() {
+    local gid file
+    # 回收一个已有部分进度的任务：文件整体入站，控制文件不残留。
+    setting remove-task recycle
+    start_peer_seeder 100K
+    gid=$(add_torrent peer) || die '活动任务添加失败'
+    eventually 30 '任务获得下载进度' has_progress "${gid}"
+    rpc aria2.forceRemove "[\"${gid}\"]" >/dev/null
+    wait_status "${gid}" removed
+    eventually 15 '停止文件清理' test ! -e /downloads/peer-task
+    eventually 15 '停止 hook 完成' hook_idle
+    absent /downloads/peer-task.aria2
+    for file in "${PEER_FILES[@]}"; do
+        assert "回收站保留 ${file}" test -f "/downloads/recycle/peer-task/${file}"
+    done
+    assert '记录回收结果' grep -Fq '成功移动文件到回收站' /config/logs/recycle.log
 }
 reserved_directory() {
     local gid

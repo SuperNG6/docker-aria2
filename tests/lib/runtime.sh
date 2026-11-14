@@ -73,6 +73,37 @@ start_seeder() {
         --seed-ratio=0 --seed-time=60 -V "${TESTS}/fixtures/multi.torrent"
     printf 'd8:intervali60e5:peers6:\x7f\x00\x00\x01\xc8\xd5e' > /www/announce
 }
+# peer.torrent：根目录 peer-task，4 个 512 KiB 文件，announce 指向上面的静态 tracker。
+# 其余夹具只有十几个字节且没有 peer，"活动任务"始终零进度；本夹具由做种端真实供数，
+# 用限速让任务停在"已有进度、尚未完成"的状态，覆盖 aria2 会回写控制文件的那段时间。
+PEER_FILES=(a.bin b.bin sub/c.bin sub/d.bin)
+peer_content() {
+    # 进程替换而非管道：yes 被 SIGPIPE 结束不应让 pipefail 判定失败。
+    head -c 524288 < <(yes "peer-fixture $1")
+}
+seeder_listening() { (exec 3<>/dev/tcp/127.0.0.1/51413) 2>/dev/null; }
+# $1 为做种端上传限速，0 表示不限速。
+start_peer_seeder() {
+    local limit=$1 file
+    assert '准备做种目录' mkdir -p /tmp/seed/peer-task/sub
+    for file in "${PEER_FILES[@]}"; do
+        peer_content "${file}" > "/tmp/seed/peer-task/${file}"
+    done
+    assert '启动做种端' aria2c --no-conf -D -d /tmp/seed --listen-port=51413 --enable-rpc=false \
+        --enable-dht=false --bt-enable-lpd=false --enable-peer-exchange=false \
+        --seed-ratio=0 --seed-time=60 --max-overall-upload-limit="${limit}" \
+        -V "${TESTS}/fixtures/peer.torrent"
+    printf 'd8:intervali60e5:peers6:\x7f\x00\x00\x01\xc8\xd5e' > /www/announce
+    eventually 15 '做种端开始监听' seeder_listening
+}
+completed_length() {
+    rpc aria2.tellStatus "[\"$1\",[\"completedLength\"]]" | jq -er '.result.completedLength'
+}
+has_progress() {
+    local length
+    length=$(completed_length "$1") || return 1
+    ((length > 0))
+}
 add_magnet() {
     local hash=$1 params response
     params=$(jq -nc --arg uri "magnet:?xt=urn:btih:${hash}&tr=http://127.0.0.1:8080/announce" \

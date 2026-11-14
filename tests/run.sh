@@ -11,7 +11,7 @@ case "${VARIANT}" in standard|a2b) ;; *) echo 'variant 必须为 standard 或 a2
 LIB_CASES=(filter-rules filter-guard paths move-fallback torrent tracker banner config-failure config-crlf)
 [ "${VARIANT}" != a2b ] || LIB_CASES+=(a2b-scheme)
 RUNTIME_CASES=(identity http http-nested complex-bt magnet filter-partial filter-all selected single-bt
-    cross-device move-failure repeat pause-move pause-disable pause-resume recycle delete recycle-failure
+    cross-device move-failure repeat pause-move pause-disable pause-resume recycle delete recycle-failure recycle-conflict peer-complete repeat-active recycle-active
     stop-inactive reserved ownership-root ownership-custom config-upgrade hook-registration rpc-tls)
 # 需要 root 观察 s6 服务的场景
 ROOT_CASES=()

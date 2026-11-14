@@ -13,8 +13,13 @@
 INIT_EVENT recycle "$@"  # 初始化路径（目标目录：recycle）
 GUARD_EVENT              # 磁力/无效任务跳过；路径错误退出
 
-# start.sh 在重复任务检测时可能已删除文件，跳过后续操作
-[ -e "${SOURCE_PATH}" ] || exit 0
+# start.sh 在重复任务检测时可能已删除文件，跳过后续文件操作。
+# 但 start.sh 删完到 RPC 移除任务之间 aria2 仍在下载，会重新写出 .aria2；
+# 源路径已不存在时它无法再用于续传，只会残留在下载目录，这里一并清掉。
+if [ ! -e "${SOURCE_PATH}" ]; then
+    [ "${TASK_STATUS}" = "error" ] || RM_ARIA2
+    exit 0
+fi
 # 下载出错的任务保留文件供用户排查或续传
 [ "${TASK_STATUS}" = "error" ] && exit 0
 

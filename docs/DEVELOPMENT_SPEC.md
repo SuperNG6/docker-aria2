@@ -63,14 +63,14 @@ RPC 统一经 [`lib/rpc.sh`](../root/aria2/scripts/lib/rpc.sh) 的 `RPC_CALL` �
 | --- | --- |
 | `start.sh` | `RRT=true`、推算出文件夹任务的 `COMPLETED_DIR`、该目录已存在且状态非 error 时，清理新任务文件/种子，等待内部状态更新后尝试 RPC 移除；失败记警告。 |
 | `pause.sh` | `MPT=true` 时后台等待 30 秒，重新加载开关与 RPC 状态；仍 paused 才强制移动。同一 GID 的多个 hook 用 `flock` 互斥，源路径已被移走时直接结束。 |
-| `stop.sh` | 源文件存在且状态非 error 时，按 `RMTASK` 保留内容、回收或删除；三种已知模式均处理可用的元数据种子并清理 `.aria2`，未知值全部不处理。aria2 仅在活动任务停止时调用本 hook，删除已暂停任务和 `removeDownloadResult` 不会触发。 |
+| `stop.sh` | 源路径已不存在时（如 `start.sh` 去重已删除）只清理残留的 `.aria2`（状态为 error 时不清理）后结束。源文件存在且状态非 error 时，按 `RMTASK` 保留内容、回收或删除；三种已知模式均处理可用的元数据种子并清理 `.aria2`，未知值全部不处理。aria2 仅在活动任务停止时调用本 hook，删除已暂停任务和 `removeDownloadResult` 不会触发。 |
 | `completed.sh` | `MOVE_FILE` 后台处理大文件移动，种子操作在前台；等待 BT 做种结束后的 complete 事件。 |
 
-[`lib/files.sh`](../root/aria2/scripts/lib/files.sh) 在 `MOVE=false` 或 `dmof` 跳过移动时只清理 `.aria2`；任务源路径本就位于 completed（或停止时位于 recycle）内时视为已就位，不再嵌套移动；真正移动时先执行 `CLEAN_UP`，再仅对跨文件系统移动比较源大小与目标可用空间。目标目录无法创建、空间不足或主移动失败时尝试 `/downloads/move-failed`。回收站移动失败转永久删除；`mv -f` 可能覆盖同名文件，遇到同名非空目录则可能失败。过滤仅在任务源路径内实际存在多个文件、且进入移动清理流程时运行，暂停 hook 强制移动时也会运行：[`lib/filter.sh`](../root/aria2/scripts/lib/filter.sh) 用同一规则预览与删除，NUL 分隔并去重；全部文件将被匹配时跳过本次过滤和空目录清理。`min-size` 沿用 find 单位写法，但先换算为字节再以 `-size -Nc` 比较，避免 find 按单位向上取整而漏删；无法识别的值只忽略该规则并记日志。种子处理位于 [`lib/torrent.sh`](../root/aria2/scripts/lib/torrent.sh)，仅在推算出的 `.torrent` 存在时按 `TOR` 执行。
+[`lib/files.sh`](../root/aria2/scripts/lib/files.sh) 在 `MOVE=false` 或 `dmof` 跳过移动时只清理 `.aria2`；任务源路径本就位于 completed（或停止时位于 recycle）内时视为已就位，不再嵌套移动；真正移动时先执行 `CLEAN_UP`，再仅对跨文件系统移动比较源大小与目标可用空间。目标目录无法创建、空间不足或主移动失败时尝试 `/downloads/move-failed`。回收站内已有同名条目时，以 `<名称>.<时间戳>` 入站，不覆盖也不视为失败；其他原因的回收站移动失败转永久删除。完成后移动的 `mv -f` 可能覆盖同名文件，遇到同名非空目录则可能失败。过滤仅在任务源路径内实际存在多个文件、且进入移动清理流程时运行，暂停 hook 强制移动时也会运行：[`lib/filter.sh`](../root/aria2/scripts/lib/filter.sh) 用同一规则预览与删除，NUL 分隔并去重；全部文件将被匹配时跳过本次过滤和空目录清理。`min-size` 沿用 find 单位写法，但先换算为字节再以 `-size -Nc` 比较，避免 find 按单位向上取整而漏删；无法识别的值只忽略该规则并记日志。种子处理位于 [`lib/torrent.sh`](../root/aria2/scripts/lib/torrent.sh)，仅在推算出的 `.torrent` 存在时按 `TOR` 执行。
 
 ## 6. Tracker 与 cron
 
-[`lib/tracker.sh`](../root/aria2/scripts/lib/tracker.sh) 的 `file` 模式在启动时更新 `aria2.conf`；`rpc` 模式通过 `aria2.changeGlobalOption` 热更新，并要求响应 JSON 的 `.result == "OK"`。默认按主源、CDN、代理顺序获取；`CTU` 可指定多个 URL 并去重。tracker 拉取请求设置超时和重试，默认源之间另有回退；cron 的 RPC 调用设时间上限以防任务累积。事件 hook 的本地 RPC 请求没有对应超时和重试设置。
+[`lib/tracker.sh`](../root/aria2/scripts/lib/tracker.sh) 的 `file` 模式在启动时更新 `aria2.conf`；`rpc` 模式通过 `aria2.changeGlobalOption` 热更新，并要求响应 JSON 的 `.result == "OK"`。默认按主源、CDN 顺序获取；`CTU` 可指定多个 URL 并去重。tracker 拉取请求设置超时和重试，默认源之间另有回退；cron 与事件 hook 的本地 RPC 请求共用 `RPC_CALL` 的时间上限，不重试。
 
 `RUT=true` 将 [`rpc-tracker1`](../root/aria2/conf/rpc-tracker1) 写入 `/etc/crontabs/root`，每天 05:00 更新；否则使用 [`rpc-tracker0`](../root/aria2/conf/rpc-tracker0)。`crond` 始终启动。`40-config` 仅在 `A2B=true` 且 aria2b 实际存在时，经 `crontab -l/-` 注册 `s6-svc -r /var/run/s6/services/aria2b`；`CRA2B=false` 关闭，非法间隔回退两小时。两种 cron 写入方式在当前镜像中共存。
 
@@ -87,3 +87,37 @@ bash tests/run.sh superng6/aria2:latest standard
 ./build.sh a2b
 bash tests/run.sh superng6/aria2:a2b-latest a2b
 ```
+
+## 8. 已评估的边界（审查时不要重复报告）
+
+本节记录已被提出、评估过并有结论的边界，避免每次审查重新发现同一批“问题”。产品层面的取舍另见 [PRD §4](PRD.md)。只有当某次改动让其中一项变得真正有害，或“重新评估的条件”成立时才再次提出。
+
+### 8.1 所有者确认的设计
+
+| 行为 | 结论与理由 |
+| --- | --- |
+| `40-config` 每次启动对 `/config`、`/www`、`/downloads` 执行 `chown -R` | 有意为之。 |
+| `move-task=dmof` 跳过下载目录为 `/downloads` 且文件数为 1 的任务，包括自带文件夹的单文件种子 | 既定语义。 |
+| `crond` 由 `30-config` 直接启动，不是 s6 服务 | 保持现状。 |
+| 显式传入空值 `-e PORT=` 会让 hook 的 RPC 地址失效 | 不处理；Dockerfile 已提供默认值。 |
+| 跨盘 `mv` 进行中容器停止，会留下半份拷贝且不重试 | 接受的 `mv` 局限。 |
+| 日志用 `echo -e`，文件名中的反斜杠序列会被解释 | 仅影响显示；改动涉及约 56 行，不值得。 |
+| 回收站移动因目标不可写等原因真正失败时转永久删除 | 接受的退路，由 `recycle-failure` 场景固定。重名不属于失败，见 §5。 |
+| 完成后移动用 `mv -f`，同名文件会被覆盖；过滤只在移动流程中执行；RRT 遇历史同名目录会误判；MPT 会破坏原路径续传 | 已在 PRD §4 和入口脚本注释中说明，均可用开关规避。 |
+| 经 RPC 上传的种子以 `<sha1>.torrent` 留在下载目录，不被种子策略处理 | aria2 以整个种子文件的 SHA-1 命名，无法由 infoHash 推算；`setting.conf` 注释已说明。 |
+| aria2c、AriaNg、aria2b 构建时取最新 release，无校验和；基础镜像不固定 digest | 有意跟随上游最新版，见 §2。 |
+
+### 8.2 评估后认定无实际影响
+
+| 现象 | 评估结论 | 重新评估的条件 |
+| --- | --- | --- |
+| Dockerfile 用 `uname -m` 选架构；在 arm64 主机上运行 arm/v7 容器时它返回 `aarch64` | 发布只走 x86 + QEMU 的 CI（返回 `armv7l`），`build.sh` 只构建本机架构，现有流程不会选错。 | CI 改用原生 ARM runner，或开始在 ARM 主机上交叉构建 32 位镜像。 |
+| `/config/logs/*.log` 没有轮转 | 每个任务只写几行。 | 有用户反馈日志体积。 |
+| `pause.sh` 的 `/tmp/aria2-pause-<GID>.lock` 不删除 | 仅 `move-paused-task=true` 时产生，是空文件，容器重建即清空。 | 无。 |
+| `CRA2B` 生成 `0 */N`，N 不整除 24 时间隔不均匀 | 对“定期重启 aria2b”没有实际影响。 | 无。 |
+| `RPC_CALL` 用 `curl -f`，而 aria2 对 JSON-RPC 错误返回 HTTP 400，错误都表现为 “Aria2 RPC interface error” 并多试一次 HTTPS | 只影响报错文案，不影响文件处理结果。 | 需要按错误类型分支处理时。 |
+| Metalink 多文件任务按“首层目录即任务目录”推算路径 | 未验证，也没有使用证据。 | 有用户实际使用 Metalink 并报告问题。 |
+
+### 8.3 曾被测试掩盖的真实缺陷
+
+RRT 去重删掉源目录后、RPC 移除任务前，aria2 仍在下载并回写 `.aria2`，导致控制文件残留。零进度的 `repeat` 场景长期通过，直到用带 peer 的夹具才复现（现由 `repeat-active` 固定）。结论：涉及活动任务的判断，以有真实下载进度的场景为准。

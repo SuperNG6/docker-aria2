@@ -70,6 +70,24 @@ MOVE_SOURCE_PATH() {
     PRUNE_EMPTY_PARENTS
 }
 
+# 回收站内的落点：${TARGET_PATH} 下已有同名条目时改用带时间戳的新名字。
+# 直接 mv 进去，同名非空目录会失败并落到永久删除退路，同名文件则被静默覆盖；
+# 回收站的用途是可找回，两种结果都不该由"重名"这种平常情况触发。
+_RECYCLE_DESTINATION() {
+    local name=${SOURCE_PATH##*/} stamp candidate n=1
+    if [ ! -e "${TARGET_PATH}/${name}" ] && [ ! -L "${TARGET_PATH}/${name}" ]; then
+        printf '%s' "${TARGET_PATH}"
+        return
+    fi
+    stamp=$(date +%Y%m%d-%H%M%S)
+    candidate="${TARGET_PATH}/${name}.${stamp}"
+    while [ -e "${candidate}" ] || [ -L "${candidate}" ]; do
+        candidate="${TARGET_PATH}/${name}.${stamp}-${n}"
+        n=$((n + 1))
+    done
+    printf '%s' "${candidate}"
+}
+
 # 删除 aria2 下载控制文件（.aria2 后缀），任务结束后清理用
 RM_ARIA2() {
     if [ -e "${SOURCE_PATH}.aria2" ]; then
@@ -221,9 +239,11 @@ MOVE_RECYCLE() {
     TASK_INFO
     echo -e "$(DATE_TIME) ${INFO} 开始移动已下载的任务至回收站 ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
     mkdir -p "${TARGET_PATH}"
-    if MOVE_SOURCE_PATH "${TARGET_PATH}"; then
-        echo -e "$(DATE_TIME) ${INFO} 已移至回收站: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX} -> ${LIGHT_GREEN_FONT_PREFIX}${TARGET_PATH}${FONT_COLOR_SUFFIX}"
-        log_line "${RECYCLE_LOG}" INFO "成功移动文件到回收站: ${SOURCE_PATH} -> ${TARGET_PATH}"
+    local destination
+    destination=$(_RECYCLE_DESTINATION)
+    if MOVE_SOURCE_PATH "${destination}"; then
+        echo -e "$(DATE_TIME) ${INFO} 已移至回收站: ${LIGHT_GREEN_FONT_PREFIX}${SOURCE_PATH}${FONT_COLOR_SUFFIX} -> ${LIGHT_GREEN_FONT_PREFIX}${destination}${FONT_COLOR_SUFFIX}"
+        log_line "${RECYCLE_LOG}" INFO "成功移动文件到回收站: ${SOURCE_PATH} -> ${destination}"
         return
     fi
 
