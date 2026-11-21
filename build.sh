@@ -24,14 +24,14 @@ build_variant() {
 
 case "${VARIANT}" in
     standard)
-        build_variant standard latest false
+        build_variant standard latest-s6v3 false
         ;;
     a2b)
-        build_variant a2b a2b-latest true
+        build_variant a2b a2b-latest-s6v3 true
         ;;
     all)
-        build_variant standard latest false
-        build_variant a2b a2b-latest true
+        build_variant standard latest-s6v3 false
+        build_variant a2b a2b-latest-s6v3 true
         ;;
     *)
         echo "用法: $0 [standard|a2b|all]" >&2

@@ -11,15 +11,15 @@ aria2c 是上游组件，不是被测对象：场景只用它产生真实的事�
 ```bash
 bash build.sh standard
 bash tests/lint.sh
-bash tests/run.sh superng6/aria2:latest standard
+bash tests/run.sh superng6/aria2:latest-s6v3 standard
 
 # 列出或只运行一个场景
-bash tests/run.sh superng6/aria2:latest standard --list
-bash tests/run.sh superng6/aria2:latest standard reserved
-bash tests/run.sh superng6/aria2:latest standard lib:paths
+bash tests/run.sh superng6/aria2:latest-s6v3 standard --list
+bash tests/run.sh superng6/aria2:latest-s6v3 standard reserved
+bash tests/run.sh superng6/aria2:latest-s6v3 standard lib:paths
 
 bash build.sh a2b
-bash tests/run.sh superng6/aria2:a2b-latest a2b
+bash tests/run.sh superng6/aria2:a2b-latest-s6v3 a2b
 ```
 
 宿主需要 Bash、Docker 和 openssl（`rpc-tls` 临时生成自签证书，私钥不进仓库）；静态检查还需要 ShellCheck。
@@ -75,7 +75,7 @@ bash tests/run.sh superng6/aria2:a2b-latest a2b
 ## 验证测试确实有用
 
 ```bash
-bash tests/mutate.sh superng6/aria2:latest standard
+bash tests/mutate.sh superng6/aria2:latest-s6v3 standard
 ```
 
 宿主额外需要 Python 3。待测镜像必须由当前工作区构建。

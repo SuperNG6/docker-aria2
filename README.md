@@ -15,7 +15,7 @@ GitHub：https://www.github.com/SuperNG6/docker-aria2
 __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 - 没有办法屏蔽迅雷等只下载不上传的P2P下载工具
-  > (a2b-latest镜像）可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端
+  > (a2b-latest-s6v3镜像）可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端
 - 没有配置UID和GID
   > 这关系到你下载的文件的权限问题，默认是root权限，很难管理
  - 端口不全
@@ -39,7 +39,7 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
  - 可屏蔽迅雷等吸血客户端
    > 集成自@makeding/aria2b 项目，感谢
 # 本镜像的一些优点
-- `latest` 提供 aria2c 与 [SuperNG6/AriaNg 增强版](https://github.com/SuperNG6/AriaNg)，`a2b-latest` 额外提供可开关的 aria2b。
+- `latest-s6v3` 提供 aria2c 与 [SuperNG6/AriaNg 增强版](https://github.com/SuperNG6/AriaNg)，`a2b-latest-s6v3` 额外提供可开关的 aria2b。
 - AriaNg 可在下载中、等待和已停止的任务列表直接展开文件清单；新建 BT／磁力任务时可按文件大小预先排除小文件。
 - 容器可在下载完成后按扩展名、关键词、正则和大小清理文件，并可保留相对目录结构移动到 `completed`。
 - 以 `PUID`／`PGID` 指定的用户运行 aria2c；`/config` 持久化配置、会话、过滤规则和日志。
@@ -55,29 +55,29 @@ __当前的镜像或多或少都有以下几点不符合的我的需求__
 
 ## 新版 aria2b 功能
 
-`a2b-latest` 集成 [SuperNG6/aria2b](https://github.com/SuperNG6/aria2b)：通过 aria2 RPC 识别 BT 连接，按客户端特征和持续上传却无下载进度的行为封禁吸血 peer；支持 IPv4／IPv6 黑名单及自动解除封禁。新版通过 RPC 长连接、批量查询和更高效的进度检测降低长期运行开销；断线重试、启动时同步封禁状态和优雅退出让服务运行更稳定。
+`a2b-latest-s6v3` 集成 [SuperNG6/aria2b](https://github.com/SuperNG6/aria2b)：通过 aria2 RPC 识别 BT 连接，按客户端特征和持续上传却无下载进度的行为封禁吸血 peer；支持 IPv4／IPv6 黑名单及自动解除封禁。新版通过 RPC 长连接、批量查询和更高效的进度检测降低长期运行开销；断线重试、启动时同步封禁状态和优雅退出让服务运行更稳定。
 
 # Architecture
 ### 全平台镜像统一Tag
 
-#### latest (default aria2 with webui ariang)
-docker pull superng6/aria2:latest  
+#### latest-s6v3 (default aria2 with webui ariang)
+docker pull superng6/aria2:latest-s6v3
 
 | Architecture | Tag            |
 | ------------ | -------------- |
-| x86-64       | latest         |
-| arm64        | latest         |
-| armhf        | latest         |
+| x86-64       | latest-s6v3    |
+| arm64        | latest-s6v3    |
+| armhf        | latest-s6v3    |
 
 
-#### a2b-latest (屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端 [@makeding](https://github.com/makeding/aria2b) )
-docker pull superng6/aria2:a2b-latest  
+#### a2b-latest-s6v3 (屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端 [@makeding](https://github.com/makeding/aria2b) )
+docker pull superng6/aria2:a2b-latest-s6v3
 
 | Architecture | Tag            |
 | ------------ | -------------- |
-| x86-64       | a2b-latest         |
-| arm64        | a2b-latest         |
-| armhf        | a2b-latest         |
+| x86-64       | a2b-latest-s6v3         |
+| arm64        | a2b-latest-s6v3         |
+| armhf        | a2b-latest-s6v3         |
 
 ## 往后所有新增功能设置选项均在`/config/setting.conf`
 ### 额外补充文章  
@@ -454,7 +454,7 @@ CTU="https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/best_aria2.t
 
 | 组件 | 仓库 | 当前版本 |
 |------|------|----------|
-| 基础镜像 | [SuperNG6/docker-baseimage-alpine](https://github.com/SuperNG6/docker-baseimage-alpine) | Alpine 3.23 + s6-overlay v2.2.0.3 |
+| 基础镜像 | [SuperNG6/docker-baseimage-alpine](https://github.com/SuperNG6/docker-baseimage-alpine) | Alpine 3.24.4 + s6-overlay v3 |
 | aria2c 二进制 | [SuperNG6/Aria2-Pro-Core](https://github.com/SuperNG6/Aria2-Pro-Core) | 构建时拉 latest release（aria2 1.37.0 + OpenSSL 3.5） |
 | AriaNg WebUI | [SuperNG6/AriaNg](https://github.com/SuperNG6/AriaNg)（基于 mayswind/AriaNg） | 构建时拉最新 release |
 | aria2b（仅 a2b 镜像） | [SuperNG6/aria2b](https://github.com/SuperNG6/aria2b) | 构建时拉最新 release |
@@ -565,14 +565,14 @@ docker run -d \
   -v $PWD/config:/config \
   -v $PWD/downloads:/downloads \
   --restart unless-stopped \
-  superng6/aria2:latest
+  superng6/aria2:latest-s6v3
   ```
 docker-compose  
   ```yml
 version: "3.1"
 services:
   aria2:
-    image: superng6/aria2:latest
+    image: superng6/aria2:latest-s6v3
     container_name: aria2
     network_mode: host
     environment:
@@ -593,12 +593,12 @@ services:
       - $PWD/downloads:/downloads
     restart: unless-stopped   
 ```
-- `superng6/aria2:a2b-latest` 镜像可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端`A2B=true`(集成自makeding/aria2b，感谢)
+- `superng6/aria2:a2b-latest-s6v3` 镜像可屏蔽迅雷、qq旋风、影音先锋、百度网盘等吸血客户端`A2B=true`(集成自makeding/aria2b，感谢)
 ```yml
 version: "3.1"
 services:
   aria2:
-    image: superng6/aria2:a2b-latest
+    image: superng6/aria2:a2b-latest-s6v3
     container_name: aria2
     network_mode: host
     cap_add:

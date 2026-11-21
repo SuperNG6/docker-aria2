@@ -1,4 +1,4 @@
-name: 构建 Aria2 Docker 镜像
+name: 构建 Aria2 s6 v3 镜像
 
 on:
   workflow_dispatch:
@@ -6,16 +6,21 @@ on:
 env:
   DOCKER_IMAGE: superng6/aria2
   GHCR_IMAGE: ghcr.io/superng6/aria2
+  TAG_SUFFIX: -s6v3
+
+concurrency:
+  group: publish-aria2-s6v3
+  cancel-in-progress: false
 
 jobs:
   release-guard:
     name: 检查正式发布分支
     runs-on: ubuntu-latest
     steps:
-      - name: 只允许从 master 发布
-        if: github.ref != 'refs/heads/master'
+      - name: 只允许从 s6v3 发布
+        if: github.ref != 'refs/heads/s6v3'
         run: |
-          echo '正式镜像只能从 master 分支发布。' >&2
+          echo 's6 v3 镜像只能从 s6v3 分支发布。' >&2
           exit 1
 
   build:
@@ -103,9 +108,9 @@ jobs:
       matrix:
         include:
           - variant: standard
-            tag_prefix: ''         # 推 :latest / :<date>
+            tag_prefix: ''
           - variant: a2b
-            tag_prefix: a2b-       # 推 :a2b-latest / :a2b-<date>
+            tag_prefix: a2b-
     steps:
       - name: 设置版本标签
         id: set-version
@@ -137,8 +142,8 @@ jobs:
       - name: 合并 manifest 并推送（${{ matrix.variant }}）
         working-directory: /tmp/digests
         env:
-          TAG_LATEST: ${{ matrix.tag_prefix }}latest
-          TAG_DATED: ${{ matrix.tag_prefix }}${{ steps.set-version.outputs.version }}
+          TAG_LATEST: ${{ matrix.tag_prefix }}latest${{ env.TAG_SUFFIX }}
+          TAG_DATED: ${{ matrix.tag_prefix }}${{ steps.set-version.outputs.version }}${{ env.TAG_SUFFIX }}
         run: |
           refs=()
           for digest in *; do
@@ -153,8 +158,8 @@ jobs:
 
       - name: 检查镜像（${{ matrix.variant }}）
         env:
-          TAG_LATEST: ${{ matrix.tag_prefix }}latest
-          TAG_DATED: ${{ matrix.tag_prefix }}${{ steps.set-version.outputs.version }}
+          TAG_LATEST: ${{ matrix.tag_prefix }}latest${{ env.TAG_SUFFIX }}
+          TAG_DATED: ${{ matrix.tag_prefix }}${{ steps.set-version.outputs.version }}${{ env.TAG_SUFFIX }}
         run: |
           docker buildx imagetools inspect "${{ env.DOCKER_IMAGE }}:${TAG_LATEST}"
           docker buildx imagetools inspect "${{ env.DOCKER_IMAGE }}:${TAG_DATED}"

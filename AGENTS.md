@@ -8,16 +8,16 @@
 
 `Dockerfile` 和 `build.sh` 构建 `standard`、`a2b` 两种镜像。`root/` 是容器 overlay：`root/etc/cont-init.d/` 依序初始化，`root/etc/services.d/` 定义 s6 服务，`root/aria2/conf/` 存模板，`root/aria2/scripts/` 存事件入口与 `lib/`。`tests/cases/`、`tests/lib/`、`tests/fixtures/` 分别放场景、辅助函数和本地夹具。
 
-项目使用 s6-overlay v2；保持初始化数字顺序和 `services.d` 布局。文件处理开关以 `/config/setting.conf` 为准，后续 hook 重新读取；`aria2.conf` 的部分 key 会在启动时被环境变量覆盖。事件路径先确定 completed/recycle 目标，再查询 RPC 和计算任务源路径。保留 `/downloads` 根目录及 `completed`、`recycle`、`move-failed` 共享目录保护。
+本分支使用 s6-overlay v3 的旧式服务兼容层；保持初始化数字顺序和 `services.d` 布局。文件处理开关以 `/config/setting.conf` 为准，后续 hook 重新读取；`aria2.conf` 的部分 key 会在启动时被环境变量覆盖。事件路径先确定 completed/recycle 目标，再查询 RPC 和计算任务源路径。保留 `/downloads` 根目录及 `completed`、`recycle`、`move-failed` 共享目录保护。
 
 ## 开发与验证
 
 ```bash
 bash tests/lint.sh
 ./build.sh standard
-bash tests/run.sh superng6/aria2:latest standard
+bash tests/run.sh superng6/aria2:latest-s6v3 standard
 ./build.sh a2b
-bash tests/run.sh superng6/aria2:a2b-latest a2b
+bash tests/run.sh superng6/aria2:a2b-latest-s6v3 a2b
 ```
 
 `build.sh all` 可构建两种变体；`tests/run.sh <镜像> <变体> --list` 列出场景，末尾改为 `lib:paths` 等名称可只运行一个。容器测试前先构建当前工作区镜像。脚本改动至少运行 `tests/lint.sh`（Bash 语法、ShellCheck、自检和 diff 检查）；用户可见行为还需运行相关容器场景。场景默认 4 个并行（`TEST_JOBS`）。宿主需 Bash、Docker、openssl，静态检查需 ShellCheck。

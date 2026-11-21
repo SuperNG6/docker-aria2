@@ -9,11 +9,11 @@ equal 0 "$(id -u)" '场景必须由 root 执行'
 SERVICE=/var/run/s6/services/aria2b
 
 service_pid() {
-    s6-svstat "${SERVICE}" | sed -n 's/^up (pid \([0-9][0-9]*\)).*/\1/p'
+    s6-svstat "${SERVICE}" | sed -nE 's/^up \(pid ([0-9]+)( pgid [0-9]+)?\).*/\1/p'
 }
 # 已连续运行数秒，排除"刚启动就退出"的重启循环被误当成正常运行。
 service_stable() {
-    s6-svstat "${SERVICE}" | grep -Eq '^up \(pid [0-9]+\) ([3-9]|[1-9][0-9]+) seconds'
+    s6-svstat "${SERVICE}" | grep -Eq '^up \(pid [0-9]+( pgid [0-9]+)?\) ([3-9]|[1-9][0-9]+) seconds'
 }
 service_restarted() {
     local pid

@@ -17,7 +17,7 @@
 
 ## 2. 构建产物与依赖
 
-builder 和最终镜像均基于 `superng6/alpine:3.23`。仓库没有固定基础镜像 digest，也未在 Dockerfile 中安装 `bash`、`curl`、`wget` 或 s6：构建与启动依赖基础镜像提供这些命令、`/init`、`with-contenv`、`s6-setuidgid`、`s6-svc` 和 `abc` 用户。脚本还调用 `chown`、`crond`、`crontab`、`realpath`、`stat`、`du`、`df`、`awk`、`sed`、`sort` 等工具；跨盘空间检查需要 `du -sb`、`df --output=avail -B1` 和 `stat -c %d` 的实现。Dockerfile 默认 `PUID=1026`、`PGID=100`；`40-config` 将 `/config`、`/www`、`/downloads` 递归授权给 `abc`。基础镜像的具体包版本和预设 UID/GID 不由本仓库锁定。
+builder 和最终镜像均基于 `superng6/alpine:3.24.4-s6v3`。仓库没有固定基础镜像 digest，也未在 Dockerfile 中安装 `bash`、`curl`、`wget` 或 s6：构建与启动依赖基础镜像提供这些命令、`/init`、`with-contenv`、`s6-setuidgid`、`s6-svc` 和 `abc` 用户。脚本还调用 `chown`、`crond`、`crontab`、`realpath`、`stat`、`du`、`df`、`awk`、`sed`、`sort` 等工具；跨盘空间检查需要 `du -sb`、`df --output=avail -B1` 和 `stat -c %d` 的实现。Dockerfile 默认 `PUID=1026`、`PGID=100`；`40-config` 将 `/config`、`/www`、`/downloads` 递归授权给 `abc`。基础镜像的具体包版本和预设 UID/GID 不由本仓库锁定。
 
 builder 额外安装 `unzip`，从最新 release 下载 Aria2-Pro-Core 静态 aria2c 和 AriaNg AllInOne。最终镜像额外安装 `darkhttpd`、`jq`、`findutils`。`VARIANT=a2b` 再增加 `iptables`、`iptables-legacy`、`ipset`、`nodejs` 和 aria2b；`standard` 删除 aria2b 服务目录。`A2B_DEFAULT` 与变体配套，供运行时默认开关使用。仓库的 compose 示例和 CI 为 a2b 提供 `NET_ADMIN`，并在可用时只读挂载 `/lib/modules`；a2b 启动脚本将 `/config/aria2.conf` 路径传给 aria2b。
 
@@ -78,14 +78,14 @@ RPC 统一经 [`lib/rpc.sh`](../root/aria2/scripts/lib/rpc.sh) 的 `RPC_CALL` �
 
 [`tests/lint.sh`](../tests/lint.sh) 运行 `bash -n`、ShellCheck、测试工具自检和 `git diff --check`。[`tests/run.sh`](../tests/run.sh) 为每个场景建独立容器与匿名卷并行执行，以 `abc` 运行库或生命周期测试；需要重启的场景复用同一卷。真实生命周期测试通过 aria2 RPC、正式 hook 和本地固定夹具验证结果，不直接 source 生产库或手写其全局变量；异步结果使用有上限的条件轮询。[`tests/mutate.sh`](../tests/mutate.sh) 在专用容器注入故障以验证关键断言。场景清单见 [测试说明](../tests/README.md)。
 
-[构建工作流](../.github/workflows/Build%20Image.yml) 手动触发；非 `master` 分支会明确失败，防止误发布正式镜像。`master` 上覆盖 `standard`、`a2b` 两种变体与 `linux/amd64`、`linux/arm/v7`、`linux/arm64` 三种平台，共六种组合。单架构镜像先按 digest 推送，再做服务连通 smoke-test；amd64 额外运行完整行为测试，a2b 完整就绪也只在 amd64 验证。构建矩阵和 smoke-test 均成功后才合并 manifest，并发布 `latest`、`<date>`、`a2b-latest`、`a2b-<date>` 到 Docker Hub 与 GHCR。[Shell Lint 工作流](../.github/workflows/Shell%20Lint.yml) 对相关 PR/push 运行 ShellCheck 与 actionlint。
+[构建工作流](../.github/workflows/Build%20Image.yml) 手动触发；非 `s6v3` 分支会明确失败，防止误发布 s6 v3 镜像。`s6v3` 上覆盖 `standard`、`a2b` 两种变体与 `linux/amd64`、`linux/arm/v7`、`linux/arm64` 三种平台，共六种组合。单架构镜像先按 digest 推送，再做服务连通 smoke-test；amd64 额外运行完整行为测试，a2b 完整就绪也只在 amd64 验证。构建矩阵和 smoke-test 均成功后才合并 manifest，并发布 `latest-s6v3`、`<date>-s6v3`、`a2b-latest-s6v3`、`a2b-<date>-s6v3` 到 Docker Hub 与 GHCR。[Shell Lint 工作流](../.github/workflows/Shell%20Lint.yml) 对相关 PR/push 运行 ShellCheck 与 actionlint。
 
 ```bash
 bash tests/lint.sh
 ./build.sh standard
-bash tests/run.sh superng6/aria2:latest standard
+bash tests/run.sh superng6/aria2:latest-s6v3 standard
 ./build.sh a2b
-bash tests/run.sh superng6/aria2:a2b-latest a2b
+bash tests/run.sh superng6/aria2:a2b-latest-s6v3 a2b
 ```
 
 ## 8. 已评估的边界（审查时不要重复报告）

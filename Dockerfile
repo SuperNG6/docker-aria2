@@ -1,4 +1,4 @@
-FROM superng6/alpine:3.23 AS builder
+FROM superng6/alpine:3.24.4-s6v3 AS builder
 
 RUN apk add --no-cache unzip
 
@@ -24,7 +24,7 @@ RUN LATEST_URL=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
     && echo "${VER}" > /tmp/ariang.ver
 
 
-FROM superng6/alpine:3.23
+FROM superng6/alpine:3.24.4-s6v3
 
 ARG VARIANT=standard
 ARG A2B_DEFAULT=false
