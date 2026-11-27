@@ -70,7 +70,7 @@ RPC 统一经 [`lib/rpc.sh`](../root/aria2/scripts/lib/rpc.sh) 的 `RPC_CALL` �
 
 ## 6. Tracker 与 cron
 
-[`lib/tracker.sh`](../root/aria2/scripts/lib/tracker.sh) 的 `file` 模式在启动时更新 `aria2.conf`；`rpc` 模式通过 `aria2.changeGlobalOption` 热更新，并要求响应 JSON 的 `.result == "OK"`。默认按主源、CDN 顺序获取；`CTU` 可指定多个 URL 并去重。tracker 拉取请求设置超时和重试，默认源之间另有回退；cron 与事件 hook 的本地 RPC 请求共用 `RPC_CALL` 的时间上限，不重试。
+[`lib/tracker.sh`](../root/aria2/scripts/lib/tracker.sh) 的 `file` 模式在启动时更新 `aria2.conf`；`rpc` 模式通过 `aria2.changeGlobalOption` 热更新，并要求响应 JSON 的 `.result == "OK"`。默认从 `cf.trackerslist.com/all_aria2.txt` 获取，失败回退到 jsDelivr；`CTU` 可指定多个 URL，合并成功来源并去重。每个源最多尝试两次，每次限时 3 秒。全部失败时保留现有配置；cron 与事件 hook 的本地 RPC 请求共用 `RPC_CALL` 的时间上限，不重试。
 
 `RUT=true` 将 [`rpc-tracker1`](../root/aria2/conf/rpc-tracker1) 写入 `/etc/crontabs/root`，每天 05:00 更新；否则使用 [`rpc-tracker0`](../root/aria2/conf/rpc-tracker0)。`crond` 始终启动。`40-config` 仅在 `A2B=true` 且 aria2b 实际存在时，经 `crontab -l/-` 注册 `s6-svc -r /var/run/s6/services/aria2b`；`CRA2B=false` 关闭，非法间隔回退两小时。两种 cron 写入方式在当前镜像中共存。
 

@@ -286,7 +286,7 @@ t_tracker_contracts() {
     GET_TRACKERS >/dev/null 2>&1
     result="${TRACKER}"
     unset CTU
-    [ "$(printf '%s' "${result}" | tr ',' '\n' | sort -u | wc -l)" -eq 3 ] \
+    [ "$(printf '%s\n' "${result}" | tr ',' '\n' | sort -u | wc -l)" -eq 3 ] \
         && [[ "${result}" == *"a.test:1"* ]] \
         && [[ "${result}" == *"b.test:2"* ]] \
         && [[ "${result}" == *"c.test:3"* ]] \
@@ -301,6 +301,28 @@ t_tracker_contracts() {
     ! CTU="file://${LOG_DIR}/missing.txt" bash /aria2/scripts/lib/tracker.sh file "${conf}" >/dev/null 2>&1 \
         && grep -Fxq 'bt-tracker=old' "${conf}" \
         || fail+=" main-failure"
+
+    # 传输到一半断开时，curl 仍可能向 stdout 输出部分列表。
+    # shellcheck disable=SC2329
+    curl() {
+        case "${*: -1}" in
+            https://partial.test/list) printf 'udp://partial.test:1\n'; return 18 ;;
+            https://cf.trackerslist.com/all_aria2.txt) printf '<html>error</html>\n' ;;
+            *) printf 'udp://valid.test:1\r\n\r\nudp://other.test:2\r\n' ;;
+        esac
+    }
+    export -f curl
+    ! CTU=https://partial.test/list bash /aria2/scripts/lib/tracker.sh file "${conf}" >/dev/null 2>&1 \
+        && grep -Fxq 'bt-tracker=old' "${conf}" \
+        || fail+=" partial-keeps-config"
+    CTU='https://partial.test/list, https://valid.test/list' \
+        bash /aria2/scripts/lib/tracker.sh file "${conf}" >/dev/null 2>&1 \
+        && grep -Fxq 'bt-tracker=udp://other.test:2,udp://valid.test:1' "${conf}" \
+        || fail+=" partial-source-ignored"
+    CTU='' bash /aria2/scripts/lib/tracker.sh file "${conf}" >/dev/null 2>&1 \
+        && grep -Fxq 'bt-tracker=udp://valid.test:1,udp://other.test:2' "${conf}" \
+        || fail+=" invalid-mirror-fallback"
+    unset -f curl
 
     if [ -z "${fail}" ]; then
         ok "特殊字符写入、严格 JSON 成功判断和 CTU 去重正确"

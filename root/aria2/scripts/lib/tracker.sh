@@ -9,36 +9,59 @@ _D="$(dirname "${BASH_SOURCE[0]}")"
 . "${_D}/log.sh"  # 颜色变量和 DATE_TIME
 . "${_D}/rpc.sh"  # RPC_CALL
 
-# curl 下载器，3 秒连接超时、3 秒最大时长、最多重试 2 次
-# 用数组装参数：未来若 URL 含空格或加新 flag，可避免词法分割引发的隐性 bug
-DOWNLOADER=(curl -fsSL --connect-timeout 3 --max-time 3 --retry 2)
-NL=$'\n'  # 换行符，用于分隔多个自定义 URL
+# 每次请求最多 3 秒。只使用成功请求的完整响应，避免重试混入上次的部分内容。
+DOWNLOADER=(curl -fsSL --connect-timeout 3 --max-time 3)
 
-# 获取最新 BT tracker 列表，结果存入 TRACKER 变量（逗号分隔格式，适配 aria2 bt-tracker 参数）
-# 无自定义地址（CTU 为空）时按优先级尝试两个公共源：
-#   1. trackerslist.com（主源）
-#   2. jsdelivr CDN 镜像（主源不可达时备用）
-# 有自定义地址（CTU 环境变量，逗号分隔多个 URL）时从自定义源获取并去重合并
+_download_trackers() {
+    local response entries attempt
+    for attempt in 1 2; do
+        if ! response=$("${DOWNLOADER[@]}" -- "$1"); then
+            continue
+        fi
+
+        # 同时接受逗号分隔和逐行列表。拒绝 HTML 等非 tracker 响应。
+        if entries=$(printf '%s\n' "$response" | tr ',' '\n' | awk '
+            { sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "") }
+            !NF || /^#/ { next }
+            /^[[:alpha:]][[:alnum:]+.-]*:\/\/[^[:space:]]+$/ { print; next }
+            { exit 1 }
+        ') && [[ -n "$entries" ]]; then
+            printf '%s\n' "$entries"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# 获取列表供启动和 cron 共用；自定义地址按英文逗号分隔，合并有效来源并去重。
 GET_TRACKERS() {
+    local entries='' downloaded url
+    local -a urls
+    TRACKER=''
     if [[ -z "${CTU}" ]]; then
         echo && echo -e "$(DATE_TIME) ${INFO} 获取 BT trackers..."
-        TRACKER=$(
-            "${DOWNLOADER[@]}" https://trackerslist.com/all_aria2.txt ||
-            "${DOWNLOADER[@]}" https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/all_aria2.txt
+        entries=$(
+            _download_trackers https://cf.trackerslist.com/all_aria2.txt ||
+            _download_trackers https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/all_aria2.txt
         )
     else
         echo && echo -e "$(DATE_TIME) ${INFO} 从自定义地址获取 BT trackers: ${CTU}"
-        URLS=$(echo "${CTU}" | tr "," "$NL")
-        for URL in $URLS; do
-            TRACKER+="$("${DOWNLOADER[@]}" "${URL}" | tr "," "\n")$NL"
+        IFS=',' read -r -a urls <<< "${CTU}"
+        for url in "${urls[@]}"; do
+            # 保留自定义地址列表允许在逗号周围加空白的用法。
+            url="${url#"${url%%[![:space:]]*}"}"
+            url="${url%"${url##*[![:space:]]}"}"
+            if [[ -n "$url" ]] && downloaded=$(_download_trackers "$url"); then
+                entries+="$downloaded"$'\n'
+            fi
         done
-        # 去重、去空行，然后用 paste 把多行折成单行逗号分隔（适配 aria2 bt-tracker 参数）
-        TRACKER="$(echo "$TRACKER" | awk NF | sort -u | paste -sd , -)"
+        entries=$(printf '%s' "$entries" | sort -u)
     fi
-    if [[ -z "${TRACKER}" ]]; then
+    if [[ -z "$entries" ]]; then
         echo -e "$(DATE_TIME) ${ERROR} 无法获取 trackers，网络故障或链接无效" >&2
         return 1
     fi
+    TRACKER=$(printf '%s\n' "$entries" | paste -sd , -)
 }
 
 # 将获取到的 tracker 列表打印到终端（用于日志确认）
