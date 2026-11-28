@@ -307,8 +307,15 @@ t_tracker_contracts() {
     curl() {
         case "${*: -1}" in
             https://partial.test/list) printf 'udp://partial.test:1\n'; return 18 ;;
-            https://cf.trackerslist.com/all_aria2.txt) printf '<html>error</html>\n' ;;
-            *) printf 'udp://valid.test:1\r\n\r\nudp://other.test:2\r\n' ;;
+            https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/all_aria2.txt)
+                if [[ "${TRACKER_TEST_MIRROR_OK:-}" == 1 ]]; then
+                    printf 'udp://primary.test:1\n'
+                else
+                    printf '<html>error</html>\n'
+                fi
+                ;;
+            https://cf.trackerslist.com/all_aria2.txt|https://valid.test/list) printf 'udp://valid.test:1\r\n\r\nudp://other.test:2\r\n' ;;
+            *) return 1 ;;
         esac
     }
     export -f curl
@@ -322,6 +329,9 @@ t_tracker_contracts() {
     CTU='' bash /aria2/scripts/lib/tracker.sh file "${conf}" >/dev/null 2>&1 \
         && grep -Fxq 'bt-tracker=udp://valid.test:1,udp://other.test:2' "${conf}" \
         || fail+=" invalid-mirror-fallback"
+    CTU='' TRACKER_TEST_MIRROR_OK=1 bash /aria2/scripts/lib/tracker.sh file "${conf}" >/dev/null 2>&1 \
+        && grep -Fxq 'bt-tracker=udp://primary.test:1' "${conf}" \
+        || fail+=" jsdelivr-primary"
     unset -f curl
 
     if [ -z "${fail}" ]; then
