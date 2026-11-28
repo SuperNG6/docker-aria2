@@ -41,8 +41,8 @@ GET_TRACKERS() {
     if [[ -z "${CTU}" ]]; then
         echo && echo -e "$(DATE_TIME) ${INFO} 获取 BT trackers..."
         entries=$(
-            _download_trackers https://cf.trackerslist.com/all_aria2.txt ||
-            _download_trackers https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/all_aria2.txt
+            _download_trackers https://cdn.jsdelivr.net/gh/XIU2/TrackersListCollection@master/all_aria2.txt ||
+            _download_trackers https://cf.trackerslist.com/all_aria2.txt
         )
     else
         echo && echo -e "$(DATE_TIME) ${INFO} 从自定义地址获取 BT trackers: ${CTU}"
